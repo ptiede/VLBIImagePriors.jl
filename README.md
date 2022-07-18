@@ -4,4 +4,6 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ptiede.github.io/RadioImagePriors.jl/dev)
 [![Build Status](https://github.com/ptiede/RadioImagePriors.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ptiede/RadioImagePriors.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/ptiede/RadioImagePriors.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ptiede/RadioImagePriors.jl)
-[![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
+
+
+This is a experimental package where different **efficient** implementations of image priors are attempted. Useful things will eventually go into [Comrade](https://github.com/ptiede/Comrade.jl)
