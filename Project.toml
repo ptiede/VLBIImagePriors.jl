@@ -25,12 +25,11 @@ DensityInterface = "0.4"
 Distributions = "0.24, 0.25"
 Enzyme = "0.10"
 FillArrays = "0.13"
-HypercubeTransform = "^0.2.8"
+HypercubeTransform = "^0.2.8, 0.3"
 Reexport = "1"
 SpecialFunctions = "1,2"
 StatsFuns = "0.8, 0.9"
 TransformVariables = "0.4, 0.5, 0.6"
-
 julia = "1.7"
 
 [extras]
