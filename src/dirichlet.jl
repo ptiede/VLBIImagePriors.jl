@@ -64,9 +64,9 @@ function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α, lmnB, x::AbstractMat
     f = dirichlet_lpdf(α, lmnB, x)
 
     function _dirichlet_lpdf_pullback(Δ)
-        Δα = Δ.*log.(x)
-        ΔlmnB = -Δ
-        Δx = (α .- 1)./x
+        Δα = @thunk(Δ.*log.(x))
+        ΔlmnB = @thunk(-Δ)
+        Δx = @thunk((α .- 1)./x)
         return (NoTangent(),Δα, ΔlmnB, Δx)
     end
     return f, _dirichlet_lpdf_pullback
@@ -78,7 +78,7 @@ function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α::FillArrays.AbstractF
     function _dirichlet_lpdf_pullback(Δ)
         Δα = Δ.*log.(x)
         ΔlmnB = -Δ
-        Δx = (α[begin] - 1).*inv.(x)
+        Δx = Δ*(α[begin] - 1)./x
         return (NoTangent(),Δα, ΔlmnB, Δx)
     end
     return f, _dirichlet_lpdf_pullback

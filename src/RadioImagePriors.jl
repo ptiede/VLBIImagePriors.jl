@@ -17,6 +17,7 @@ import HypercubeTransform as HC
 
 include("imagesimplex.jl")
 include("dirichlet.jl")
+include("uniform.jl")
 
 
 

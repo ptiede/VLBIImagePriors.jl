@@ -40,10 +40,12 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
         Δf = NoTangent()
         Δflag = NoTangent()
         Δt = NoTangent()
-        x = zero(ΔX)
+        dx = zero(ΔX)
+        dx .= ΔX
         Δy = zero(y)
+
         f = (flag isa TV.NoLogJac) ? true : false
-        Enzyme.autodiff(simplex_fwd!, Const, Duplicated(x, ΔX), Duplicated(y, Δy), Const(f))
+        Enzyme.autodiff(simplex_fwd!, Const, Duplicated(x, dx), Duplicated(copy(y), Δy), Const(f))
         return (Δf, Δflag, Δt, Δy)
     end
     return x, _simplex_fwd_pullback
@@ -71,15 +73,15 @@ end
 
 function TV.transform_with(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractVector, index)
     n = t.n
-    x = simplex_fwd(flag, t, y[index:index+t.n-2])
+    x = simplex_fwd(flag, t, @view y[index:index+t.n-2])
     ℓ = TV.logjac_zero(flag, eltype(y))
     if !(flag isa TV.NoLogJac)
         ℓ = x[end]
     end
-    return (reshape(x[begin:end-1], t.dims...), ℓ, index+n-1)
+    return (reshape(@view(x[begin:end-1]), t.dims...), ℓ, index+n-1)
 end
 
-TV.inverse_eltype(t::ImageSimplex, y::AbstractMatrix) = TV.extended_eltype(y)
+TV.inverse_eltype(::ImageSimplex, y::AbstractMatrix) = TV.extended_eltype(y)
 
 
 function TV.inverse_at!(x::AbstractVector, index, t::ImageSimplex, y::AbstractMatrix)
