@@ -78,7 +78,7 @@ function TV.transform_with(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractVect
     if !(flag isa TV.NoLogJac)
         ℓ = x[end]
     end
-    return (reshape(@view(x[begin:end-1]), t.dims...), ℓ, index+n-1)
+    return (reshape(@view(x[begin:end-1]), t.dims[1], t.dims[2]), ℓ, index+n-1)
 end
 
 TV.inverse_eltype(::ImageSimplex, y::AbstractMatrix) = TV.extended_eltype(y)

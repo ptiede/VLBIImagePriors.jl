@@ -8,7 +8,7 @@ lower/upper bound for the interval. This then concatenates ny×nx
 uniform distributions together.
 """
 struct ImageUniform{T} <: Dists.ContinuousMatrixDistribution
-    a::T
+    a ::T
     b::T
     nx::Int
     ny::Int
@@ -36,4 +36,9 @@ end
 
 function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Real})
     return Dists._logpdf(d, x), Δ->(NoTangent(), ZeroTangent())
+end
+
+function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
+    d = Dists.Uniform(d.a, d.b)
+    rand!(rng, d, x)
 end
