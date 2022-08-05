@@ -10,7 +10,7 @@ using Test
 
 @testset "RadioImagePriors.jl" begin
 
-    npix = 16^2
+    npix = 10
     d1 = Dirichlet(npix^2, 1.0)
     d2 = ImageDirichlet(1.0, npix, npix)
 
