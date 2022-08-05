@@ -40,11 +40,11 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
         Δf = NoTangent()
         Δflag = NoTangent()
         Δt = NoTangent()
-        dx = zero(ΔX)
-        dx .= ΔX
+        dx = unthunk(ΔX)
         Δy = zero(y)
 
         f = (flag isa TV.NoLogJac) ? true : false
+        #copy is because sometimes y is a subarray :(
         Enzyme.autodiff(simplex_fwd!, Const, Duplicated(x, dx), Duplicated(copy(y), Δy), Const(f))
         return (Δf, Δflag, Δt, Δy)
     end

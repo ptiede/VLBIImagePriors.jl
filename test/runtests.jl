@@ -1,8 +1,10 @@
 using RadioImagePriors
+using ChainRulesCore
 using ChainRulesTestUtils
 using Distributions
 using FiniteDifferences
 using Zygote
+import TransformVariables as TV
 using HypercubeTransform
 using Test
 
@@ -26,6 +28,14 @@ using Test
         @test l1 ≈ l2
 
         @test inverse(t2, x2) ≈ y0
+        test_rrule(RadioImagePriors.simplex_fwd,
+                  TV.NoLogJac()⊢NoTangent(),
+                  RadioImagePriors.ImageSimplex(10,10)⊢NoTangent(),
+                  randn(99))
+        test_rrule(RadioImagePriors.simplex_fwd,
+                   TV.LogJac()⊢NoTangent(),
+                   RadioImagePriors.ImageSimplex(10,10)⊢NoTangent(),
+                   randn(99))
     end
 
     @testset "ImageDirichlet" begin
