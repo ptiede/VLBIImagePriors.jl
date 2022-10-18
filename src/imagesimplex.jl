@@ -34,6 +34,12 @@ function simplex_fwd(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractArray)
     return x
 end
 
+function simplex_fwd(t::ImageSimplex, y::AbstractArray)
+    x = similar(y, t.n+1)
+    simplex_fwd!(x, y, true)
+    return reshape(@view(x[begin:end-1]), t.dims[1], t.dims[2])
+end
+
 function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractArray)
     x = simplex_fwd(flag, t, y)
     function _simplex_fwd_pullback(ΔX)
@@ -51,6 +57,8 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
     end
     return x, _simplex_fwd_pullback
 end
+
+ReverseDiff.@grad_from_chainrules simplex_fwd(flag, t, y::TrackedArray)
 
 
 function simplex_fwd!(x::AbstractArray, y::AbstractArray, flag::Bool)

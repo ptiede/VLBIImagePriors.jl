@@ -10,6 +10,7 @@ using Enzyme
 import FillArrays
 using LinearAlgebra
 using Random
+using ReverseDiff
 using SpecialFunctions: loggamma
 using StatsFuns
 import TransformVariables as TV
@@ -18,6 +19,7 @@ import HypercubeTransform as HC
 include("imagesimplex.jl")
 include("dirichlet.jl")
 include("uniform.jl")
+include("centered.jl")
 
 
 
