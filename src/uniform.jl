@@ -8,7 +8,7 @@ lower/upper bound for the interval. This then concatenates ny×nx
 uniform distributions together.
 """
 struct ImageUniform{T} <: Dists.ContinuousMatrixDistribution
-    a ::T
+    a::T
     b::T
     nx::Int
     ny::Int
@@ -21,7 +21,7 @@ end
 
 Base.size(d::ImageUniform) = (d.ny,d.nx)
 
-Dists.mean(::ImageUniform) = FillArrays.Fill((b-a)/2, ny, ny)
+Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b-d.a)/2, size(d)...)
 
 HC.asflat(d::ImageUniform) = TV.as(Array, as(Real, d.a, d.b), ny*nx)
 
@@ -39,6 +39,7 @@ function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::Abstr
 end
 
 function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
+    @assert size(d) == size(x) "Size of input matrix and distribution are not the same"
     d = Dists.Uniform(d.a, d.b)
     rand!(rng, d, x)
 end
