@@ -23,7 +23,7 @@ Base.size(d::ImageUniform) = (d.ny,d.nx)
 
 Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b-d.a)/2, size(d)...)
 
-HC.asflat(d::ImageUniform) = TV.as(Array, as(Real, d.a, d.b), ny*nx)
+HC.asflat(d::ImageUniform) = TV.as(Array, TV.as(Real, d.a, d.b), ny*nx)
 
 function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
     return (size(d) == size(x)) && !any(x-> (d.a >x)||(x> d.b), x)
