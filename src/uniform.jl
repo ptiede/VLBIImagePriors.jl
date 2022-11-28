@@ -23,7 +23,7 @@ Base.size(d::ImageUniform) = (d.ny,d.nx)
 
 Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b-d.a)/2, size(d)...)
 
-HC.asflat(d::ImageUniform) = TV.as(Array, TV.as(Real, d.a, d.b), d.ny*d.nx)
+HC.asflat(d::ImageUniform) = TV.as(Matrix, TV.as(Real, d.a, d.b), d.ny, d.nx)
 
 function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
     return (size(d) == size(x)) && !any(x-> (d.a >x)||(x> d.b), x)
@@ -31,7 +31,7 @@ end
 
 function Dists._logpdf(d::ImageUniform, x::AbstractMatrix{<:Real})
     !Dists.insupport(d, x) && return -Inf
-    return -log(d.b-d.a)^(d.nx*d.ny)
+    return -log(d.b-d.a)*(d.nx*d.ny)
 end
 
 function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Real})
