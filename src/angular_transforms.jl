@@ -100,3 +100,24 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
     end
     return res, _spherical_unit_transform
 end
+
+function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
+    out = TV.transform_with(flag, t, y, index)
+    function _transform_with_arraysuv_pb(Δ)
+        Δy = zero(y)
+        Δx = Δ[1]
+        Δℓ = Δ[2]
+        ix::Int = 1
+        for i in index:N:(index+TV.dimension(t)-1)
+            ysub = @view y[i:(i+N)]
+            ny = norm(ysub)
+            Δy[i:(i+N)] .= Δx./ny .- (Δ'.*ysub)./ny^2
+            if !(flag isa TV.NoLogJac)
+                Δy[i:(i+N)] .+= -Δℓ*ysub
+            end
+            ix::Int += 1
+        end
+        return NoTangent(), NoTangent(), NoTangent(), Δy, NoTangent()
+    end
+    return out, _transform_with_arraysuv_pb
+end
