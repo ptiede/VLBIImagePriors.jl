@@ -29,8 +29,8 @@ function ImageDirichlet(α::AbstractMatrix{T}) where {T}
     return ImageDirichlet{T}(α)
 end
 
-function ImageDirichlet(α::Real, ny::Int, nx::Int)
-    return ImageDirichlet(FillArrays.Fill(α, ny, nx))
+function ImageDirichlet(α::Real, nx::Int, ny::Int)
+    return ImageDirichlet(FillArrays.Fill(α, nx, ny))
 end
 
 Base.size(d::ImageDirichlet) = size(d.α)

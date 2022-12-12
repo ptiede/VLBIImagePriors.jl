@@ -21,8 +21,8 @@ struct ImageSimplex <: TV.VectorTransform
     end
 end
 
-function ImageSimplex(ny::Int, nx::Int)
-    return ImageSimplex((ny, nx))
+function ImageSimplex(nx::Int, ny::Int)
+    return ImageSimplex((nx, ny))
 end
 
 HC.dimension(t::ImageSimplex) = t.n - 1

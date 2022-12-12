@@ -1,4 +1,5 @@
-export ImageUniform, ImageSphericalUniform, SphericalUnitVector
+export ImageUniform, ImageSphericalUniform
+using FillArrays
 
 """
     ImageUniform(a::Real, b::Real, ny, ny)
@@ -44,39 +45,14 @@ function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
     rand!(rng, d, x)
 end
 
-struct SphericalUnitVector{N} <: TV.VectorTransform
-    function SphericalUnitVector{N}() where {N}
-        TV.@argcheck N ≥ 1 "Dimension should be positive."
-        new{N}()
-    end
-end
-
-TV.dimension(::SphericalUnitVector{N}) where {N} = N
-
-function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}
-    T = TV.extended_eltype(y)
-    index2 = index + N
-    # normalized vector
-    vy = NTuple{N,T}(@view(y[index:(index2-1)]))
-    sly = sum(abs2, vy)
-
-    x = sly > 0 ? vy ./ sqrt(sly) : ntuple(i->(i==1 ? one(T) : zero(T)), N)
-    # jacobian term
-    ℓi = TV.logjac_zero(flag, T)
-
-    if !(flag isa TV.NoLogJac)
-        ℓi -= sly/2
-    end
-
-    return x, ℓi, index2
-end
-
-
 
 struct ImageSphericalUniform{T} <: Dists.ContinuousMatrixDistribution
     nx::Int
     ny::Int
 end
+
+HC.asflat(d::RadioImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUnitVector{3}(), d.nx, d.ny)
+
 
 Base.size(d::ImageSphericalUniform) = (d.ny, d.nx)
 
