@@ -25,10 +25,11 @@ end
 
 function ChainRulesCore.rrule(::typeof(lcol), d::CenteredImage, img)
     f = lcol(d, img)
+    pimg = ProjectTo(img)
     function _lcol_pullback(Δ)
         dimg = zero(img)
         autodiff(Reverse, lcol, Active, Const(d), Duplicated(copy(img), dimg))
-        return (NoTangent(), NoTangent(), Δ*dimg)
+        return (NoTangent(), NoTangent(), pimg(Δ*dimg))
     end
     return (f, _lcol_pullback)
 end

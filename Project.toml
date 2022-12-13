@@ -21,6 +21,7 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
+StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 

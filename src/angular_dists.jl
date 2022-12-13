@@ -66,6 +66,7 @@ function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::AbstractVector)
     v =zero(eltype(κ))
     n = length(κ)
     dκ = zero(κ)
+    pκ = ProjectTo(κ)
     for i in eachindex(κ)
         κi = κ[i]
         i0 = besseli0x(κi)
@@ -74,7 +75,7 @@ function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::AbstractVector)
         dκ[i] = (1 - i1/i0)
     end
     function _vonmisesnorm_pullback(Δ)
-       Δκ = Δ.*dκ
+       Δκ = @thunk(pκ(Δ.*dκ))
         return NoTangent(), ZeroTangent(), Δκ
     end
     return -n*log2π - v, _vonmisesnorm_pullback

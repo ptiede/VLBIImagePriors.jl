@@ -42,6 +42,7 @@ end
 
 function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractArray)
     x = simplex_fwd(flag, t, y)
+    py = ProjectTo(y)
     function _simplex_fwd_pullback(ΔX)
         Δf = NoTangent()
         Δflag = NoTangent()
@@ -53,7 +54,7 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
         f = (flag isa TV.NoLogJac) ? true : false
         #copy is because sometimes y is a subarray :(
         Enzyme.autodiff(simplex_fwd!, Const, Duplicated(x, dx), Duplicated(copy(y), Δy), Const(f))
-        return (Δf, Δflag, Δt, Δy)
+        return (Δf, Δflag, Δt, py(Δy))
     end
     return x, _simplex_fwd_pullback
 end
