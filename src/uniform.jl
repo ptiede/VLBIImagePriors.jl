@@ -62,8 +62,8 @@ HC.asflat(d::RadioImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUn
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)
 
-function Dists.logpdf(::ImageSphericalUniform, X::AbstractMatrix{NTuple{3, T}}) where {T}
-    return -length(X)*log(4π)
+function Dists.logpdf(::ImageSphericalUniform, X::Union{AbstractMatrix{NTuple{3,S}}, NTuple{3, T}}) where {T<:AbstractMatrix, S<:Real}
+    return -length(X[1])*log(4π)
 end
 
 function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, x::AbstractMatrix)
@@ -74,13 +74,22 @@ function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, x::Abstra
 end
 
 function Dists.rand(rng::Random.AbstractRNG, d::ImageSphericalUniform)
-    t = SphericalUnitVector{2}()
-    r = randn(rng, 3, d.nx*d.ny)
-    dr = TV.transform.(Ref(t), eachcol(r))
-    return reshape(dr, d.ny, d.nx)
+    t = TV.as(d)
+    r1 = randn(rng, d.nx*d.ny)
+    r2 = randn(rng, d.nx*d.ny)
+    r3 = randn(rng, d.nx*d.ny)
+
+    for i in eachindex(r1)
+        norm = hypot(r1[i], r2[i], r3[i])
+        r1[i] /= norm
+        r2[i] /= norm
+        r3[i] /= norm
+    end
+
+    return (r1, r2, r3)
 end
 
-function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::AbstractMatrix{NTuple{3,T}}) where {T}
+function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::NTuple{3,<:AbstractMatrix{S}}) where {S<:Number}
     lp =  Dists.logpdf(d, x)
     function _spherical_uniform_pullback(Δ)
         # z = last.(x)

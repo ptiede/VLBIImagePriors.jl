@@ -58,6 +58,9 @@ end
 
 TV.dimension(::SphericalUnitVector{N}) where {N} = N+1
 
+TV.inverse_eltype(::SphericalUnitVector{N}, x) where {N} = TV.inverse_eltype(x)
+TV.inverse_eltype(::TV.ArrayTransform{<:SphericalUnitVector}, x::NTuple{N, T}) where {N,T} = float(eltype(first(x)))
+
 
 function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}
     T = TV.extended_eltype(y)
@@ -78,24 +81,30 @@ function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::Abs
 end
 
 using StructArrays
-# function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
-#     (;transformation, dims) = t
-#     # NOTE not using index increments as that somehow breaks type inference
-#     d = TV.dimension(transformation) # length of an element transformation
-#     len = prod(dims)              # number of elements
-#     𝐼 = reshape(range(index; length = len, step = d), dims)
-#     xℓ = map(index -> ((x, ℓ, _) = TV.transform_with(flag, transformation, y, index); (x, ℓ)), 𝐼)
-#     ℓz = TV.logjac_zero(flag, TV.extended_eltype(y))
-#     index′ = index + d * len
-#     StructArray(first.(xℓ)), isempty(xℓ) ? ℓz : ℓz + sum(last, xℓ), index′
-# end
+function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
+    (;transformation, dims) = t
+    # NOTE not using index increments as that somehow breaks type inference
+    d = TV.dimension(transformation) # length of an element transformation
+    len = prod(dims)              # number of elements
+    𝐼 = reshape(range(index; length = len, step = d), dims)
+    xℓ = map(index -> ((x, ℓ, _) = TV.transform_with(flag, transformation, y, index); (x, ℓ)), 𝐼)
+    ℓz = TV.logjac_zero(flag, TV.extended_eltype(y))
+    index′ = index + d * len
+    ntuple(i->getindex.(first.(xℓ), i), N+1), isempty(xℓ) ? ℓz : ℓz + sum(last, xℓ), index′
+end
 
 
 
-function TV.inverse_at!(x::AbstractVector, index, ::SphericalUnitVector{N}, y::AbstractVector) where {N}
+function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::NTuple) where {N}
     @assert length(y) == N + 1 "Length of y must be equal to N + 1"
-    index2 = index + N + 1
-    setindex!(x, y, index:(index2 - 1))
+    index2 = index + N + 2
+    ix = 1
+    for i in index:(N+1):(index+TV.dimension(t)-1)
+        for j in 1:(N+1)
+            x[i+j-1] = y[j][ix]
+        end
+        ix+=1
+    end
     return index2
 end
 
@@ -130,7 +139,8 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
         for i in index:(N+1):(index+TV.dimension(t)-N-1)
             ysub = @view y[i:(i+N)]
             ny = norm(ysub)
-            Δy[i:(i+N)] .= Δx[ix]./ny .- (sum(Δx[ix].*ysub).*ysub/ny^3)
+            dx = ntuple(i->Δx[i][ix], N+1)
+            Δy[i:(i+N)] .= dx./ny .- (sum(dx.*ysub).*ysub/ny^3)
             if !(flag isa TV.NoLogJac)
                 Δy[i:(i+N)] .+= -Δℓ*ysub
             end
@@ -139,4 +149,40 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
         return NoTangent(), NoTangent(), NoTangent(), py(Δy), NoTangent()
     end
     return out, _transform_with_arraysuv_pb
+end
+
+function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransform{<:TV.ScalarTransform}, y::AbstractVector, index)
+    out = TV.transform_with(flag, t, y, index)
+    function _transform_with_array(Δ)
+        ysub = y[index:index+TV.dimension(t)-1]
+        Δx = unthunk(Δ[1])
+        Δlj = unthunk(Δ[2])
+        dy = zero(ysub)
+        x = similar(ysub, length(ysub)+1)
+        dx = similar(ysub, length(ysub)+1)
+        if Δx isa ZeroTangent
+            dx[begin:end-1] .= 0.0
+        else
+            dx[begin:end-1] .= reshape(Δx, :)
+        end
+
+        dx[end] = Δlj
+        Enzyme.autodiff(_transform_with_loop!, Const, Const(flag), Const(t.transformation), Duplicated(x, dx), Duplicated(ysub, dy))
+        Δy = zero(y)
+        Δy[index:index+TV.dimension(t)-1] .= dy
+        return NoTangent(), NoTangent(), NoTangent(), Δy, NoTangent()
+    end
+    return out, _transform_with_array
+end
+
+TV.transform(t::TV.ScaledShiftedLogistic, x::Float64) = muladd(TV.logistic(x), t.scale, t.shift)
+
+function _transform_with_loop!(flag, t, xout, ysub)
+    xout[end] = 0
+    for i in eachindex(ysub)
+        x, ℓ, _ = TV.transform_with(flag, t, ysub, i)
+        xout[i] = x
+        xout[end] += ℓ
+    end
+    return nothing
 end
