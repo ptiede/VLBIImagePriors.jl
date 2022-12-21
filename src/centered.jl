@@ -17,8 +17,8 @@ function lcol(d::CenteredImage, img)
     dx = zero(eltype(img))
     dy = zero(eltype(img))
     for i in axes(img, 2), j in axes(img,1)
-        dx += d.x[i]*img[j,i]
-        dy += d.y[j]*img[j,i]
+        dx += d.x[j]*img[j,i]
+        dy += d.y[i]*img[j,i]
     end
     return -(dx^2 + dy^2)/(2*d.σ^2)*prod(size(img))
 end
