@@ -15,6 +15,11 @@ function DiagonalVonMises(μ::AbstractVector, κ::AbstractVector)
     return DiagonalVonMises(μ, κ, lognorm)
 end
 
+function DiagonalVonMises(μ::Real, κ::Real)
+    lognorm = _vonmisesnorm([μ], [κ])
+    return DiagonalVonMises([μ], [κ], lognorm)
+end
+
 HC.asflat(d::DiagonalVonMises) = TV.as(Vector, AngleTransform(), length(d))
 
 

@@ -57,7 +57,7 @@ end
 
 ImageSphericalUniform(nx::Int, ny::Int) = ImageSphericalUniform{Float64}(nx, ny)
 
-HC.asflat(d::RadioImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUnitVector{2}(), d.nx, d.ny)
+HC.asflat(d::VLBIImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUnitVector{2}(), d.nx, d.ny)
 
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)
@@ -74,12 +74,11 @@ function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, x::Abstra
 end
 
 function Dists.rand(rng::Random.AbstractRNG, d::ImageSphericalUniform)
-    t = TV.as(d)
-    r1 = randn(rng, d.nx*d.ny)
-    r2 = randn(rng, d.nx*d.ny)
-    r3 = randn(rng, d.nx*d.ny)
+    r1 = randn(rng, d.nx, d.ny)
+    r2 = randn(rng, d.nx, d.ny)
+    r3 = randn(rng, d.nx, d.ny)
 
-    for i in eachindex(r1)
+    for i in eachindex(r1, r2, r3)
         norm = hypot(r1[i], r2[i], r3[i])
         r1[i] /= norm
         r2[i] /= norm

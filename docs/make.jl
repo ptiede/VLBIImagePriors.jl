@@ -1,16 +1,16 @@
-using RadioImagePriors
+using VLBIImagePriors
 using Documenter
 
-DocMeta.setdocmeta!(RadioImagePriors, :DocTestSetup, :(using RadioImagePriors); recursive=true)
+DocMeta.setdocmeta!(VLBIImagePriors, :DocTestSetup, :(using VLBIImagePriors); recursive=true)
 
 makedocs(;
-    modules=[RadioImagePriors],
+    modules=[VLBIImagePriors],
     authors="Paul Tiede <ptiede91@gmail.com> and contributors",
-    repo="https://github.com/ptiede/RadioImagePriors.jl/blob/{commit}{path}#{line}",
-    sitename="RadioImagePriors.jl",
+    repo="https://github.com/ptiede/VLBIImagePriors.jl/blob/{commit}{path}#{line}",
+    sitename="VLBIImagePriors.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://ptiede.github.io/RadioImagePriors.jl",
+        canonical="https://ptiede.github.io/VLBIImagePriors.jl",
         assets=String[],
     ),
     pages=[
@@ -19,6 +19,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/ptiede/RadioImagePriors.jl",
+    repo="github.com/ptiede/VLBIImagePriors.jl",
     devbranch="main",
 )

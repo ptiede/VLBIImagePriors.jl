@@ -1,4 +1,4 @@
-module RadioImagePriors
+module VLBIImagePriors
 
 using Reexport
 

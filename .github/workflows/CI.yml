@@ -54,6 +54,6 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using RadioImagePriors
-            DocMeta.setdocmeta!(RadioImagePriors, :DocTestSetup, :(using RadioImagePriors); recursive=true)
-            doctest(RadioImagePriors)'
+            using VLBIImagePriors
+            DocMeta.setdocmeta!(VLBIImagePriors, :DocTestSetup, :(using VLBIImagePriors); recursive=true)
+            doctest(VLBIImagePriors)'

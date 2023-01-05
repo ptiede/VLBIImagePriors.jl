@@ -1,4 +1,4 @@
-using RadioImagePriors
+using VLBIImagePriors
 using ChainRulesCore
 using ChainRulesTestUtils
 using Distributions
@@ -8,7 +8,7 @@ import TransformVariables as TV
 using HypercubeTransform
 using Test
 
-@testset "RadioImagePriors.jl" begin
+@testset "VLBIImagePriors.jl" begin
 
     npix = 10
     d1 = Dirichlet(npix^2, 1.0)
@@ -28,13 +28,13 @@ using Test
         @test l1 ≈ l2
 
         @test inverse(t2, x2) ≈ y0
-        test_rrule(RadioImagePriors.simplex_fwd,
+        test_rrule(VLBIImagePriors.simplex_fwd,
                   TV.NoLogJac()⊢NoTangent(),
-                  RadioImagePriors.ImageSimplex(10,10)⊢NoTangent(),
+                  VLBIImagePriors.ImageSimplex(10,10)⊢NoTangent(),
                   randn(99))
-        test_rrule(RadioImagePriors.simplex_fwd,
+        test_rrule(VLBIImagePriors.simplex_fwd,
                    TV.LogJac()⊢NoTangent(),
-                   RadioImagePriors.ImageSimplex(10,10)⊢NoTangent(),
+                   VLBIImagePriors.ImageSimplex(10,10)⊢NoTangent(),
                    randn(99))
     end
 

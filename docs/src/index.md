@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = RadioImagePriors
+CurrentModule = VLBIImagePriors
 ```
 
-# RadioImagePriors
+# VLBIImagePriors
 
-Documentation for [RadioImagePriors](https://github.com/ptiede/RadioImagePriors.jl).
+Documentation for [VLBIImagePriors](https://github.com/ptiede/VLBIImagePriors.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [RadioImagePriors]
+Modules = [VLBIImagePriors]
 ```
