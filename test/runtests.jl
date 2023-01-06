@@ -76,19 +76,52 @@ using Test
 
     end
 
+    @testset "DiagonalVonMises" begin
+        d1 = DiagonalVonMises([0.5, 0.1], [0.5, 0.2])
+        d2 = product_distribution(VonMises.(d1.μ, d1.κ))
+
+        x = rand(d1)
+
+        @test length(d1) == 2
+        @test logdensityof(d1, x) ≈ logdensityof(d2, x)
+
+        test_rrule(VLBIImagePriors._vonlogpdf, d1.μ, d1.κ, x)
+        test_rrule(VLBIImagePriors._vonmisesnorm, d1.μ, d1.κ)
+
+        t = asflat(d1)
+        px = inverse(t, x)
+        @test transform(t, px) ≈ x
+
+        # test_rrule(TV.transform_with, TV.LogJac()⊢NoTangent(), t⊢NoTangent(), px, 1⊢NoTangent())
+        function f(x)
+            y, lj = transform_and_logjac(t, x)
+            return logdensityof(d1, y) + lj
+        end
+        gz = Zygote.gradient(f, px)
+        m = central_fdm(5, 1)
+        gfd = FiniteDifferences.grad(m, f, px)
+        @test first(gz) ≈ first(gfd)
+    end
+
     @testset "ImageSphericalUniform" begin
         d = ImageSphericalUniform(2, 3)
         xx = rand(d)
-        rand!(d, xx)
+        Distributions.rand!(d, xx)
         norms = map(hypot, xx...)
         @test norms ≈ fill(1.0, size(d))
         t = asflat(d)
         px = inverse(t, xx)
         @test prod(transform(t, px) .≈ xx)
-
         @test logdensityof(d, xx) ≈ -6*log(4π)
 
-
+        function f(x)
+            y, lj = transform_and_logjac(t, x)
+            return logdensityof(d, y) + lj
+        end
+        gz = Zygote.gradient(f, px)
+        m = central_fdm(5, 1)
+        gfd = FiniteDifferences.grad(m, f, px)
+        @test first(gz) ≈ first(gfd)
 
     end
 

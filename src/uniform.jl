@@ -71,7 +71,7 @@ HC.asflat(d::VLBIImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUni
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)
 
-function Dists.logpdf(::ImageSphericalUniform, X::NTuple{3, T}) where {T<:AbstractMatrix, S<:Real}
+function Dists.logpdf(::ImageSphericalUniform, X::NTuple{3, T}) where {T<:AbstractMatrix}
     return -length(X[1])*log(4π)
 end
 
@@ -96,10 +96,10 @@ function Dists.rand(rng::Random.AbstractRNG, d::ImageSphericalUniform)
     r3 = randn(rng, d.nx, d.ny)
 
     for i in eachindex(r1, r2, r3)
-        norm = hypot(r1[i], r2[i], r3[i])
-        r1[i] /= norm
-        r2[i] /= norm
-        r3[i] /= norm
+        r = hypot(r1[i], r2[i], r3[i])
+        r1[i] /= r
+        r2[i] /= r
+        r3[i] /= r
     end
 
     return (r1, r2, r3)

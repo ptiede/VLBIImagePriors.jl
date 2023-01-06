@@ -20,6 +20,11 @@ function DiagonalVonMises(μ::Real, κ::Real)
     return DiagonalVonMises(μ, κ, lognorm)
 end
 
+function Dists._rand!(rng::AbstractRNG, d::DiagonalVonMises, x::AbstractVector)
+    dv = Dists.product_distribution(Dists.VonMises.(d.μ, d.κ))
+    rand!(rng, dv, x)
+end
+
 HC.asflat(d::DiagonalVonMises) = TV.as(Vector, AngleTransform(), length(d))
 
 

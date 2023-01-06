@@ -47,8 +47,10 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
         Δf = NoTangent()
         Δflag = NoTangent()
         Δt = NoTangent()
-        dx = zero(ΔX)
-        dx .= unthunk(ΔX)
+        dx = zero(x)
+        if !(unthunk(ΔX) isa AbstractZero)
+            dx .= unthunk(ΔX)
+        end
         Δy = zero(y)
 
         f = (flag isa TV.NoLogJac) ? true : false
