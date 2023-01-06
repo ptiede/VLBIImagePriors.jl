@@ -59,7 +59,7 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
     return x, _simplex_fwd_pullback
 end
 
-ReverseDiff.@grad_from_chainrules simplex_fwd(flag, t, y::TrackedArray)
+# ReverseDiff.@grad_from_chainrules simplex_fwd(flag, t, y::TrackedArray)
 
 
 function simplex_fwd!(x::AbstractArray, y::AbstractArray, flag::Bool)

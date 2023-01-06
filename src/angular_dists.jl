@@ -16,20 +16,20 @@ function DiagonalVonMises(μ::AbstractVector, κ::AbstractVector)
 end
 
 function DiagonalVonMises(μ::Real, κ::Real)
-    lognorm = _vonmisesnorm([μ], [κ])
-    return DiagonalVonMises([μ], [κ], lognorm)
+    lognorm = _vonmisesnorm(μ, κ)
+    return DiagonalVonMises(μ, κ, lognorm)
 end
 
 HC.asflat(d::DiagonalVonMises) = TV.as(Vector, AngleTransform(), length(d))
 
 
-function _vonmisesnorm(μ, κ::AbstractVector)
+function _vonmisesnorm(μ, κ)
     @assert length(μ) == length(κ) "Mean and std. dev. vector are not the same length"
     n = length(μ)
     return -n*log2π - sum(x->log(besseli0x(x)), κ)
 end
 
-function Dists._logpdf(d::DiagonalVonMises, x::AbstractVector{<:Real})
+function Dists._logpdf(d::DiagonalVonMises, x::Union{Real, AbstractVector{<:Real}})
     μ = d.μ
     κ = d.κ
     return _vonlogpdf(μ, κ, x) + d.lnorm
@@ -43,7 +43,7 @@ function _vonlogpdf(μ, κ, x)
     return s
 end
 
-function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::AbstractVector, κ::AbstractVector, x::AbstractVector)
+function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVector}, κ::Union{Real, AbstractVector}, x::Union{Real, AbstractVector})
     s = _vonlogpdf(μ, κ, x)
     pμ = ProjectTo(μ)
     pκ = ProjectTo(κ)
@@ -67,7 +67,7 @@ function Dists.product_distribution(dists::AbstractVector{<:DiagonalVonMises})
 end
 
 
-function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::AbstractVector)
+function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::Union{Real, AbstractVector})
     v =zero(eltype(κ))
     n = length(κ)
     dκ = zero(κ)

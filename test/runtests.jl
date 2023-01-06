@@ -57,8 +57,42 @@ using Test
         g2 = first(Zygote.gradient(ℓpt, y0))
 
         @test g1 ≈ g2
+    end
+
+    @testset "ImageUniform" begin
+        d1 = ImageUniform(0.0, 2.0, 2, 3)
+        d2 = reshape(product_distribution([Uniform(0.0, 2.0) for _ in 1:(2*3)]), 2, 3)
+
+        x0 = rand(d1)
+        @test logdensityof(d1, x0) ≈ logdensityof(d2, x0)
+        @test mean(d1) ≈ mean(d2)
+        @test size(d1) == size(d2)
+
+        t = asflat(d1)
+        p0 = inverse(t, x0)
+
+        @test transform(t, p0) ≈ x0
+        test_rrule(Distributions._logpdf, d1⊢NoTangent(), x0, atol=1e-8)
 
     end
+
+    @testset "ImageSphericalUniform" begin
+        d = ImageSphericalUniform(2, 3)
+        xx = rand(d)
+        rand!(d, xx)
+        norms = map(hypot, xx...)
+        @test norms ≈ fill(1.0, size(d))
+        t = asflat(d)
+        px = inverse(t, xx)
+        @test prod(transform(t, px) .≈ xx)
+
+        @test logdensityof(d, xx) ≈ -6*log(4π)
+
+
+
+    end
+
+
 
 
 

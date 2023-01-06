@@ -3,6 +3,7 @@ module VLBIImagePriors
 using Reexport
 
 using ArgCheck
+using Bessels
 using ChainRulesCore
 @reexport using DensityInterface
 import Distributions as Dists
@@ -10,9 +11,7 @@ using Enzyme
 import FillArrays
 using LinearAlgebra
 using Random
-using ReverseDiff
 using SpecialFunctions: loggamma
-using Bessels
 using StatsFuns
 import TransformVariables as TV
 import HypercubeTransform as HC

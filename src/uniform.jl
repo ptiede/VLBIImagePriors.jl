@@ -2,7 +2,7 @@ export ImageUniform, ImageSphericalUniform
 using FillArrays
 
 """
-    ImageUniform(a::Real, b::Real, ny, ny)
+    ImageUniform(a::Real, b::Real, nx, ny)
 
 A uniform distribution in image pixels where `a/b` are the
 lower/upper bound for the interval. This then concatenates ny×nx
@@ -28,7 +28,7 @@ Base.size(d::ImageUniform) = (d.nx,d.ny)
 
 Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b-d.a)/2, size(d)...)
 
-HC.asflat(d::ImageUniform) = TV.as(Matrix, TV.as(Real, d.a, d.b), d.ny, d.nx)
+HC.asflat(d::ImageUniform) = TV.as(Matrix, TV.as(Real, d.a, d.b), d.nx, d.ny)
 
 function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
     return (size(d) == size(x)) && !any(x-> (d.a >x)||(x> d.b), x)
@@ -49,7 +49,16 @@ function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
     rand!(rng, d, x)
 end
 
+"""
+    ImageSphericalUniform(nx, ny)
 
+Construct a distribution where each image pixel is a 3-sphere uniform variable. This is
+useful for polarization where the stokes parameters are parameterized on the 3-sphere.
+
+Currently we use a struct of vectors memory layout. That is the image is described by three
+matrices `(X,Y,Z)` grouped together as a tuple, where each matrix is one direction on the sphere, and
+we require `norm((X,Y,Z)) == 1`.
+"""
 struct ImageSphericalUniform{T} <: Dists.ContinuousMatrixDistribution
     nx::Int
     ny::Int
@@ -62,16 +71,24 @@ HC.asflat(d::VLBIImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUni
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)
 
-function Dists.logpdf(::ImageSphericalUniform, X::Union{AbstractMatrix{NTuple{3,S}}, NTuple{3, T}}) where {T<:AbstractMatrix, S<:Real}
+function Dists.logpdf(::ImageSphericalUniform, X::NTuple{3, T}) where {T<:AbstractMatrix, S<:Real}
     return -length(X[1])*log(4π)
 end
 
-function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, x::AbstractMatrix)
-    t = SphericalUnitVector{3}()
-    for p in x
-        p = TV.transform(t, randn(rng, 3))
+function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, X::NTuple{3, T}) where {T<:AbstractMatrix}
+    for i in eachindex(X...)
+        x = randn(rng)
+        y = randn(rng)
+        z = randn(rng)
+        r = hypot(x, y, z)
+        X[1][i] = x/r
+        X[2][i] = y/r
+        X[3][i] = z/r
     end
+    return X
 end
+
+Dists.rand!(d::ImageSphericalUniform, X) = Dists.rand!(Random.default_rng(), d, X)
 
 function Dists.rand(rng::Random.AbstractRNG, d::ImageSphericalUniform)
     r1 = randn(rng, d.nx, d.ny)
