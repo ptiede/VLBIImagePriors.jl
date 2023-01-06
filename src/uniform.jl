@@ -91,9 +91,6 @@ end
 function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::NTuple{3,<:AbstractMatrix{S}}) where {S<:Number}
     lp =  Dists.logpdf(d, x)
     function _spherical_uniform_pullback(Δ)
-        # z = last.(x)
-        # z .= -z./(1 .- z.^2)
-        # Δx = map(x->(zero(T), zero(T), zero(T)), z)
         return (NoTangent(), NoTangent(), ZeroTangent())
     end
     return lp, _spherical_uniform_pullback
