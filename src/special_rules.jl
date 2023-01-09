@@ -1,5 +1,4 @@
 # sadness type piracy this needs to be fixed but it requires a rewrite of transform variables to be non-allocating
-
 function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransform{<:TV.ScalarTransform}, y::AbstractVector, index)
     out = TV.transform_with(flag, t, y, index)
     function _transform_with_array(Δ)
@@ -23,8 +22,6 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
     end
     return out, _transform_with_array
 end
-
-TV.transform(t::TV.ScaledShiftedLogistic, x::Float64) = muladd(TV.logistic(x), t.scale, t.shift)
 
 function _transform_with_loop!(flag, t, xout, ysub)
     xout[end] = 0
