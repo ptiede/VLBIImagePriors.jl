@@ -128,7 +128,7 @@ end
 function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::WrappedUniform, x::AbstractVector)
     l = Dists.logpdf(d, x)
     function _logpdf_pullback_wrappeduniform(Δ)
-        Δd = @thunk(Tangent{typeof(d)}(periods = Δ*Fill(one(eltype(d)), length(d)), lnorm=Δ./d.periods))
+        Δd = @thunk(Tangent{typeof(d)}(periods = ZeroTangent(), lnorm=-unthunk(Δ)))
         return NoTangent(), Δd, ZeroTangent()
     end
     return l, _logpdf_pullback_wrappeduniform

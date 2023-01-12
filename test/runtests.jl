@@ -77,20 +77,27 @@ using Test
     end
 
     @testset "DiagonalVonMises" begin
+        d0 = DiagonalVonMises(0.0, 0.5)
         d1 = DiagonalVonMises([0.5, 0.1], [0.5, 0.2])
         d2 = product_distribution(VonMises.(d1.μ, d1.κ))
+
+        @test product_distribution([d0,d0]) isa DiagonalVonMises
 
         x = rand(d1)
 
         @test length(d1) == 2
         @test logdensityof(d1, x) ≈ logdensityof(d2, x)
+        @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ 2π)
 
         test_rrule(VLBIImagePriors._vonlogpdf, d1.μ, d1.κ, x)
         test_rrule(VLBIImagePriors._vonmisesnorm, d1.μ, d1.κ)
 
         t = asflat(d1)
         px = inverse(t, x)
-        @test transform(t, px) ≈ x
+        x2 = transform(t, px)
+
+        @test sin.(x2) ≈ sin.(x)
+        @test cos.(x2) ≈ cos.(x)
 
         # test_rrule(TV.transform_with, TV.LogJac()⊢NoTangent(), t⊢NoTangent(), px, 1⊢NoTangent())
         function f(x)
@@ -101,6 +108,28 @@ using Test
         m = central_fdm(5, 1)
         gfd = FiniteDifferences.grad(m, f, px)
         @test first(gz) ≈ first(gfd)
+    end
+
+    @testset "WrappedUniform" begin
+        periods = rand(5)
+        d1 = WrappedUniform(periods)
+        x = 2 .* rand(5)
+        @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ periods)
+
+        xx = rand(d1)
+        @test length(d1) == length(periods)
+
+        d2 = product_distribution([d1, d1])
+        @test d2 isa WrappedUniform
+        @test length(d2) == length(periods)*2
+
+        t = asflat(d1)
+        px = inverse(t, xx)
+        @test sin.(transform(t, px)) ≈ sin.(xx)
+        @test cos.(transform(t, px)) ≈ cos.(xx)
+
+        test_rrule(Distributions.logpdf, d1, xx, atol=1e-8)
+
     end
 
     @testset "ImageSphericalUniform" begin
