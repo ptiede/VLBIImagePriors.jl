@@ -60,25 +60,25 @@ function dirichlet_lpdf(α, lmnB, x)
     return s
 end
 
+# function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α, lmnB, x::AbstractMatrix{<:Real})
+#     f = dirichlet_lpdf(α, lmnB, x)
+#     px = ProjectTo(x)
+#     function _dirichlet_lpdf_pullback(Δ)
+#         Δα = @thunk(Δ.*log.(x))
+#         ΔlmnB = @thunk(-Δ)
+#         Δx = @thunk((α .- 1)./x)
+#         return (NoTangent(),Δα, ΔlmnB, px(Δx))
+#     end
+#     return f, _dirichlet_lpdf_pullback
+# end
+
 function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α, lmnB, x::AbstractMatrix{<:Real})
     f = dirichlet_lpdf(α, lmnB, x)
     px = ProjectTo(x)
     function _dirichlet_lpdf_pullback(Δ)
         Δα = @thunk(Δ.*log.(x))
-        ΔlmnB = @thunk(-Δ)
-        Δx = @thunk((α .- 1)./x)
-        return (NoTangent(),Δα, ΔlmnB, px(Δx))
-    end
-    return f, _dirichlet_lpdf_pullback
-end
-
-function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α::FillArrays.AbstractFill, lmnB, x::AbstractMatrix{<:Real})
-    f = dirichlet_lpdf(α, lmnB, x)
-    px = ProjectTo(x)
-    function _dirichlet_lpdf_pullback(Δ)
-        Δα = Δ.*log.(x)
         ΔlmnB = -Δ
-        Δx = Δ*(α[begin] - 1)./x
+        Δx = @thunk(Δ.*(α .- 1)./x)
         return (NoTangent(),Δα, ΔlmnB, px(Δx))
     end
     return f, _dirichlet_lpdf_pullback
@@ -86,7 +86,7 @@ end
 
 # Taken from  https://github.com/JuliaStats/Distributions.jl/blob/master/src/multivariate/dirichlet.jl
 function Dists._rand!(rng::AbstractRNG, d::ImageDirichlet, x::AbstractMatrix)
-    for (i, αi) in zip(eachindex(x), d.alpha)
+    for (i, αi) in zip(eachindex(x), d.α)
         @inbounds x[i] = Dists.rand(rng, Dists.Gamma(αi))
     end
     lmul!(inv(sum(x)), x) # this returns x
