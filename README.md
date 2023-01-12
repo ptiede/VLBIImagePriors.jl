@@ -6,4 +6,10 @@
 [![Coverage](https://codecov.io/gh/ptiede/VLBIImagePriors.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ptiede/VLBIImagePriors.jl)
 
 
-This is a experimental package where different **efficient** implementations of image priors are attempted. 
+## The Problem
+
+VLBI imaging is a diffcult problem because the data corresponds to a largely incomplete description of the image due to the fact that an ideal VLBI interferometer measures the Fourier transform of an image and not the image itself. 
+
+To fix this problem additional information must be used to inform what a reasonable image looks like. In Bayesian modeling language this is essentially picking an image priors. This package has a number of different image priors that can be used with VLBI imaging software like [`Comrade.jl`](https://github.com/ptiede/Comrade.jl). 
+
+We also include a number of useful priors when doing polarized imaging, such as uniform priors on the n-sphere which are useful when parameterizing the [`Poincare sphere`](https://en.wikipedia.org/wiki/Polarization_(waves)#Poincar%C3%A9_sphere).

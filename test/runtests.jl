@@ -122,7 +122,6 @@ using Test
         m = central_fdm(5, 1)
         gfd = FiniteDifferences.grad(m, f, px)
         @test first(gz) ≈ first(gfd)
-
     end
 
 
