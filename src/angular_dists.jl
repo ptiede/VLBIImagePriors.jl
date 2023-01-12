@@ -1,5 +1,20 @@
 export DiagonalVonMises, WrappedUniform
 
+"""
+    DiagonalVonMises(μ::Real, κ::Real)
+    DiagonalVonMises(μ::AbstractVector{<:Real}, κ::AbstractVector{<:Real})
+
+Constructs a Von Mises distribution, with mean `μ` and concentraion parameter `κ`.
+If `μ` and `κ` are vectors then this constructs a independent multivariate Von Mises
+distribution.
+
+# Notes
+This is a custom implementation since the version in `Distributions.jl` has certain properties
+that do not play well (having an support only between [-π+μ, π+μ]) with usual VLBI problems.
+Additionally this distribution has a special overloaded `product_distribution` method
+so that concatenating multiple `DiagVonMises` together preserves the type. This is helpful
+for `Zygote` autodiff.
+"""
 struct DiagonalVonMises{M, K, C} <: Dists.ContinuousMultivariateDistribution
     μ::M
     κ::K
@@ -92,7 +107,19 @@ function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::Union{Real, Abstr
 end
 
 
+"""
+    WrappedUniform(period)
 
+Constructs a potentially multivariate uniform distribution that is wrapped a given `period`.
+That is
+```julia
+d = WrappedUniform(period)
+logpdf(d, x) ≈ logpdf(d, x+period)
+```
+for any `x`.
+
+If `period` is a vector this creates a multivariate independent wrapped uniform distribution.
+"""
 struct WrappedUniform{T,L} <: Dists.ContinuousMultivariateDistribution
     periods::T
     lnorm::L

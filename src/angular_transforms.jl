@@ -1,5 +1,12 @@
 export SphericalUnitVector, AngleTransform
 
+
+"""
+    AngleTransform
+
+A transformation that moves two vector `x` and `y` to an angle `θ`.  Note that is `x` and
+`y` are normally distributed then the resulting distribution in `θ` is uniform on the circle.
+"""
 struct AngleTransform <: TV.VectorTransform end
 
 TV.dimension(t::AngleTransform) = 2
@@ -48,7 +55,17 @@ end
 TV.inverse_eltype(::AngleTransform, x) = float(typeof(x))
 
 
+"""
+    SphericalUnitVector{N}()
 
+A transformation from a set of `N+1` vectors to the `N` sphere. The set of `N+1` vectors
+are inherently assumed to be `N+1` a distributed according to a unit multivariate Normal
+distribution.
+
+# Notes
+For more information about this transformation see the Stan [manual](https://mc-stan.org/docs/reference-manual/unit-vector.html).
+In the future this may be depricated when [](https://github.com/tpapp/TransformVariables.jl/pull/67) is merged.
+"""
 struct SphericalUnitVector{N} <: TV.VectorTransform
     function SphericalUnitVector{N}() where {N}
         TV.@argcheck N ≥ 1 "Dimension should be positive."
@@ -80,7 +97,6 @@ function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::Abs
     return x, ℓi, index2
 end
 
-using StructArrays
 function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
     (;transformation, dims) = t
     # NOTE not using index increments as that somehow breaks type inference

@@ -1,5 +1,18 @@
 export CenteredImage
 
+
+"""
+    CenteredImage(x, y, σ, p)
+
+Regularizes a general image prior `p` such that the center of light is close the the origin
+of the imag. After regularization the log density of the prior is modified to
+
+```math
+    \\log p(I) \\to \\log p(I) - \\frac{(x_C^2 + y_C^2)^2}{2\\sigma\\^2} N_x N_y
+```
+where `N_x` and `N_y` are the number of pixels in the `x` and `y` direction of the image,
+and ``x_C, y_C`` are the center of light of the image `I`.
+"""
 struct CenteredImage{I,S,D} <: Dists.ContinuousMatrixDistribution
     x::I
     y::I
