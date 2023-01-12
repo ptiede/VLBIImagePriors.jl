@@ -18,6 +18,13 @@ struct CenteredImage{I,S,D} <: Dists.ContinuousMatrixDistribution
     y::I
     σ::S
     distI::D
+    function CenteredImage(x, y, σ, dist)
+        @assert length(x) == size(dist, 1) "Number of pixels in x direction does not match `x`"
+        @assert length(y) == size(dist, 2) "Number of pixels in x direction does not match `y`"
+
+        xp, yp = promote(x, y)
+        return new{typeof(xp), typeof(σ), typeof(dist)}(x, y, σ, dist)
+    end
 end
 
 Base.size(d::CenteredImage) = size(d.distI)

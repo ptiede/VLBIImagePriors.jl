@@ -153,6 +153,22 @@ using Test
         @test first(gz) ≈ first(gfd)
     end
 
+    @testset "CenteredImage" begin
+        d = ImageDirichlet(1.0, 4, 4)
+        @test_throws AssertionError CenteredImage(1:2, 1:2, 1.0, d)
+        x = y =  range(-2, 2, length=4)
+        dc = CenteredImage(x, y, 1.0, d)
+
+        @test Distributions.insupport(dc, rand(4,4)) == Distributions.insupport(d, rand(4,4))
+
+        test_rrule(VLBIImagePriors.lcol, dc⊢NoTangent(), rand(4,4))
+
+        xx = rand(d)
+        @test logpdf(d, xx) + VLBIImagePriors.lcol(dc, xx) ≈ logdensityof(dc, xx)
+
+        @test asflat(dc) === asflat(d)
+    end
+
 
 
 
