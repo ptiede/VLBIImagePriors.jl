@@ -169,6 +169,14 @@ using Test
         @test asflat(dc) === asflat(d)
     end
 
+    # @testset "SpecialRules" begin
+    #     t = asflat(ImageUniform(10, 10))
+    #     y = rand(TV.dimension(t))
+    #     yoff = rand(TV.dimension(t) + 5)
+    #     test_rrule(TV.transform_with, TV.LogJac()⊢NoTangent(), t⊢NoTangent(), y, 1)
+    #     test_rrule(TV.transform_with, TV.LogJac()⊢NoTangent(), t⊢NoTangent(), yoff, 6)
+    # end
+
 
 
 
