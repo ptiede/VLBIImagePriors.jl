@@ -12,7 +12,7 @@ distribution.
 This is a custom implementation since the version in `Distributions.jl` has certain properties
 that do not play well (having an support only between [-π+μ, π+μ]) with usual VLBI problems.
 Additionally this distribution has a special overloaded `product_distribution` method
-so that concatenating multiple `DiagVonMises` together preserves the type. This is helpful
+so that concatenating multiple `DiagonalVonMises` together preserves the type. This is helpful
 for `Zygote` autodiff.
 """
 struct DiagonalVonMises{M, K, C} <: Dists.ContinuousMultivariateDistribution
