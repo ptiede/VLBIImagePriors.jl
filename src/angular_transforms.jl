@@ -151,16 +151,16 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
         Δy = zero(y)
         Δx = Δ[1]
         Δℓ = Δ[2]
-        ix::Int = 1
-        for i in index:(N+1):(index+TV.dimension(t)-N-1)
+        for (ix, i) in enumerate(index:(N+1):(index+TV.dimension(t)-N-1))
             ysub = @view y[i:(i+N)]
             ny = norm(ysub)
-            dx = ntuple(i->Δx[i][ix], N+1)
-            Δy[i:(i+N)] .= dx./ny .- (sum(dx.*ysub).*ysub/ny^3)
+            dx = ntuple(i->Δx[i][ix], Val(N+1))
+            # Δy[i:(i+N)] .= dx./ny .- (sum(dx.*ysub).*ysub./ny^3)
+            red = mapreduce(.*, +, dx, ysub)
+            Δy[i:(i+N)] .= dx./ny .- red.*ysub./ny^3
             if !(flag isa TV.NoLogJac)
-                Δy[i:(i+N)] .+= -Δℓ*ysub
+                Δy[i:(i+N)] .= @view(Δy[i:(i+N)]) .- Δℓ.*ysub
             end
-            ix::Int += 1
         end
         return NoTangent(), NoTangent(), NoTangent(), py(Δy), NoTangent()
     end
