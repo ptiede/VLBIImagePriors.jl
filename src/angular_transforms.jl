@@ -113,7 +113,7 @@ end
 
 function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::NTuple) where {N}
     @assert length(y) == N + 1 "Length of y must be equal to N + 1"
-    index2 = index + N + 2
+    index2 = index + TV.dimension(t)
     ix = 1
     for i in index:(N+1):(index+TV.dimension(t)-1)
         for j in 1:(N+1)
