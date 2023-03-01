@@ -106,7 +106,7 @@ using Test
 
     @testset "DiagonalVonMises" begin
         d0 = DiagonalVonMises(0.0, 0.5)
-        d1 = DiagonalVonMises([0.5, 0.1], [0.5, 0.2])
+        d1 = DiagonalVonMises([0.5, 0.1], [inv(0.1), inv(π^2)])
         d2 = product_distribution(VonMises.(d1.μ, d1.κ))
 
         @test product_distribution([d0,d0]) isa DiagonalVonMises

@@ -14,11 +14,14 @@ TV.dimension(t::AngleTransform) = 2
 function TV.transform_with(flag::TV.LogJacFlag, ::AngleTransform, y::AbstractVector, index)
     T = TV.extended_eltype(y)
     ℓi = TV.logjac_zero(flag, T)
-
     x1 = y[index]
     x2 = y[index+1]
+    r = hypot(x1, x2)
+    # Use log-normal with μ = 0, σ = 1/4
+    σ = oftype(r, 1/4)
     if !(flag isa TV.NoLogJac)
-        ℓi -= (x1^2 + x2^2)/2
+        lr = log(r)
+        ℓi = -lr^2*inv(2*σ^2) - lr
     end
 
     return atan(x1, x2), ℓi, index+2
@@ -34,12 +37,15 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
         for i in index:2:(index+TV.dimension(t)-1)
             y1 = y[i]
             y2 = y[i+1]
+            r = hypot(y1, y2)
             ix = (i+2-index)÷2
-            Δy[i] =  Δx[ix]*y2/(y1^2 + y2^2)
-            Δy[i+1]   = -Δx[ix]*y1/(y1^2 + y2^2)
+            Δy[i] =  Δx[ix]*y2/r^2
+            Δy[i+1]   = -Δx[ix]*y1/r^2
             if !(flag isa TV.NoLogJac)
-                Δy[i] += -Δℓ*y1
-                Δy[i+1] += -Δℓ*y2
+                σ = oftype(r, 1/4)
+                dpdr = -inv(r)*(log(r)/σ^2 + 1)
+                Δy[i] += Δℓ*dpdr*y1/r
+                Δy[i+1] += Δℓ*dpdr*y2/r
             end
         end
         return NoTangent(), NoTangent(), NoTangent(), py(Δy), NoTangent()
