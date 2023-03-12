@@ -15,7 +15,7 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
         end
 
         dx[end] = Δlj
-        Enzyme.autodiff(_transform_with_loop!, Const, Const(flag), Const(t.transformation), Duplicated(x, dx), Duplicated(ysub, dy))
+        Enzyme.autodiff(Reverse, _transform_with_loop!, Const, Const(flag), Const(t.transformation), Duplicated(x, dx), Duplicated(ysub, dy))
         Δy = zero(y)
         Δy[index:index+TV.dimension(t)-1] .= dy
         return NoTangent(), NoTangent(), NoTangent(), Δy, NoTangent()

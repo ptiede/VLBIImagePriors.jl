@@ -55,7 +55,7 @@ function ChainRulesCore.rrule(::typeof(simplex_fwd), flag::TV.LogJacFlag, t::Ima
 
         f = (flag isa TV.NoLogJac) ? true : false
         #copy is because sometimes y is a subarray :(
-        Enzyme.autodiff(simplex_fwd!, Const, Duplicated(x, dx), Duplicated(copy(y), Δy), Const(f))
+        Enzyme.autodiff(Reverse, simplex_fwd!, Const, Duplicated(x, dx), Duplicated(copy(y), Δy), Const(f))
         return (Δf, Δflag, Δt, py(Δy))
     end
     return x, _simplex_fwd_pullback
