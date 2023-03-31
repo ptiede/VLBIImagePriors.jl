@@ -23,6 +23,8 @@ include("centered.jl")
 include("angular_transforms.jl")
 include("angular_dists.jl")
 include("special_rules.jl")
+include("gmrf.jl")
+include("heirarchical.jl")
 
 
 
