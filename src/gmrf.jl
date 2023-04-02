@@ -1,16 +1,16 @@
 using SparseArrays
 using LinearAlgebra
 
-export GaussMarkovRF
+export GaussMarkovRF, GMRFCache
 
 
-struct GRMFCache{A, TD, M}
+struct GMRFCache{A, TD, M}
     Λ::A
     D::TD
     λQ::M
 end
 
-function GRMFCache(mean)
+function GMRFCache(mean)
     dims = size(mean)
 
     # build the 1D correlation matrices
@@ -20,8 +20,58 @@ function GRMFCache(mean)
     Λ = kron(q1, I(dims[2])) + kron(I(dims[1]), q2)
     D = spdiagm(ones(eltype(Λ), size(Λ,1)))
     λQ = eigenvals(dims)
-    return GRMFCache(Λ, D, λQ)
+    return GMRFCache(Λ, D, λQ)
 end
+
+# struct IGRMFCache{A, TD, M, C}
+#     Λ::A
+#     D::TD
+#     λQ::M
+# end
+
+# function IGMRFCache(mean)
+#     dims = size(mean)
+
+#     # build the 1D correlation matrices
+#     q1 = build_q1d(mean, dims[1])
+#     q2 = build_q1d(mean, dims[2])
+
+#     Λ = kron(q1, I(dims[2])) + kron(I(dims[1]), q2)
+#     D = cholesky(Λ)
+#     λQ = eigenvals(dims)
+#     return GMRFCache(Λ, D, λQ)
+# end
+
+# struct IGaussMarkovRF{T,M<:AbstractMatrix{T},P,C,TDi} <: Dists.ContinuousMatrixDistribution
+#     m::M
+#     λ::P
+#     cache::C
+#     dims::TDi
+# end
+
+# Base.size(d::IGaussMarkovRF)  = size(d.m)
+# Dists.mean(d::IGaussMarkovRF) = d.m
+# Dists.cov(d::IGaussMarkovRF)  = inv(Array(Dists.invcov(d)))
+# HC.asflat(d::IGaussMarkovRF) = TV.as(Matrix, size(d)...)
+
+# function IGaussMarkovRF(mean::AbstractMatrix, λ, κ)
+#     cache = IGMRFCache(mean)
+#     dims = size(mean)
+#     return IGaussMarkovRF(mean, λ, cache, dims)
+# end
+
+# IGaussMarkovRF(mean::AbstractMatrix, λ, cache::GMRFCache) = IGaussMarkovRF(mean, λ, cache, size(mean))
+
+# function Dists._rand!(rng::AbstractRNG, d::IGaussMarkovRF, x::AbstractMatrix{<:Real})
+#     Q = Dists.invcov(d)
+#     cQ = cholesky(Q)
+#     z = randn(rng, length(x))
+#     x .= Dists.mean(d) .+ reshape(cQ\z, size(d))
+# end
+
+# Dists.insupport(::GaussMarkovRF, x::AbstractMatrix) = true
+
+
 
 struct GaussMarkovRF{T,M<:AbstractMatrix{T},P,C,TDi} <: Dists.ContinuousMatrixDistribution
     m::M
@@ -39,12 +89,12 @@ Dists.cov(d::GaussMarkovRF)  = inv(Array(Dists.invcov(d)))
 HC.asflat(d::GaussMarkovRF) = TV.as(Matrix, size(d)...)
 
 function GaussMarkovRF(mean::AbstractMatrix, λ, κ)
-    cache = GRMFCache(mean)
+    cache = GMRFCache(mean)
     dims = size(mean)
     return GaussMarkovRF(mean, λ, κ, cache, dims)
 end
 
-GaussMarkovRF(mean::AbstractMatrix, λ, κ, cache::GRMFCache) = GaussMarkovRF(mean, λ, κ, cache, size(mean))
+GaussMarkovRF(mean::AbstractMatrix, λ, κ, cache::GMRFCache) = GaussMarkovRF(mean, λ, κ, cache, size(mean))
 
 function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRF, x::AbstractMatrix{<:Real})
     Q = Dists.invcov(d)
