@@ -25,4 +25,11 @@ function Dists.rand(rng::AbstractRNG, d::HierarchicalPrior, n::Dims)
     end
 end
 
+function Dists.rand(rng::AbstractRNG, d::HierarchicalPrior, n::Int)
+    map(1:n) do I
+        rand(rng, d)
+    end
+end
+
+
 HC.asflat(d::HierarchicalPrior) = TV.as((params = HC.asflat(d.priormap(rand(d.hyperprior))), hyperparams = HC.asflat(d.hyperprior)))

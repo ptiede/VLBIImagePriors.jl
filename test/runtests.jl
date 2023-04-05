@@ -13,7 +13,7 @@ using Test
     npix = 10
     d1 = Dirichlet(npix^2, 1.0)
     d2 = ImageDirichlet(1.0, npix, npix)
-    d3 = ImageDirichlet(rand(10,10))
+    d3 = ImageDirichlet(rand(10,10).+0.1)
 
     t1 = asflat(d1)
     t2 = asflat(d2)
@@ -61,6 +61,7 @@ using Test
         g2 = first(Zygote.gradient(ℓpt, y0))
 
         x3 = rand(d3)
+
         y3 = inverse(t3, x3)
         ℓ3 = logdensityof(d3)
         function ℓpt3(x)
@@ -258,6 +259,19 @@ using Test
             test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
         end
 
+
+    end
+
+    @testset "Hierarchical Prior" begin
+        f(x) = Normal(x[1], x[2])
+        dhyper = product_distribution([Normal(0.0, 1.0), LogNormal(-1.0, 1.0)])
+        dHp = HierarchicalPrior(f, dhyper)
+        x0 = rand(dHp)
+        fd = f(x0.hyperparams)
+        @test logpdf(dHp, x0) ≈ logpdf(fd, x0.params) + logpdf(dhyper, x0.hyperparams)
+
+        x0s = rand(dHp, 1_00)
+        x0s = rand(dHp, (10,10))
 
     end
 
