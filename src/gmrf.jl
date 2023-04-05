@@ -17,7 +17,8 @@ function GMRFCache(mean)
     q1 = build_q1d(mean, dims[1])
     q2 = build_q1d(mean, dims[2])
 
-    Λ = kron(q1, I(dims[2])) + kron(I(dims[1]), q2)
+    # We do this ordering because Julia like column major
+    Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
     D = spdiagm(ones(eltype(Λ), size(Λ,1)))
     λQ = eigenvals(dims)
     return GMRFCache(Λ, D, λQ)
@@ -110,7 +111,7 @@ function eigenvals(dims)
     m, n = dims
     ix = 1:m
     iy = 1:n
-    return @. 2*(2-cos(π*(ix - 1)/m)  - cos(π*(iy'-1)/n))
+    return @. 2*(2 - cos(π*(ix - 1)/m)  - cos(π*(iy'-1)/n))
 end
 
 
@@ -121,8 +122,8 @@ end
 
 function lognorm(d::GaussMarkovRF)
     (;λ, κ) = d
-    N = prod(d.dims)
-    sum(log, 1 .+ (λ*κ).*d.cache.λQ)/2 - N*log(κ)/2 #- Dists.log2π*N/2
+    N = length(d)
+    sum(log, 1 .+ (λ*κ).*d.cache.λQ)/2 - N*log(κ)/2 - Dists.log2π*N/2
 end
 
 function build_q1d(mean, n)
@@ -157,14 +158,14 @@ end
 
 
 @inline function igrmf_1n_pixel(I::AbstractArray, ix::Integer, iy::Integer)
-    if ix < size(I, 1)
-        @inbounds ΔIx = I[ix+1, iy] - I[ix, iy]
+    if ix < lastindex(I, 1)
+         @inbounds ΔIx = I[ix+1, iy] - I[ix, iy]
     else
         ΔIx = 0
     end
 
-    if iy < size(I, 2)
-        @inbounds ΔIy = I[ix, iy+1] - I[ix, iy]
+    if iy < lastindex(I, 2)
+         @inbounds ΔIy = I[ix, iy+1] - I[ix, iy]
     else
         ΔIy = 0
     end
@@ -174,8 +175,8 @@ end
 
 
 @inline function igrmf_1n_grad_pixel(I::AbstractArray, ix::Integer, iy::Integer)
-    nx = size(I, 1)
-    ny = size(I, 2)
+    nx = lastindex(I, 1)
+    ny = lastindex(I, 2)
 
     i1 = ix
     j1 = iy
@@ -215,20 +216,19 @@ end
 
 function ChainRulesCore.rrule(::typeof(igrmf_1n), x::AbstractArray)
     y = igrmf_1n(x)
+    px = ProjectTo(x)
     function pullback(Δy)
         f̄bar = NoTangent()
         xbar = @thunk(igrmf_1n_grad(x) .* Δy)
-        return f̄bar, xbar
+        return f̄bar, px(xbar)
     end
     return y, pullback
 end
 
 
 @inline function igrmf_1n_grad(I::AbstractArray)
-    nx = size(I, 1)
-    ny = size(I, 2)
     grad = similar(I)
-    for iy in 1:ny, ix in 1:nx
+    for iy in axes(I,2), ix in axes(I,1)
         @inbounds grad[ix, iy] = igrmf_1n_grad_pixel(I, ix, iy)
     end
     return grad

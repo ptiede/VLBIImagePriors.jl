@@ -198,6 +198,69 @@ using Test
 
     end
 
+    @testset "GMRF" begin
+        @testset "Tall" begin
+            mimg = rand(10, 8)
+            d1 = GaussMarkovRF(mimg, 1.0, 2.0)
+            c = GMRFCache(mimg)
+            d2 = GaussMarkovRF(mimg, 1.0, 2.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+            b = Q*reshape(mimg, :)
+            dd = MvNormalCanon(b, Array(Q))
+
+            @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+
+            @test cov(d1) ≈ cov(dd)
+            @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+        end
+
+        @testset "Wide" begin
+            mimg = rand(8, 10)
+            d1 = GaussMarkovRF(mimg, 1.0, 2.0)
+            c = GMRFCache(mimg)
+            d2 = GaussMarkovRF(mimg, 1.0, 2.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+            b = Q*reshape(mimg, :)
+            dd = MvNormalCanon(b, Array(Q))
+
+            @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+
+            @test cov(d1) ≈ cov(dd)
+            @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+        end
+
+        @testset "Equal" begin
+            mimg = rand(8, 10)
+            d1 = GaussMarkovRF(mimg, 1.0, 2.0)
+            c = GMRFCache(mimg)
+            d2 = GaussMarkovRF(mimg, 1.0, 2.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+            b = Q*reshape(mimg, :)
+            dd = MvNormalCanon(b, Array(Q))
+
+            @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+
+            @test cov(d1) ≈ cov(dd)
+            @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+        end
+
+
+        @testset "rrules" begin
+            test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
+        end
+
+
+    end
+
     # @testset "SpecialRules" begin
     #     t = asflat(ImageUniform(10, 10))
     #     y = rand(TV.dimension(t))
