@@ -7,6 +7,7 @@ using Bessels
 using ChainRulesCore
 @reexport using DensityInterface
 import Distributions as Dists
+using DocStringExtensions
 using Enzyme
 import FillArrays
 using LinearAlgebra

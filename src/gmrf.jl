@@ -3,14 +3,50 @@ using LinearAlgebra
 
 export GaussMarkovRF, GMRFCache
 
+"""
+    $(TYPEDEF)
 
+A cache for a Gaussian Markov random field. This cache is useful
+when defining a hierarchical prior for the GRMHD.
+
+# Fields
+$(FIELDS)
+
+# Examples
+```julia
+julia> mean = zeros(2,2) # define a zero mean
+julia> cache = GRMFCache(mean)
+julia> prior_map(x) = GaussMarkovRF(mean, x[1], x[2], cache)
+julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(-5.0,5.0), Uniform(0.0, 10.0)]))
+julia> x0 = rand(d)
+```
+"""
 struct GMRFCache{A, TD, M}
+    """
+    Intrinsic Gaussian Random Field pseudo-precison matrix.
+    This is similar to the TSV regularizer
+    """
     Λ::A
+    """
+    Gaussian Random Field diagonal precision matrix.
+    This is similar to the L2-regularizer
+    """
     D::TD
+    """
+    The eigenvalues of the Λ matrix which is needed to compute the
+    log-normalization constant of the GMRF.
+    """
     λQ::M
 end
 
-function GMRFCache(mean)
+"""
+    GMRFCache(mean::AbstractMatrix)
+
+Contructs the [`GMRFCache`](@ref) from the mean image `mean`.
+This is useful for hierarchical priors where you change the hyperparameters
+of the [`GaussMarkovRF`](@ref), λ and `Σ`.
+"""
+function GMRFCache(mean::AbstractMatrix)
     dims = size(mean)
 
     # build the 1D correlation matrices
@@ -73,12 +109,56 @@ end
 # Dists.insupport(::GaussMarkovRF, x::AbstractMatrix) = true
 
 
+"""
+    $(TYPEDEF)
 
+A image prior based off of the first-order Gaussian Markov random field.
+This is similar to the combination of L₂ and TSV regularization and is equal to
+
+    λ TSV(I-M) + Σ⁻¹L₂(I-M) + lognorm(λ, Σ)
+
+where λ and Σ are given below and `M` is the mean image and `lognorm(λ,Σ)` is the
+log-normalization of the random field and is needed to jointly infer `I` and the
+hyperparameters λ, Σ.
+
+# Fields
+$(FIELDS)
+
+# Examples
+
+```julia
+julia> mimg = zeros(6, 6) # The mean image
+julia> λ, Σ = 2.0, 1.0
+julia> d = GaussMarkovRF(mimg, λ, Σ)
+julia> cache = GMRFCache(mimg) # now instead construct the cache
+julia> d2 = GaussMarkovRF(mimg, λ, Σ, cache)
+julia> invcov(d) ≈ invcov(d2)
+true
+```
+"""
 struct GaussMarkovRF{T,M<:AbstractMatrix{T},P,C,TDi} <: Dists.ContinuousMatrixDistribution
+    """
+    The mean image of the Gaussian Markov random field
+    """
     m::M
+    """
+    The pixel correlation function of the random field. This is the
+    TSV hyperparameter and controls the pixel-to-pixel correlation.
+    As λ→0 this become a white-noise process.
+    """
     λ::P
-    κ::P
+    """
+    The variance of each pixel of the random field. As Σ→∞ we revert to a
+    pure TSV prior, which is an improper or intrinsic Gaussian Markov random field.
+    """
+    Σ::P
+    """
+    The internal cache of the process. See [`GMRFCache`](@ref) for more information
+    """
     cache::C
+    """
+    The dimensions of the image.
+    """
     dims::TDi
 end
 
@@ -89,13 +169,25 @@ Dists.cov(d::GaussMarkovRF)  = inv(Array(Dists.invcov(d)))
 
 HC.asflat(d::GaussMarkovRF) = TV.as(Matrix, size(d)...)
 
-function GaussMarkovRF(mean::AbstractMatrix, λ, κ)
+"""
+    GaussMarkovRF(mean::AbstractMatrix, λ, Σ)
+
+Constructs a first order Gaussian Markov random field with mean image
+`mean` and correlation `λ` and diagonal covariance `Σ`.
+"""
+function GaussMarkovRF(mean::AbstractMatrix, λ, Σ)
     cache = GMRFCache(mean)
     dims = size(mean)
-    return GaussMarkovRF(mean, λ, κ, cache, dims)
+    return GaussMarkovRF(mean, λ, Σ, cache, dims)
 end
 
-GaussMarkovRF(mean::AbstractMatrix, λ, κ, cache::GMRFCache) = GaussMarkovRF(mean, λ, κ, cache, size(mean))
+"""
+    GaussMarkovRF(mean::AbstractMatrix, λ, Σ, cache::GMRFCache)
+
+Constructs a first order Gaussian Markov random field with mean image
+`mean` and correlation `λ` and diagonal covariance `Σ` and the precomputed GMRFCache `cache`.
+"""
+GaussMarkovRF(mean::AbstractMatrix, λ, Σ, cache::GMRFCache) = GaussMarkovRF(mean, λ, Σ, cache, size(mean))
 
 function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRF, x::AbstractMatrix{<:Real})
     Q = Dists.invcov(d)
@@ -121,9 +213,9 @@ end
 
 
 function lognorm(d::GaussMarkovRF)
-    (;λ, κ) = d
+    (;λ, Σ) = d
     N = length(d)
-    sum(log, 1 .+ (λ*κ).*d.cache.λQ)/2 - N*log(κ)/2 - Dists.log2π*N/2
+    sum(log, 1 .+ (λ*Σ).*d.cache.λQ)/2 - N*log(Σ)/2 - Dists.log2π*N/2
 end
 
 function build_q1d(mean, n)
@@ -135,15 +227,15 @@ function build_q1d(mean, n)
 end
 
 function Dists.invcov(d::GaussMarkovRF)
-    (;λ, κ) = d
-    return @. λ*d.cache.Λ + inv(κ)*d.cache.D
+    (;λ, Σ) = d
+    return @. λ*d.cache.Λ + inv(Σ)*d.cache.D
 end
 
 function unnormed_logpdf(d::GaussMarkovRF, I::AbstractMatrix)
-    (;λ, κ) = d
+    (;λ, Σ) = d
     ΔI = d.m - I
     s = igrmf_1n(ΔI)
-    return -(λ*s + inv(κ)*sum(abs2,ΔI))/2
+    return -(λ*s + inv(Σ)*sum(abs2,ΔI))/2
 end
 
 # computes the intrinsic gaussian process of a 1-neighbor method
