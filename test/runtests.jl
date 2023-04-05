@@ -263,8 +263,8 @@ using Test
     end
 
     @testset "Hierarchical Prior" begin
-        f(x) = Normal(x[1], x[2])
-        dhyper = product_distribution([Normal(0.0, 1.0), LogNormal(-1.0, 1.0)])
+        f(x) = Normal(x[1], exp(x[2]))
+        dhyper = product_distribution([Normal(0.0, 1.0), Normal(-1.0, 1.0)])
         dHp = HierarchicalPrior(f, dhyper)
         x0 = rand(dHp)
         fd = f(x0.hyperparams)
@@ -272,7 +272,7 @@ using Test
 
         x0s = rand(dHp, 1_00)
         x0s = rand(dHp, (10,10))
-
+        asflat(dHp)
     end
 
     # @testset "SpecialRules" begin
