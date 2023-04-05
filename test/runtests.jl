@@ -275,6 +275,19 @@ using Test
         asflat(dHp)
     end
 
+    @testset "ALR" begin
+        x = randn(10,10)
+        y = alr(x)
+
+        @test length(y) == length(x)
+        @test sum(y) ≈ 1
+
+        test_rrule(alr, x)
+
+        x0 = alrinv(y)
+        @test x0[1:end-1] ≈ x[1:end-1]
+    end
+
     # @testset "SpecialRules" begin
     #     t = asflat(ImageUniform(10, 10))
     #     y = rand(TV.dimension(t))
