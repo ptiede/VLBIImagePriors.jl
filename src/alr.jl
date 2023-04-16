@@ -63,7 +63,7 @@ function ChainRulesCore.rrule(::typeof(alr), y)
         Δy = zero(y)
 
 
-        Enzyme.autodiff(alr!, Const, Duplicated(x, dx), Duplicated(y, Δy))
+        Enzyme.autodiff(Reverse, alr!, Const, Duplicated(x, dx), Duplicated(y, Δy))
         return (Δf, Δy)
     end
     return x, _alr_pullback
