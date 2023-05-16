@@ -93,7 +93,7 @@ function TV.transform_with(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractVect
     return (reshape(@view(x[begin:end-1]), t.dims[1], t.dims[2]), ℓ, index+n-1)
 end
 
-TV.inverse_eltype(::ImageSimplex, y::AbstractMatrix) = TV.extended_eltype(y)
+TV.inverse_eltype(::ImageSimplex, y::AbstractMatrix) = TV.robust_eltype(y)
 
 
 function TV.inverse_at!(x::AbstractVector, index, t::ImageSimplex, y::AbstractMatrix)

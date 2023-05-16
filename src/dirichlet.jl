@@ -43,6 +43,9 @@ function Dists.insupport(d::ImageDirichlet, x::AbstractMatrix)
     return (size(d.α) == size(x)) && !any(x -> x < zero(x), x) && sum(x) ≈ 1
 end
 
+using EnzymeCore: EnzymeRules
+EnzymeRules.inactive(::typeof(Dists.insupport), args...) = nothing
+
 function Dists._logpdf(d::ImageDirichlet, x::AbstractMatrix{<:Real})
     if !(Dists.insupport(d, x))
         return xlogy(one(eltype(d.α)), zero(eltype(x))) - d.lmnB

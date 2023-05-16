@@ -12,11 +12,11 @@ struct AngleTransform <: TV.VectorTransform end
 TV.dimension(t::AngleTransform) = 2
 
 function TV.transform_with(flag::TV.LogJacFlag, ::AngleTransform, y::AbstractVector, index)
-    T = TV.extended_eltype(y)
+    T = TV.robust_eltype(y)
     ℓi = TV.logjac_zero(flag, T)
     x1 = y[index]
     x2 = y[index+1]
-    r = hypot(x1, x2)
+    r = sqrt(x1^2 + x2^2)
     # Use log-normal with μ = 0, σ = 1/4
     σ = oftype(r, 1/4)
     if !(flag isa TV.NoLogJac)
@@ -27,7 +27,7 @@ function TV.transform_with(flag::TV.LogJacFlag, ::AngleTransform, y::AbstractVec
     return atan(x1, x2), ℓi, index+2
 end
 
-function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransform{<:AngleTransform}, y::AbstractVector, index)
+function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:AngleTransform}, y::AbstractVector, index)
     out = TV.transform_with(flag, t, y, index)
     py = ProjectTo(y)
     function _transform_with_arrayangle_pb(Δ)
@@ -82,11 +82,11 @@ end
 TV.dimension(::SphericalUnitVector{N}) where {N} = N+1
 
 TV.inverse_eltype(::SphericalUnitVector{N}, x) where {N} = TV.inverse_eltype(x)
-TV.inverse_eltype(::TV.ArrayTransform{<:SphericalUnitVector}, x::NTuple{N, T}) where {N,T} = float(eltype(first(x)))
+TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::NTuple{N, T}) where {N,T} = float(eltype(first(x)))
 
 
 function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}
-    T = TV.extended_eltype(y)
+    T = TV.robust_eltype(y)
     index2 = index + N +1
     # normalized vector
     vy = NTuple{N+1,T}(@view(y[index:(index2-1)]))
@@ -103,21 +103,21 @@ function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::Abs
     return x, ℓi, index2
 end
 
-function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
-    (;transformation, dims) = t
+function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
+    (;inner_transformation, dims) = t
     # NOTE not using index increments as that somehow breaks type inference
-    d = TV.dimension(transformation) # length of an element transformation
+    d = TV.dimension(inner_transformation) # length of an element transformation
     len = prod(dims)              # number of elements
     𝐼 = reshape(range(index; length = len, step = d), dims)
-    xℓ = map(index -> ((x, ℓ, _) = TV.transform_with(flag, transformation, y, index); (x, ℓ)), 𝐼)
-    ℓz = TV.logjac_zero(flag, TV.extended_eltype(y))
+    xℓ = map(index -> ((x, ℓ, _) = TV.transform_with(flag, inner_transformation, y, index); (x, ℓ)), 𝐼)
+    ℓz = TV.logjac_zero(flag, TV.robust_eltype(y))
     index′ = index + d * len
     ntuple(i->getindex.(first.(xℓ), i), N+1), isempty(xℓ) ? ℓz : ℓz + sum(last, xℓ), index′
 end
 
 
 
-function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::NTuple) where {N}
+function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransformation{<:SphericalUnitVector{N}}, y::NTuple) where {N}
     @assert length(y) == N + 1 "Length of y must be equal to N + 1"
     index2 = index + TV.dimension(t)
     ix = 1
@@ -150,7 +150,7 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
     return res, _spherical_unit_transform
 end
 
-function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransform{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
+function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
     out = TV.transform_with(flag, t, y, index)
     py = ProjectTo(y)
     function _transform_with_arraysuv_pb(Δ)

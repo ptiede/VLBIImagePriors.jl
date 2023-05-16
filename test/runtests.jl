@@ -275,17 +275,23 @@ using Test
         asflat(dHp)
     end
 
-    @testset "ALR" begin
+    @testset "Log Ratio Transform" begin
         x = randn(10,10)
-        y = alr(x)
+        ycl = to_simplex(CenteredLR(), x)
+        yal = to_simplex(AdditiveLR(), x)
 
-        @test length(y) == length(x)
-        @test sum(y) ≈ 1
+        @test length(ycl) == length(x)
+        @test length(yal) == length(x)
+        @test sum(ycl) ≈ 1
+        @test sum(yal) ≈ 1
 
-        test_rrule(alr, x)
+        test_rrule(to_simplex, AdditiveLR(), x)
+        test_rrule(to_simplex, CenteredLR(), x)
 
-        x0 = alrinv(y)
-        @test x0[1:end-1] ≈ x[1:end-1]
+        x0al = to_real(AdditiveLR(), yal)
+        x0cl = to_real(CenteredLR(), ycl)
+        @test x0al[1:end-1] ≈ x[1:end-1]
+        @test x0cl .- x0cl[1] ≈ x .- x[1]
     end
 
     # @testset "SpecialRules" begin

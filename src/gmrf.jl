@@ -1,5 +1,6 @@
 using SparseArrays
 using LinearAlgebra
+using ComradeBase
 
 export GaussMarkovRF, GMRFCache
 
@@ -55,11 +56,35 @@ function GMRFCache(mean::AbstractMatrix)
 
     # We do this ordering because Julia like column major
     Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
-    D = spdiagm(ones(eltype(Λ), size(Λ,1)))
+    D = Diagonal(ones(eltype(Λ), size(Λ,1)))
     λQ = eigenvals(dims)
     return GMRFCache(Λ, D, λQ)
 end
 
+"""
+    GMRFCache(m::AbstractModel, grid::AbstractDims; transform=identity)
+
+Create a GMRF cache out of a `Comrade` model as the mean image.
+
+# Arguments
+ - `m`: Comrade model used for the mean image.
+ - `grid`: The grid of points you want to create the model image on.
+
+# Keyword arguments
+ - `transform = identity`: A transform to apply to the image when creating the mean image. See the examples
+
+
+# Example
+
+```julia-repl
+julia> m = GMRFCache(Gaussian(), imagepixels(10.0, 10.0, 64, 64))
+julia> m = GMRFCache(Gaussian(), imagepixels(10.0, 10.0, 64, 64); transform=alr)
+```
+"""
+function GMRFCache(m::ComradeBase.AbstractModel, grid::ComradeBase.AbstractDims; transform=identity)
+    img = intensitymap(m, grid)
+    return GMRFCache(transform(baseimage(img)))
+end
 # struct IGRMFCache{A, TD, M, C}
 #     Λ::A
 #     D::TD
@@ -182,6 +207,36 @@ function GaussMarkovRF(mean::AbstractMatrix, λ, Σ)
 end
 
 """
+    GaussMarkovRF(mean::ComradeBase.AbstractModel, grid::ComradeBase.AbstractDims, λ, Σ [,cache]; transform=identity)
+
+Create a `GaussMarkovRF` object using a ComradeBase model.
+
+# Arguments
+ - `mean`: A ComradeBase model that will define the mean image
+ - `grid`: The grid on which the image of the model will be created. This calls `ComradeBase.intensitymap`.
+ - `λ`: The correlation length of the GMRF
+ - `Σ`: The variance of the GMRF
+ - `cache`: Optionally specify the precomputed GMRFCache
+
+# Keyword Arguments
+- `transform = identity`: A transform to apply to the image when creating the mean image. See the examples.
+
+# Examples
+```julia
+julia> m1 = GaussMarkovRF(Gaussian(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0; transform=alr)
+julia> cache = GMRFCache(Gaussian(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0; transform=alr)
+julia> m2 = GaussMarkovRF(Gaussian(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0, cache; transform=alr)
+julia> m1 == m2
+true
+```
+
+"""
+function GaussMarkovRF(mean::ComradeBase.AbstractModel, grid::ComradeBase.AbstractDims, args...; transform=identity)
+    img = intensitymap(mean, grid)
+    return GaussMarkovRF(transform(baseimage(img)), args...)
+end
+
+"""
     GaussMarkovRF(mean::AbstractMatrix, λ, Σ, cache::GMRFCache)
 
 Constructs a first order Gaussian Markov random field with mean image
@@ -201,9 +256,10 @@ Dists.insupport(::GaussMarkovRF, x::AbstractMatrix) = true
 
 function eigenvals(dims)
     m, n = dims
-    ix = 1:m
-    iy = 1:n
-    return @. 2*(2 - cos(π*(ix - 1)/m)  - cos(π*(iy'-1)/n))
+    ix = 0:(m-1)
+    iy = 0:(n-1)
+    # Eigenvalues are the Σᵢⱼcos2π(ii'/m + jj'/n)
+    return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))
 end
 
 
@@ -215,27 +271,29 @@ end
 function lognorm(d::GaussMarkovRF)
     (;λ, Σ) = d
     N = length(d)
-    sum(log, 1 .+ (λ*Σ).*d.cache.λQ)/2 - N*log(Σ)/2 - Dists.log2π*N/2
+    sum(log, (inv(d.Σ)/(π)*d.λ)*(inv(λ^2) .+ d.cache.λQ))/2 - Dists.log2π*N/2
+    # sum(log, (inv(Σ) .+ λ*d.cache.λQ))/2 - Dists.log2π*N/2
 end
 
 function build_q1d(mean, n)
     d1 = similar(mean, n)
     fill!(d1, 2)
-    d1[begin] = d1[end] = 1
-    Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1))
+    d1[begin] = d1[end] = 2
+    Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1), (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
     return Q
 end
 
 function Dists.invcov(d::GaussMarkovRF)
-    (;λ, Σ) = d
-    return @. λ*d.cache.Λ + inv(Σ)*d.cache.D
+    # return (d.λ*d.cache.Λ .+ d.Σ*d.cache.D)
+    return (inv(d.Σ)/(π)).*(d.cache.Λ .+ inv(d.λ^2).*d.cache.D)
 end
 
 function unnormed_logpdf(d::GaussMarkovRF, I::AbstractMatrix)
     (;λ, Σ) = d
     ΔI = d.m - I
     s = igrmf_1n(ΔI)
-    return -(λ*s + inv(Σ)*sum(abs2,ΔI))/2
+    return -(inv(Σ)/(π)*d.λ)*(s + inv(λ^2)*sum(abs2,ΔI))/2
+    # return -(λ*s + inv(Σ)*sum(abs2,ΔI))/2
 end
 
 # computes the intrinsic gaussian process of a 1-neighbor method
@@ -253,16 +311,17 @@ end
     if ix < lastindex(I, 1)
          @inbounds ΔIx = I[ix+1, iy] - I[ix, iy]
     else
-        ΔIx = 0
+        ΔIx = I[begin, iy] - I[ix,iy]
     end
 
     if iy < lastindex(I, 2)
          @inbounds ΔIy = I[ix, iy+1] - I[ix, iy]
     else
-        ΔIy = 0
+        ΔIy = I[ix, begin] - I[ix,iy]
     end
 
-    return ΔIx^2 + ΔIy^2
+    ΔI2 = ΔIx^2 + ΔIy^2
+    return ΔI2
 end
 
 
@@ -282,21 +341,30 @@ end
     # For ΔIx = I[i+1,j] - I[i,j]
     if i2 < nx + 1
         @inbounds grad += -2 * (I[i2, j1] - I[i1, j1])
+    else
+        @inbounds grad += -2*(I[begin, j1] - I[i1, j1])
     end
+
 
     # For ΔIy = I[i,j+1] - I[i,j]
     if j2 < ny + 1
         @inbounds grad += -2 * (I[i1, j2] - I[i1, j1])
+    else
+        @inbounds grad += -2*(I[i1, begin] - I[i1, j1])
     end
 
     # For ΔIx = I[i,j] - I[i-1,j]
     if i0 > 0
-        @inbounds grad += +2 * (I[i1, j1] - I[i0, j1])
+        @inbounds grad += 2 * (I[i1, j1] - I[i0, j1])
+    else
+        @inbounds grad += 2*(I[i1, j1] - I[end, j1])
     end
 
     # For ΔIy = I[i,j] - I[i,j-1]
     if j0 > 0
-        @inbounds grad += +2 * (I[i1, j1] - I[i1, j0])
+        @inbounds grad += 2 * (I[i1, j1] - I[i1, j0])
+    else
+        @inbounds grad += 2*(I[i1, j1] - I[i1, end])
     end
 
     return grad

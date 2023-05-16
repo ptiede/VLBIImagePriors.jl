@@ -1,5 +1,5 @@
 # sadness type piracy this needs to be fixed but it requires a rewrite of transform variables to be non-allocating
-function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransform{<:TV.ScalarTransform}, y::AbstractVector, index)
+function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:TV.ScalarTransform}, y::AbstractVector, index)
     out = TV.transform_with(flag, t, y, index)
     function _transform_with_array(Δ)
         ysub = y[index:index+TV.dimension(t)-1]
@@ -15,7 +15,7 @@ function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, 
         end
 
         dx[end] = Δlj
-        Enzyme.autodiff(Reverse, _transform_with_loop!, Const, Const(flag), Const(t.transformation), Duplicated(x, dx), Duplicated(ysub, dy))
+        Enzyme.autodiff(Reverse, _transform_with_loop!, Const, Const(flag), Const(t.inner_transformation), Duplicated(x, dx), Duplicated(ysub, dy))
         Δy = zero(y)
         Δy[index:index+TV.dimension(t)-1] .= dy
         return NoTangent(), NoTangent(), NoTangent(), Δy, NoTangent()

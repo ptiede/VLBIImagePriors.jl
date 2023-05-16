@@ -26,7 +26,7 @@ include("angular_dists.jl")
 include("special_rules.jl")
 include("gmrf.jl")
 include("heirarchical.jl")
-include("alr.jl")
+include("logratio_transform.jl")
 
 
 
