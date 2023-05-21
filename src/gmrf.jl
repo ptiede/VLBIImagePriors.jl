@@ -285,7 +285,7 @@ end
 
 function Dists.invcov(d::GaussMarkovRF)
     # return (d.λ*d.cache.Λ .+ d.Σ*d.cache.D)
-    return (inv(d.Σ)/(π)).*(d.cache.Λ .+ inv(d.λ^2).*d.cache.D)
+    return (inv(d.Σ)/(π)*d.λ).*(d.cache.Λ .+ inv(d.λ^2).*d.cache.D)
 end
 
 function unnormed_logpdf(d::GaussMarkovRF, I::AbstractMatrix)
