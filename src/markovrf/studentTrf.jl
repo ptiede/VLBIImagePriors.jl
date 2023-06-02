@@ -28,7 +28,7 @@ true
 """
 struct TDistMarkovRandomField{T,M<:AbstractMatrix{T},P,C,TDi} <: MarkovRandomField
     """
-    The mean image of the TDistian Markov random field
+    The mean image of the TDist Markov random field
     """
     m::M
     """
@@ -63,8 +63,8 @@ HC.asflat(d::TDistMarkovRandomField) = TV.as(Matrix, size(d)...)
 """
     TDistMarkovRandomField(mean::AbstractMatrix, λ, Σ)
 
-Constructs a first order TDistian Markov random field with mean image
-`mean` and correlation `λ` and diagonal covariance `Σ`.
+Constructs a first order TDist Markov random field with mean image
+`mean` and inverse correlation `λ` and diagonal covariance `Σ`.
 """
 function TDistMarkovRandomField(mean::AbstractMatrix, λ, Σ, ν)
     cache = MarkovRandomFieldCache(eltype(mean), size(mean))
@@ -80,7 +80,7 @@ Create a `TDistMarkovRandomField` object using a ComradeBase model.
 # Arguments
  - `mean`: A ComradeBase model that will define the mean image
  - `grid`: The grid on which the image of the model will be created. This calls `ComradeBase.intensitymap`.
- - `λ`: The correlation length of the GMRF
+ - `λ`: The inverse correlation length of the GMRF
  - `Σ`: The variance of the GMRF
  - `cache`: Optionally specify the precomputed MarkovRandomFieldCache
 
@@ -89,9 +89,9 @@ Create a `TDistMarkovRandomField` object using a ComradeBase model.
 
 # Examples
 ```julia
-julia> m1 = TDistMarkovRandomField(TDistian(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0; transform=alr)
-julia> cache = MarkovRandomFieldCache(TDistian(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0; transform=alr)
-julia> m2 = TDistMarkovRandomField(TDistian(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0, cache; transform=alr)
+julia> m1 = TDistMarkovRandomField(TDist(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0; transform=alr)
+julia> cache = MarkovRandomFieldCache(TDist(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0; transform=alr)
+julia> m2 = TDistMarkovRandomField(TDist(), imagepixels(10.0, 10.0, 128, 128), 5.0, 1.0, cache; transform=alr)
 julia> m1 == m2
 true
 ```
@@ -105,8 +105,8 @@ end
 """
     TDistMarkovRandomField(mean::AbstractMatrix, λ, Σ, cache::MarkovRandomFieldCache)
 
-Constructs a first order TDistian Markov random field with mean image
-`mean` and correlation `λ` and diagonal covariance `Σ` and the precomputed MarkovRandomFieldCache `cache`.
+Constructs a first order TDist Markov random field with mean image
+`mean` and inverse correlation `λ` and diagonal covariance `Σ` and the precomputed MarkovRandomFieldCache `cache`.
 """
 TDistMarkovRandomField(mean::AbstractMatrix, λ, Σ, ν, cache::MarkovRandomFieldCache) = TDistMarkovRandomField(mean, λ, Σ, ν, cache, size(mean))
 

@@ -65,7 +65,7 @@ HC.asflat(d::GaussMarkovRandomField) = TV.as(Matrix, size(d)...)
     GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ)
 
 Constructs a first order Gaussian Markov random field with mean image
-`mean` and correlation `λ` and diagonal covariance `Σ`.
+`mean` and inverse correlation `λ` and diagonal covariance `Σ`.
 """
 function GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ)
     cache = MarkovRandomFieldCache(eltype(mean), size(mean))
@@ -81,7 +81,7 @@ Create a `GaussMarkovRandomField` object using a ComradeBase model.
 # Arguments
  - `mean`: A ComradeBase model that will define the mean image
  - `grid`: The grid on which the image of the model will be created. This calls `ComradeBase.intensitymap`.
- - `λ`: The correlation length of the GMRF
+ - `λ`: The inverse correlation length of the GMRF
  - `Σ`: The variance of the GMRF
  - `cache`: Optionally specify the precomputed MarkovRandomFieldCache
 
@@ -107,7 +107,7 @@ end
     GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ, cache::MarkovRandomFieldCache)
 
 Constructs a first order Gaussian Markov random field with mean image
-`mean` and correlation `λ` and diagonal covariance `Σ` and the precomputed MarkovRandomFieldCache `cache`.
+`mean` and inverse correlation `λ` and diagonal covariance `Σ` and the precomputed MarkovRandomFieldCache `cache`.
 """
 GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ, cache::MarkovRandomFieldCache) = GaussMarkovRandomField(mean, λ, Σ, cache, size(mean))
 
