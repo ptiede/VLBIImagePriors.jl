@@ -4,8 +4,6 @@ using ComradeBase
 
 export TDistMarkovRandomField
 
-abstract type MarkovRandomField <: Dists.ContinuousMatrixDistribution end
-
 """
     $(TYPEDEF)
 
