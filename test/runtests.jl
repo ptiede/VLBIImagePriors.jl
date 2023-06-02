@@ -202,9 +202,9 @@ using Test
     @testset "GMRF" begin
         @testset "Tall" begin
             mimg = rand(10, 8)
-            d1 = GaussMarkovRF(mimg, 3.0, 2.0)
-            c = GMRFCache(mimg)
-            d2 = GaussMarkovRF(mimg, 3.0, 2.0, c)
+            d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -220,9 +220,9 @@ using Test
 
         @testset "Wide" begin
             mimg = rand(8, 10)
-            d1 = GaussMarkovRF(mimg, 3.0, 2.0)
-            c = GMRFCache(mimg)
-            d2 = GaussMarkovRF(mimg, 3.0, 2.0, c)
+            d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -238,9 +238,9 @@ using Test
 
         @testset "Equal" begin
             mimg = rand(10, 10)
-            d1 = GaussMarkovRF(mimg, 3.0, 2.0)
-            c = GMRFCache(mimg)
-            d2 = GaussMarkovRF(mimg, 3.0, 2.0, c)
+            d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)

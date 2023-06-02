@@ -1,7 +1,6 @@
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 ChainRulesTestUtils = "cdddcdb0-9152-4a09-a978-84456f9df70a"
-Comrade = "99d987ce-9a1e-4df8-bc0b-1ea019aa547b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"

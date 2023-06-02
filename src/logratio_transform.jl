@@ -45,7 +45,7 @@ Computes the additive logit transform inplace. This converts from
 
 
 # Notes
-This function is mainly to transform the GaussMarkovRF to live on the simplex.
+This function is mainly to transform the GaussMarkovRandomField to live on the simplex.
 """
 function clrinv!(x, y)
     x .= exp.(y)
@@ -62,7 +62,7 @@ Computes the additive logit transform inplace. This converts from
 
 
 # Notes
-This function is mainly to transform the GaussMarkovRF to live on the simplex.
+This function is mainly to transform the GaussMarkovRandomField to live on the simplex.
 In order to preserve the nice properties of the GRMF namely the log det we
 only use `y[begin:end-1]` elements and the last one is not included in the transform.
 This shouldn't be a problem since the additional parameter is just a dummy in that case
