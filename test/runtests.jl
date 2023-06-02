@@ -262,6 +262,43 @@ using Test
 
     end
 
+    @testset "TDistMRF" begin
+        @testset "Tall" begin
+            mimg = rand(10, 8)
+            d1 = TDistMarkovRandomField(mimg, 3.0, 2.0, 1.0)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = TDistMarkovRandomField(mimg, 3.0, 2.0, 1.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+        end
+
+        @testset "Wide" begin
+            mimg = rand(8, 10)
+            d1 = TDistMarkovRandomField(mimg, 3.0, 2.0, 5.0)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = TDistMarkovRandomField(mimg, 3.0, 2.0, 5.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+        end
+
+        @testset "Equal" begin
+            mimg = rand(10, 10)
+            d1 = TDistMarkovRandomField(mimg, 3.0, 2.0, 100.0)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = TDistMarkovRandomField(mimg, 3.0, 2.0, 100.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+        end
+
+    end
+
+
+
     @testset "Hierarchical Prior" begin
         f(x) = Normal(x[1], exp(x[2]))
         dhyper = product_distribution([Normal(0.0, 1.0), Normal(-1.0, 1.0)])

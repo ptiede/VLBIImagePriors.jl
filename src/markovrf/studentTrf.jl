@@ -113,13 +113,13 @@ TDistMarkovRandomField(mean::AbstractMatrix, λ, Σ, ν, cache::MarkovRandomFiel
 function lognorm(d::TDistMarkovRandomField)
     ν = d.ν
     N = length(d)
-    det = Base.logdet(d.cache, λ, Σ)
+    det = logdet(d.cache, d.λ, d.Σ)
     return log(ν/2 + 1) + log(ν*π) + det/2
 end
 
 function unnormed_logpdf(d::TDistMarkovRandomField, I::AbstractMatrix)
     (;λ, Σ, ν) = d
-    ΔI = ds.m - I
+    ΔI = d.m - I
     sq = sq_manoblis(d.cache, ΔI, λ, Σ)
     return -(ν/2+1)*log1p(inv(ν)*sq)
 end
