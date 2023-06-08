@@ -7,6 +7,7 @@ using Zygote
 import TransformVariables as TV
 using HypercubeTransform
 using Test
+using ComradeBase
 
 @testset "VLBIImagePriors.jl" begin
 
@@ -182,11 +183,11 @@ using Test
         @test first(gz) ≈ first(gfd)
     end
 
-    @testset "CenteredImage" begin
+    @testset "CenteredRegularizer" begin
         d = ImageDirichlet(1.0, 4, 4)
-        @test_throws AssertionError CenteredImage(1:2, 1:2, 1.0, d)
+        @test_throws AssertionError CenteredRegularizer(1:2, 1:2, 1.0, d)
         x = y =  range(-2, 2, length=4)
-        dc = CenteredImage(x, y, 1.0, d)
+        dc = CenteredRegularizer(x, y, 1.0, d)
 
         @test Distributions.insupport(dc, rand(4,4)) == Distributions.insupport(d, rand(4,4))
 
@@ -197,6 +198,16 @@ using Test
 
         @test asflat(dc) === asflat(d)
 
+    end
+    @testset "CenterImage" begin
+        grid = imagepixels(10.0, 10.0, 48, 48)
+        K = CenterImage(grid)
+        img0 = IntensityMap(rand(48, 48), grid)
+        cimg = K(img0)
+        c0 = centroid(IntensityMap(cimg, grid))
+        @test isapprox(c0[1], 0.0, atol=1e-6)
+        @test isapprox(c0[2], 0.0, atol=1e-6)
+        test_rrule(VLBIImagePriors.center_kernel, K.kernel⊢NoTangent(), rand(48, 48))
     end
 
     @testset "GMRF" begin
