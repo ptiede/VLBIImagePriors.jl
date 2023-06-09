@@ -38,7 +38,7 @@ struct TDistMarkovRandomField{T,M<:AbstractMatrix{T},P,C,TDi} <: MarkovRandomFie
     """
     Σ::P
     """
-    The student T "degrees of freedom parameter which > 1
+    The student T "degrees of freedom parameter which ≥ 1 for a proper prior
     """
     ν::P
     """
