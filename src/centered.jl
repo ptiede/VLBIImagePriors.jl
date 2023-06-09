@@ -62,6 +62,7 @@ struct CenterImage{K,D}
     kernel::K
     dims::D
     function CenterImage(X, Y)
+        # normalize by the step to make sure the numerics are alright
         x = ones(length(Y)).*X'./step(X)
         y = Y.*ones(length(X))'./step(Y)
         XY = zeros(2, length(x))

@@ -2,15 +2,84 @@ export to_real, to_simplex, CenteredLR, AdditiveLR
 
 abstract type LogRatioTransform end
 
+"""
+    CenteredLR <: LogRatioTransform
+
+Defines the centered log-ratio transform. The `clr` transformation moves from the
+simplex Sⁿ → Rⁿ and is given by
+```
+clr(x) = [log(x₁/g(x)) ... log(xₙ/g(x))]
+```
+where `g(x) = (∏xᵢ)ⁿ⁻¹` is the geometric mean. The inverse transformation is given by
+the softmax function and is only defined on a subset of the domain otherwise it is not injective
+```
+clr⁻¹(x) = exp.(x)./sum(exp, x).
+```
+
+# Notes
+As mentioned above this transformation is bijective on the entire codomain of the function.
+However, unlike the additive log-ratio transform it does not treat any pixel as being special.
+"""
 struct CenteredLR <: LogRatioTransform end
+
+"""
+    AdditiveLR <: LogRatioTransform
+
+Defines the additive log-ratio transform. The `clr` transformation moves from the
+simplex Sⁿ → ``R^{n-1}`` and is given by
+```
+alr(x) = [log(x₁/xₙ) ... log(xₙ/xₙ)],
+```
+where `g(x) = (∏xᵢ)ⁿ⁻¹` is the geometric mean. The inverse transformation is given by
+```
+alr⁻¹(x) = exp.(x)./(1 + sum(x[1:n-1])).
+```
+"""
 struct AdditiveLR <: LogRatioTransform end
 
+"""
+    to_simplex(t::LogRatioTransform, x)
+
+Transform the vector `x` assumed to be a real valued array to the simplex using the
+log-ratio transform `t`. See `subtypes(LogRatioTransform)` for a list of possible
+transformations.
+
+The inverse of this transform is given by [`to_real(t, y)`](@ref) where `y` is a vector that
+sums to unity, i.e. it lives on the simplex.
+
+# Example
+```julia
+julia> x = randn(100)
+julia> to_simplex(CenteredLR(), x)
+julia> to_simplex(AdditiveLR(), x)
+
+
+```
+"""
 function to_simplex(t::LogRatioTransform, x)
     y = similar(x)
     to_simplex!(t::LogRatioTransform, y, x)
     return y
 end
 
+"""
+    to_simplex!(t::LogRatioTransform, y, x)
+
+Transform the vector `x` assumed to be a real valued array to the simplex using the
+log-ratio transform `t` and stores the value in `y`.
+
+The inverse of this transform is given by [`to_real!(t, x, y)`](@ref) where `y` is a vector that
+sums to unity, i.e. it lives on the simplex.
+
+# Example
+```julia
+julia> x = randn(100)
+julia> to_simplex(CenteredLR(), x)
+julia> to_simplex(AdditiveLR(), x)
+
+
+```
+"""
 function to_simplex!(::AdditiveLR, y, x)
     alrinv!(y, x)
     return nothing
@@ -21,7 +90,24 @@ function to_simplex!(::CenteredLR, y, x)
     return nothing
 end
 
+"""
+    to_real(t::LogRatioTransform, y)
+
+Transform the value `u` that lives on the simplex to a value in the real vector space.
+See `subtypes(LogRatioTransform)` for a list of possible
+transformations.
+
+The inverse of this transform is given by [`to_simplex(t, x)`](@ref).
+
+# Example
+```julia
+julia> y = randn(100)
+julia> y .= y./sum(y)
+julia> to_real(CenteredLR(), y)
+julia> to_real(AdditiveLR(), y)
+"""
 function to_real(t::LogRatioTransform, y)
+    @argcheck sum(y) ≈ 1
     x = similar(y)
     to_real!(t, x, y)
     return x
@@ -87,8 +173,6 @@ function ChainRulesCore.rrule(::typeof(to_simplex), t::LogRatioTransform, y)
         dx = zero(x)
         dx .= unthunk(Δ)
         Δy = zero(y)
-
-
         Enzyme.autodiff(Reverse, to_simplex!, Const, Const(t), Duplicated(x, dx), Duplicated(y, Δy))
         return (Δf, NoTangent(), Δy)
     end
