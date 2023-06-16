@@ -128,3 +128,51 @@ function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMa
     z = randn(rng, length(x))
     x .= Dists.mean(d) .+ reshape(cQ\z, size(d))
 end
+
+
+struct StdNormal{T, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
+    dims::Dims{N}
+end
+
+StdNormal(d::Dims{N}) where {N} = StdNormal{Float64, N}(d)
+
+Base.size(d::StdNormal) = d.dims
+Base.length(d::StdNormal) = prod(d.dims)
+Base.eltype(::StdNormal{T}) where {T} = T
+Dists.insupport(::StdNormal, x::AbstractVector) = true
+
+HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
+Dists.mean(d::StdNormal) = zeros(size(d))
+Dists.cov(d::StdNormal)  = Diagonal(prod(size(d)))
+
+
+function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<:Real, N}
+    return __logpdf(d, x)
+end
+Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T<:Real} = __logpdf(d, x)
+
+
+__logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
+
+
+function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<: Real, N}
+    return randn!(rng, x)
+end
+
+
+struct MarkovTransform{TΛ, P}
+    Λ::TΛ
+    p::P
+end
+
+function (θ::MarkovTransform)(x::AbstractArray, mean, κ, σ, ν=0)
+    (;Λ, p) = θ
+    T = eltype(x)
+    rast = @. σ*κ^ν*(ν+1)*(κ^2 + Λ)^(-(ν+1)/2)*x
+    return real.(p*rast.*(one(T)+im))./sqrt(prod(size(Λ))) .+ mean
+end
+
+export standardize
+function standardize(d::MarkovRandomFieldCache, ::Type{<:Dists.Normal})
+    return MarkovTransform(d.λQ, plan_fft(d.λQ)), StdNormal(size(d.λQ))
+end

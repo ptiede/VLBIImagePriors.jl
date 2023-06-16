@@ -23,7 +23,7 @@ struct CenteredRegularizer{I,S,D} <: Dists.ContinuousMatrixDistribution
         @assert length(y) == size(dist, 2) "Number of pixels in x direction does not match `y`"
 
         xp, yp = promote(x, y)
-        return new{typeof(xp), typeof(σ), typeof(dist)}(x, y, σ, dist)
+        return new{typeof(xp), typeof(σ), typeof(dist)}(xp, yp, σ, dist)
     end
 end
 

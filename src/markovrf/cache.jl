@@ -132,7 +132,7 @@ end
     if iy < lastindex(I, 2)
          @inbounds ΔIy = I[ix, iy+1] - I[ix, iy]
     else
-        ΔIy = I[ix, begin] - I[ix,iy]
+        @inbounds ΔIy = I[ix, begin] - I[ix,iy]
     end
 
     ΔI2 = ΔIx^2 + ΔIy^2
