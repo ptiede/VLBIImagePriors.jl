@@ -168,7 +168,9 @@ end
 function (θ::MarkovTransform)(x::AbstractArray, mean, κ, σ, ν=0)
     (;Λ, p) = θ
     T = eltype(x)
-    rast = @. σ*κ^ν*(ν+1)*(κ^2 + Λ)^(-(ν+1)/2)*x
+    kx = fftfreq(size(Λ,1))
+    ky = fftfreq(size(Λ,2))
+    rast = (@. σ/2*κ^ν*sqrt(ν+1)*(κ^2 + kx^2 + ky'^2)^(-(ν+1)/2)*x)
     return real.(p*rast.*(one(T)+im))./sqrt(prod(size(Λ))) .+ mean
 end
 
