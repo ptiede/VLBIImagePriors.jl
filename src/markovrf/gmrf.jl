@@ -160,21 +160,23 @@ function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N
 end
 
 
-struct MarkovTransform{TΛ, P}
+struct MarkovTransform{TΛ, V, P}
     Λ::TΛ
+    kx::V
+    ky::V
     p::P
 end
 
 function (θ::MarkovTransform)(x::AbstractArray, mean, κ, σ, ν=0)
-    (;Λ, p) = θ
+    (;Λ, kx, ky, p) = θ
     T = eltype(x)
-    kx = fftfreq(size(Λ,1))
-    ky = fftfreq(size(Λ,2))
     rast = (@. σ/2*κ^ν*sqrt(ν+1)*(κ^2 + kx^2 + ky'^2)^(-(ν+1)/2)*x)
     return real.(p*rast.*(one(T)+im))./sqrt(prod(size(Λ))) .+ mean
 end
 
 export standardize
 function standardize(d::MarkovRandomFieldCache, ::Type{<:Dists.Normal})
-    return MarkovTransform(d.λQ, plan_fft(d.λQ)), StdNormal(size(d.λQ))
+    kx = fftfreq(size(d.λQ,1)) |> collect
+    ky = fftfreq(size(d.λQ,2)) |> collect
+    return MarkovTransform(d.λQ, kx, ky, plan_fft(d.λQ)), StdNormal(size(d.λQ))
 end
