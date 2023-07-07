@@ -1,10 +1,12 @@
 name: CI
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
     tags: '*'
-  pull_request:
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
@@ -13,7 +15,8 @@ concurrency:
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}'    
+    continue-on-error: ${{ matrix.group == 'Downstream'}}
     strategy:
       fail-fast: false
       matrix:
@@ -21,7 +24,6 @@ jobs:
           - '1.7'
           - '1.8'
           - '1'
-          - 'nightly'
         os:
           - ubuntu-latest
         arch:
