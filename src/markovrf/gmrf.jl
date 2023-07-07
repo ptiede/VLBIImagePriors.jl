@@ -19,7 +19,7 @@ hyperparameters λ, Σ.
 # Fields
 $(FIELDS)
 
-# Examples
+# Example
 
 ```julia
 julia> mimg = zeros(6, 6) # The mean image
@@ -167,10 +167,12 @@ struct MarkovTransform{TΛ, V, P}
     p::P
 end
 
-function (θ::MarkovTransform)(x::AbstractArray, mean, κ, σ, ν=0)
+function (θ::MarkovTransform)(x::AbstractArray, mean, σ, λ, ν=1)
     (;Λ, kx, ky, p) = θ
     T = eltype(x)
-    rast = (@. σ/2*κ^ν*sqrt(ν+1)*(κ^2 + kx^2 + ky'^2)^(-(ν+1)/2)*x)
+    κ = sqrt(8ν)*λ
+    τ = σ*κ^ν*sqrt(ν+1)
+    rast = (@. τ*(κ^2 + kx^2 + ky'^2)^(-(ν+1)/2)*x)
     return real.(p*rast.*(one(T)+im))./sqrt(prod(size(Λ))) .+ mean
 end
 
