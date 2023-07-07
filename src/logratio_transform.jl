@@ -179,6 +179,19 @@ function ChainRulesCore.rrule(::typeof(to_simplex), t::LogRatioTransform, y)
     return x, _to_simplex_pullback
 end
 
+function ChainRulesCore.rrule(::typeof(to_real), t::LogRatioTransform, y)
+    x = to_simplex(t, y)
+    function _to_simplex_pullback(Δ)
+        Δf = NoTangent()
+        dx = zero(x)
+        dx .= unthunk(Δ)
+        Δy = zero(y)
+        Enzyme.autodiff(Reverse, to_real!, Const, Const(t), Duplicated(x, dx), Duplicated(y, Δy))
+        return (Δf, NoTangent(), Δy)
+    end
+    return x, _to_simplex_pullback
+end
+
 """
     clr!(x, y)
 
