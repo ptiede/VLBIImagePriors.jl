@@ -174,7 +174,7 @@ function (θ::MarkovTransform)(x::AbstractArray, mean, σ, λ, ν=1)
     κ = sqrt(8(ν+1))*λ
     τ = σ*κ^ν*sqrt(ν+1)
     rast = (@. τ*(κ^2 + d.Λ)^(-(ν+1)/2)*x)
-    return real.(p*rast.*comlex(one(T), one(T)))./sqrt(prod(size(Λ))) .+ mean
+    return real.(p*rast.*complex(one(T), one(T)))./sqrt(prod(size(Λ))) .+ mean
 end
 
 export standardize
