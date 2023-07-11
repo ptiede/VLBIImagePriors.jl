@@ -10,11 +10,14 @@ export GaussMarkovRandomField
 A image prior based off of the first-order Gaussian Markov random field.
 This is similar to the combination of L₂ and TSV regularization and is equal to
 
-    λ TSV(I-M) + Σ⁻¹L₂(I-M) + lognorm(λ, Σ)
+    (π²Σ)⁻¹ TSV(I-M) + Σ⁻¹L₂(I-M) + lognorm(λ, Σ)
 
 where λ and Σ are given below and `M` is the mean image and `lognorm(λ,Σ)` is the
 log-normalization of the random field and is needed to jointly infer `I` and the
 hyperparameters λ, Σ.
+
+In this representation **λ is the inverse correlation length** of the random field and
+**Σ is the variance of the process** and corresponds to the variance of widely separated pixels.
 
 # Fields
 $(FIELDS)
@@ -162,23 +165,19 @@ end
 
 struct MarkovTransform{TΛ, V, P}
     Λ::TΛ
-    kx::V
-    ky::V
     p::P
 end
 
 function (θ::MarkovTransform)(x::AbstractArray, mean, σ, λ, ν=1)
-    (;Λ, kx, ky, p) = θ
+    (;Λ, p) = θ
     T = eltype(x)
-    κ = sqrt(8ν)*λ
+    κ = sqrt(8(ν+1))*λ
     τ = σ*κ^ν*sqrt(ν+1)
-    rast = (@. τ*(κ^2 + kx^2 + ky'^2)^(-(ν+1)/2)*x)
-    return real.(p*rast.*(one(T)+im))./sqrt(prod(size(Λ))) .+ mean
+    rast = (@. τ*(κ^2 + d.Λ)^(-(ν+1)/2)*x)
+    return real.(p*rast.*comlex(one(T), one(T)))./sqrt(prod(size(Λ))) .+ mean
 end
 
 export standardize
 function standardize(d::MarkovRandomFieldCache, ::Type{<:Dists.Normal})
-    kx = fftfreq(size(d.λQ,1)) |> collect
-    ky = fftfreq(size(d.λQ,2)) |> collect
-    return MarkovTransform(d.λQ, kx, ky, plan_fft(d.λQ)), StdNormal(size(d.λQ))
+    return MarkovTransform(d.λQ, plan_fft(d.λQ)), StdNormal(size(d.λQ))
 end
