@@ -163,7 +163,7 @@ function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N
 end
 
 
-struct MarkovTransform{TΛ, V, P}
+struct MarkovTransform{TΛ, P}
     Λ::TΛ
     p::P
 end
