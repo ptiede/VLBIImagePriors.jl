@@ -7,17 +7,16 @@ export GaussMarkovRandomField
 """
     $(TYPEDEF)
 
-A image prior based off of the first-order Gaussian Markov random field.
-This is similar to the combination of L₂ and TSV regularization and is equal to
+A image prior based off of the first-order Gaussian Markov random field with mean image `m`.
+This prior is similar to the combination of *total squared variation* TSV and L₂ norm, and
+is given by
 
-    (π²Σ)⁻¹ TSV(I-M) + Σ⁻¹L₂(I-M) + lognorm(λ, Σ)
+    (λ²π²Σ)⁻¹ TSV(I-M) + (π²Σ)L₂(I-M) + lognorm(λ, Σ)
 
-where λ and Σ are given below and `M` is the mean image and `lognorm(λ,Σ)` is the
-log-normalization of the random field and is needed to jointly infer `I` and the
-hyperparameters λ, Σ.
+where λ and Σ are the inverse correlation length and variance of the random field and
+`lognorm(λ,Σ)` is the log-normalization of the random field. This normalization is needed to
+jointly infer `I` and the hyperparameters λ, Σ.
 
-In this representation **λ is the inverse correlation length** of the random field and
-**Σ is the variance of the process** and corresponds to the variance of widely separated pixels.
 
 # Fields
 $(FIELDS)
@@ -76,6 +75,11 @@ function GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ)
     return GaussMarkovRandomField(mean, λ, Σ, cache, dims)
 end
 
+function GaussMarkovRandomField(λ, Σ, dims)
+    T = promote_type(λ, Σ)
+    return GaussMarkovRandomField(zeros(T, dims), convert(T, λ), convert(T, Σ))
+end
+
 """
     GaussMarkovRandomField(mean::ComradeBase.AbstractModel, grid::ComradeBase.AbstractDims, λ, Σ [,cache]; transform=identity)
 
@@ -107,12 +111,15 @@ function GaussMarkovRandomField(mean::ComradeBase.AbstractModel, grid::ComradeBa
 end
 
 """
+    GaussMarkovRandomField(λ, Σ, cache::MarkovRandomFieldCache)
     GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ, cache::MarkovRandomFieldCache)
 
 Constructs a first order Gaussian Markov random field with mean image
 `mean` and inverse correlation `λ` and diagonal covariance `Σ` and the precomputed MarkovRandomFieldCache `cache`.
+If `mean` is not included then it is assume the mean is identically zero.
 """
-GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ, cache::MarkovRandomFieldCache) = GaussMarkovRandomField(mean, λ, Σ, cache, size(mean))
+GaussMarkovRandomField(mean::AbstractMatrix, λ::Number, Σ::Number, cache::MarkovRandomFieldCache) = GaussMarkovRandomField(mean, λ, Σ, cache, size(mean))
+GaussMarkovRandomField(λ::Number, Σ::Number, cache::MarkovRandomFieldCache) = GaussMarkovRandomField(zeros(promote_type(λ, Σ), size(cache.λQ)))
 
 function lognorm(d::GaussMarkovRandomField)
     N = length(d)
@@ -168,12 +175,12 @@ struct MarkovTransform{TΛ, P}
     p::P
 end
 
-function (θ::MarkovTransform)(x::AbstractArray, mean, σ, λ, ν=1)
+function (θ::MarkovTransform)(x::AbstractArray, mean, σ, λ, ν=0)
     (;Λ, p) = θ
     T = eltype(x)
     κ = sqrt(8(ν+1))*λ
     τ = σ*κ^ν*sqrt(ν+1)
-    rast = (@. τ*(κ^2 + d.Λ)^(-(ν+1)/2)*x)
+    rast = (@. τ*(κ^2 + Λ)^(-(ν+1)/2)*x)
     return real.(p*rast.*complex(one(T), one(T)))./sqrt(prod(size(Λ))) .+ mean
 end
 
