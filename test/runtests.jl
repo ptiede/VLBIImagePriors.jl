@@ -252,6 +252,14 @@ using ComradeBase
             d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
             c = MarkovRandomFieldCache(mimg)
             d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
+            trf, d = standardize(c, Normal)
+
+            p = trf(rand(d), mimg, 1.0, 0.1, 0.0)
+            trf(rand(d), mimg, 1.0, 0.1, 1.0)
+            dimg = mean(map(_->trf(rand(d), 1.0, 1.0, 0.0), 1:1_000_000))
+            isapprox(dimg, mimg, atol=1e-2)
+            @test size(p) == size(rand(d2))
+            logdensityof(d, rand(d))
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
