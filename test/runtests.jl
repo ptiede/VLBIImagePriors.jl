@@ -331,6 +331,17 @@ using ComradeBase
         asflat(dHp)
     end
 
+    @testset "NamedDist" begin
+        d1 = NamedDist((a=Normal(), b = Uniform(), c = MvNormal(ones(2))))
+        x1 = rand(d1)
+        rand(d1, 20, 21)
+        @test logpdf(d1, x1) ≈ logpdf(d1.a, x1.a) + logpdf(d1.b, x1.b) + logpdf(d1.c, x1.c)
+
+        dists = getfield(d1, :dists)
+        xt = (b = 0.5, a = 1.0, c = [-0.5, 0.6])
+        @test logpdf(d1, xt) ≈ logpdf(d1.a, xt.a) + logpdf(d1.b, xt.b) + logpdf(d1.c, xt.c)
+    end
+
     @testset "Log Ratio Transform" begin
         x = randn(10,10)
         ycl = to_simplex(CenteredLR(), x)

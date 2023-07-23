@@ -5,6 +5,8 @@ struct NamedDist{Names, D} <: Dists.ContinuousMultivariateDistribution
     dists::D
 end
 
+Base.getproperty(d::NamedDist{N}, s::Symbol) where {N} = getproperty(NamedTuple{N}(getfield(d, :dists)), s)
+
 """
     NamedDist(d::NamedTuple{N})
 
@@ -26,7 +28,7 @@ end
 
 function Dists.logpdf(d::NamedDist{N}, x::NamedTuple{N}) where {N}
     vt = values(x)
-    dists = d.dists
+    dists = getfield(d, :dists)
     sum(map((dist, acc) -> Dists.logpdf(dist, acc), dists, vt))
 end
 
@@ -36,7 +38,7 @@ function Dists.logpdf(d::NamedDist{N}, x::NamedTuple{M}) where {N,M}
 end
 
 function Dists.rand(rng::AbstractRNG, d::NamedDist{N}) where {N}
-    return NamedTuple{N}(map(x->rand(rng, x), d.dists))
+    return NamedTuple{N}(map(x->rand(rng, x), getfield(d, :dists)))
 end
 
 function Dists.rand(rng::AbstractRNG, d::NamedDist{Na}, n::Dims) where {Na}
@@ -45,8 +47,8 @@ function Dists.rand(rng::AbstractRNG, d::NamedDist{Na}, n::Dims) where {Na}
     end
 end
 
-HypercubeTransform.asflat(d::NamedDist{N}) where {N} = asflat(NamedTuple{N}(d.dists))
-HypercubeTransform.ascube(d::NamedDist{N}) where {N} = ascube(NamedTuple{N}(d.dists))
+HC.asflat(d::NamedDist{N}) where {N} = HC.asflat(NamedTuple{N}(getfield(d, :dists)))
+HC.ascube(d::NamedDist{N}) where {N} = HC.ascube(NamedTuple{N}(getfield(d, :dists)))
 
 DensityInterface.DensityKind(::NamedDist) = DensityInterface.IsDensity()
 DensityInterface.logdensityof(d::NamedDist, x) = Dists.logpdf(d, x)

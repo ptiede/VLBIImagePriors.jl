@@ -18,6 +18,7 @@ using SpecialFunctions: loggamma
 using StatsFuns
 import TransformVariables as TV
 import HypercubeTransform as HC
+using NamedTupleTools
 
 include("imagesimplex.jl")
 include("dirichlet.jl")
@@ -29,6 +30,7 @@ include("special_rules.jl")
 include("markovrf/markovrf.jl")
 include("heirarchical.jl")
 include("logratio_transform.jl")
+include("namedist.jl")
 
 
 
