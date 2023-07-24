@@ -26,6 +26,8 @@ function NamedDist(d::NamedTuple{N}) where {N}
     return NamedDist{N,typeof(d)}(d)
 end
 
+NamedDist(;kwargs...) = NamedDist((;kwargs...))
+
 function Dists.logpdf(d::NamedDist{N}, x::NamedTuple{N}) where {N}
     vt = values(x)
     dists = getfield(d, :dists)
