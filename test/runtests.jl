@@ -334,6 +334,8 @@ using ComradeBase
     @testset "NamedDist" begin
         d1 = NamedDist((a=Normal(), b = Uniform(), c = MvNormal(ones(2))))
         x1 = rand(d1)
+        @test rand(d1, 2) isa Vector{<:NamedTuple}
+        @test size(rand(d1, 2)) == (2,)
         rand(d1, 20, 21)
         @test logpdf(d1, x1) ≈ logpdf(d1.a, x1.a) + logpdf(d1.b, x1.b) + logpdf(d1.c, x1.c)
 

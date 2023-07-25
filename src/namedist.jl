@@ -43,6 +43,13 @@ function Dists.rand(rng::AbstractRNG, d::NamedDist{N}) where {N}
     return NamedTuple{N}(map(x->rand(rng, x), getfield(d, :dists)))
 end
 
+function Dists.rand(rng::AbstractRNG, d::NamedDist{Na}, n::Int) where {Na}
+    map(1:n) do _
+        rand(rng, d)
+    end
+end
+
+
 function Dists.rand(rng::AbstractRNG, d::NamedDist{Na}, n::Dims) where {Na}
     map(CartesianIndices(n)) do I
         rand(rng, d)
