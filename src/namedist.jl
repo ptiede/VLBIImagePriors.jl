@@ -6,6 +6,7 @@ struct NamedDist{Names, D} <: Dists.ContinuousMultivariateDistribution
 end
 
 Base.getproperty(d::NamedDist{N}, s::Symbol) where {N} = getproperty(NamedTuple{N}(getfield(d, :dists)), s)
+Base.propertynames(::NamedDist{N}) = N
 
 """
     NamedDist(d::NamedTuple{N})
