@@ -333,6 +333,8 @@ using ComradeBase
 
     @testset "NamedDist" begin
         d1 = NamedDist((a=Normal(), b = Uniform(), c = MvNormal(ones(2))))
+        @test propertynames(d1) == (:a, :b, :c)
+        @test d1.a == Normal()
         x1 = rand(d1)
         @test rand(d1, 2) isa Vector{<:NamedTuple}
         @test size(rand(d1, 2)) == (2,)
