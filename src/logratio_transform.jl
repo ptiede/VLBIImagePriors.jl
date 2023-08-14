@@ -107,7 +107,7 @@ julia> to_real(CenteredLR(), y)
 julia> to_real(AdditiveLR(), y)
 """
 function to_real(t::LogRatioTransform, y)
-    @argcheck sum(y) ≈ 1
+    # @argcheck sum(y) ≈ 1
     x = similar(y)
     to_real!(t, x, y)
     return x
@@ -180,7 +180,7 @@ function ChainRulesCore.rrule(::typeof(to_simplex), t::LogRatioTransform, y)
 end
 
 function ChainRulesCore.rrule(::typeof(to_real), t::LogRatioTransform, y)
-    x = to_simplex(t, y)
+    x = to_real(t, y)
     function _to_simplex_pullback(Δ)
         Δf = NoTangent()
         dx = zero(x)
@@ -192,13 +192,17 @@ function ChainRulesCore.rrule(::typeof(to_real), t::LogRatioTransform, y)
     return x, _to_simplex_pullback
 end
 
+
+checkx(x) = @argcheck sum(x) ≈ 1
+EnzymeRules.inactive(::typeof(checkx), args...) = nothing
+
 """
     clr!(x, y)
 
 Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in Δⁿ
 """
 function clr!(x, y)
-    @assert sum(y) ≈ 1 "$(sum(x)) is not unity"
+    checkx(y)
     x .= log.(y)
     x .= x .- sum(x)/length(x)
     return nothing
@@ -210,7 +214,7 @@ end
 Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in Δⁿ
 """
 function alr!(x, y)
-    @assert sum(y) ≈ 1 "$(sum(y)) is not unity"
+    checkx(y)
     x[begin:end-1] .= log.(@view y[begin:end-1]) .- log(y[end])
     x[end] = 0
     return nothing

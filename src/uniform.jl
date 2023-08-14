@@ -29,6 +29,7 @@ Base.size(d::ImageUniform) = (d.nx,d.ny)
 Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b-d.a)/2, size(d)...)
 
 HC.asflat(d::ImageUniform) = TV.as(Matrix, TV.as(Real, d.a, d.b), d.nx, d.ny)
+# HC.ascube(d::ImageUniform) = HC.ArrayHC(Dists.product_distribution(fill(Dists.Uniform(), size(d))), size(d))
 
 function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
     return (size(d) == size(x)) && !any(x-> (d.a >x)||(x> d.b), x)

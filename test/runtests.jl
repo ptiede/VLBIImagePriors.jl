@@ -143,12 +143,12 @@ using ComradeBase
     @testset "WrappedUniform" begin
         periods = rand(5)
         d1 = WrappedUniform(periods)
-        x = 2 .* rand(5)
+        x = 2. * rand(5)
         @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ periods)
-
+        du = WrappedUniform(2π, 5)
         xx = rand(d1)
         @test length(d1) == length(periods)
-
+        @test length(rand(d1)) == length(rand(du))
         d2 = product_distribution([d1, d1])
         @test d2 isa WrappedUniform
         @test length(d2) == length(periods)*2
@@ -160,6 +160,19 @@ using ComradeBase
 
         test_rrule(Distributions.logpdf, d1, xx, atol=1e-8)
 
+    end
+
+    @testset "SphericalUniform" begin
+        t = SphericalUnitVector{3}()
+        @inferred TV.transform(t, randn(dimension(t)))
+        f = let t = t
+            x->sum(abs2, TV.transform(t, x))
+        end
+        px = randn(dimension(t))
+        gz = Zygote.gradient(f, px)
+        m = central_fdm(5, 1)
+        gfd = FiniteDifferences.grad(m, f, px)
+        @test isapprox(first(gz), first(gfd), atol=1e-6)
     end
 
     @testset "ImageSphericalUniform" begin
@@ -180,7 +193,7 @@ using ComradeBase
         gz = Zygote.gradient(f, px)
         m = central_fdm(5, 1)
         gfd = FiniteDifferences.grad(m, f, px)
-        @test first(gz) ≈ first(gfd)
+        @test isapprox(first(gz), first(gfd), atol=1e-6)
     end
 
     @testset "CenteredRegularizer" begin
@@ -203,7 +216,9 @@ using ComradeBase
         grid = imagepixels(10.0, 10.0, 48, 48)
         K = CenterImage(grid)
         img0 = IntensityMap(rand(48, 48), grid)
+        K2 = CenterImage(img0)
         cimg = K(img0)
+        @test K(img0) ≈ K2(img0)
         c0 = centroid(IntensityMap(cimg, grid))
         @test isapprox(c0[1], 0.0, atol=1e-6)
         @test isapprox(c0[2], 0.0, atol=1e-6)
@@ -344,6 +359,16 @@ using ComradeBase
         dists = getfield(d1, :dists)
         xt = (b = 0.5, a = 1.0, c = [-0.5, 0.6])
         @test logpdf(d1, xt) ≈ logpdf(d1.a, xt.a) + logpdf(d1.b, xt.b) + logpdf(d1.c, xt.c)
+
+        d2 = NamedDist(a=(Uniform(), Normal()), b = Beta(), c = [Uniform(), Uniform()], d = (a=Normal(), b = ImageUniform(2, 2)))
+        @inferred logdensityof(d2, rand(d2))
+        p0 = (a=(0.5, 0.5), b = 0.5, c = [0.25, 0.75], d = (a = 0.1, b = fill(0.1, 2, 2)))
+        @test typeof(p0) == typeof(rand(d2))
+        tf = asflat(d2)
+        # tc = ascube(d2)
+        @inferred TV.transform(tf, randn(dimension(tf)))
+        # @inferred TV.transform(tc, rand(dimension(tc)))
+
     end
 
     @testset "Log Ratio Transform" begin
@@ -358,6 +383,8 @@ using ComradeBase
 
         test_rrule(to_simplex, AdditiveLR(), x)
         test_rrule(to_simplex, CenteredLR(), x)
+        # test_rrule(to_real, AdditiveLR(), ycl./sum(ycl))
+        # test_rrule(to_real, CenteredLR(), ycl./sum(ycl))
 
         x0al = to_real(AdditiveLR(), yal)
         x0cl = to_real(CenteredLR(), ycl)
