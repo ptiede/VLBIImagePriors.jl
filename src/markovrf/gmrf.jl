@@ -76,7 +76,7 @@ function GaussMarkovRandomField(mean::AbstractMatrix, λ, Σ)
 end
 
 function GaussMarkovRandomField(λ, Σ, dims)
-    T = promote_type(λ, Σ)
+    T = promote_type(typeof(λ), typeof(Σ))
     return GaussMarkovRandomField(zeros(T, dims), convert(T, λ), convert(T, Σ))
 end
 
