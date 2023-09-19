@@ -226,11 +226,22 @@ using ComradeBase
     end
 
     @testset "GMRF" begin
+        function moment_test(d, nsamples=100_000, atol=5e-2)
+            c = cov(d)
+            s = reduce(hcat, reshape.(rand(d, nsamples), :))
+            cs = cov(s; dims=2)
+            ms = reshape(mean(s; dims=2), size(d))
+            @test isapprox(c, cs; atol)
+            @test isapprox(mean(d), ms; atol)
+        end
+
         @testset "Tall" begin
             mimg = rand(10, 8)
-            d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
+            d1 = GaussMarkovRandomField(mimg, 3.0, 0.2)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
+            d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
+
+            moment_test(d1)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -246,9 +257,9 @@ using ComradeBase
 
         @testset "Wide" begin
             mimg = rand(8, 10)
-            d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
+            d1 = GaussMarkovRandomField(mimg, 3.0, 0.2)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
+            d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -264,9 +275,9 @@ using ComradeBase
 
         @testset "Equal" begin
             mimg = rand(10, 10)
-            d1 = GaussMarkovRandomField(mimg, 3.0, 2.0)
+            d1 = GaussMarkovRandomField(mimg, 3.0, 0.2)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(mimg, 3.0, 2.0, c)
+            d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
             trf, d = standardize(c, Normal)
 
             p = trf(rand(d), mimg, 1.0, 0.1, 0.0)
@@ -383,8 +394,21 @@ using ComradeBase
 
         test_rrule(to_simplex, AdditiveLR(), x)
         test_rrule(to_simplex, CenteredLR(), x)
-        # test_rrule(to_real, AdditiveLR(), ycl./sum(ycl))
-        # test_rrule(to_real, CenteredLR(), ycl./sum(ycl))
+
+        # far(x) = sum(abs2, to_real(AdditiveLR(), yal))
+        # s = central_fdm(5,1)
+        # gf_ar = first(grad(s, far, yal))
+        # gz_ar = first(Zygote.gradient(far, yal))
+        # @test isapprox(first(gf_ar), first(gz_ar), atol=1e-6)
+
+        # fcr(x) = sum(abs2, to_real(CenteredLR(), yal))
+        # gf_cr = first(grad(s, fcr, yal))
+        # gz_cr = first(Zygote.gradient(fcr, yal))
+        # @test isapprox(first(gf_cr), first(gz_cr), atol=1e-6)
+
+
+        # test_rrule(to_real, AdditiveLR(), yal)
+        # test_rrule(to_real, CenteredLR(), ycl)
 
         x0al = to_real(AdditiveLR(), yal)
         x0cl = to_real(CenteredLR(), ycl)

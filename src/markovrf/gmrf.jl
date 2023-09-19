@@ -136,7 +136,7 @@ function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMa
     Q = Dists.invcov(d)
     cQ = cholesky(Q)
     z = randn(rng, length(x))
-    x .= Dists.mean(d) .+ reshape(cQ\z, size(d))
+    x .= Dists.mean(d) .+ reshape(cQ.PtL'\z, size(d))
 end
 
 
