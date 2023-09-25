@@ -84,14 +84,14 @@ end
 # Compute the square manoblis distance or the <x,Qx> inner product.
 function sq_manoblis(::MarkovRandomFieldCache, ΔI::AbstractMatrix, λ, Σ)
     s = igrmf_1n(ΔI)
-    return (inv(Σ))*(s/λ^2 + sum(abs2, ΔI))
+    return (λ^2*inv(Σ))*(s/λ^2 + sum(abs2, ΔI))
 end
 
 function LinearAlgebra.logdet(d::MarkovRandomFieldCache, λ, Σ)
-    return sum(log,inv(Σ).*(1 .+ inv(λ^2).*d.λQ))
+    return sum(log, λ^2*inv(Σ).*(1 .+ inv(λ^2).*d.λQ))
 end
 
-Dists.invcov(d::MarkovRandomFieldCache, λ, Σ) =  inv(Σ).*(d.Λ./λ^2 .+ d.D)
+Dists.invcov(d::MarkovRandomFieldCache, λ, Σ) =  λ^2*inv(Σ).*(d.Λ./λ^2 .+ d.D)
 
 function eigenvals(dims)
     m, n = dims
