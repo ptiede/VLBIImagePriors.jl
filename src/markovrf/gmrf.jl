@@ -175,16 +175,18 @@ struct MarkovTransform{TΛ, P}
     p::P
 end
 
-function (θ::MarkovTransform)(x::AbstractArray, mean, σ, λ, ν=0)
+function (θ::MarkovTransform)(x::AbstractArray, mean, σ, κ, ν=1)
     (;Λ, p) = θ
     T = eltype(x)
-    κ = sqrt(8(ν+1))*λ
-    τ = σ*κ^ν*sqrt(ν+1)
+    τ = σ*κ^ν*sqrt(ν)
     rast = (@. τ*(κ^2 + Λ)^(-(ν+1)/2)*x)
     return real.(p*rast.*complex(one(T), one(T)))./sqrt(prod(size(Λ))) .+ mean
 end
 
 export standardize
 function standardize(d::MarkovRandomFieldCache, ::Type{<:Dists.Normal})
-    return MarkovTransform(d.λQ, plan_fft(d.λQ)), StdNormal(size(d.λQ))
+    kx = fftfreq(size(d.λQ, 1))
+    ky = fftfreq(size(d.λQ, 2))
+    k2 = kx.*kx .+ ky'.*ky'
+    return MarkovTransform(k2, plan_fft(d.λQ)), StdNormal(size(d.λQ))
 end
