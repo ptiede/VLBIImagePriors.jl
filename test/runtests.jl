@@ -395,16 +395,17 @@ using ComradeBase
         test_rrule(to_simplex, AdditiveLR(), x)
         test_rrule(to_simplex, CenteredLR(), x)
 
-        # far(x) = sum(abs2, to_real(AdditiveLR(), yal))
-        # s = central_fdm(5,1)
-        # gf_ar = first(grad(s, far, yal))
-        # gz_ar = first(Zygote.gradient(far, yal))
-        # @test isapprox(first(gf_ar), first(gz_ar), atol=1e-6)
+        y = rand(10, 10) .+ 0.5
+        far(x) = sum(abs2, to_real(AdditiveLR(), x/sum(x)))
+        s = central_fdm(5,1)
+        gf_ar = first(grad(s, far, y))
+        gz_ar = first(Zygote.gradient(far, y))
+        @test isapprox(first(gf_ar), first(gz_ar), atol=1e-6)
 
-        # fcr(x) = sum(abs2, to_real(CenteredLR(), yal))
-        # gf_cr = first(grad(s, fcr, yal))
-        # gz_cr = first(Zygote.gradient(fcr, yal))
-        # @test isapprox(first(gf_cr), first(gz_cr), atol=1e-6)
+        fcr(x) = sum(abs2, to_real(CenteredLR(), x/sum(x)))
+        gf_cr = first(grad(s, fcr, y))
+        gz_cr = first(Zygote.gradient(fcr, y))
+        @test isapprox(first(gf_cr), first(gz_cr), atol=1e-6)
 
 
         # test_rrule(to_real, AdditiveLR(), yal)
