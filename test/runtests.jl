@@ -8,6 +8,7 @@ import TransformVariables as TV
 using HypercubeTransform
 using Test
 using ComradeBase
+using Serialization
 
 @testset "VLBIImagePriors.jl" begin
 
@@ -279,6 +280,13 @@ using ComradeBase
             c = MarkovRandomFieldCache(mimg)
             d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
             trf, d = standardize(c, Normal)
+
+            serialize("test.jls" ,trf)
+            trf_2 = deserialize("test.jls")
+            rm("test.jls")
+
+            x = rand(d)
+            @test trf(x, mimg, 1.0, 0.1, 0.0) == trf_2(x, mimg, 1.0, 0.1, 0.0)
 
             p = trf(rand(d), mimg, 1.0, 0.1, 0.0)
             trf(rand(d), mimg, 1.0, 0.1, 1.0)
