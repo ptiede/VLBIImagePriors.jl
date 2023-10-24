@@ -15,11 +15,10 @@ $(FIELDS)
 # Examples
 
 ```julia
-julia> mimg = zeros(6, 6) # The mean image
 julia> ρ, Σ = 2.0, 1.0
-julia> d = TDistMarkovRandomField(mimg, ρ, Σ)
-julia> cache = MarkovRandomFieldCache(mimg) # now instead construct the cache
-julia> d2 = TDistMarkovRandomField(mimg, ρ, Σ, cache)
+julia> d = TDistMarkovRandomField(ρ, Σ, (32, 32))
+julia> cache = MarkovRandomFieldCache(Float64, (32, 32)) # now instead construct the cache
+julia> d2 = TDistMarkovRandomField(ρ, Σ, cache)
 julia> invcov(d) ≈ invcov(d2)
 true
 ```

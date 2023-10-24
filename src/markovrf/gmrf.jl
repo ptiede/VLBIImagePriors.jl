@@ -25,11 +25,10 @@ $(FIELDS)
 # Example
 
 ```julia
-julia> mimg = zeros(6, 6) # The mean image
 julia> ρ, Σ = 2.0, 1.0
-julia> d = GaussMarkovRandomField(mimg, ρ, Σ)
-julia> cache = MarkovRandomFieldCache(mimg) # now instead construct the cache
-julia> d2 = GaussMarkovRandomField(mimg, ρ, Σ, cache)
+julia> d = GaussMarkovRandomField(ρ, Σ, (32, 32))
+julia> cache = MarkovRandomFieldCache(Float64, (32, 32)) # now instead construct the cache
+julia> d2 = GaussMarkovRandomField(ρ, Σ, cache)
 julia> invcov(d) ≈ invcov(d2)
 true
 ```
@@ -72,7 +71,7 @@ end
     GaussMarkovRandomField(ρ, Σ, dims)
 
 Constructs a first order zero-mean Gaussian Markov random field with
-dimensions `size(img)`, correlation `ρ` and diagonal covariance `Σ`.
+dimensions `dims`, correlation `ρ` and diagonal covariance `Σ`.
 """
 function GaussMarkovRandomField(ρ::Number, Σ::Number, dims::Dims{2})
     T = promote_type(typeof(ρ), typeof(Σ))
