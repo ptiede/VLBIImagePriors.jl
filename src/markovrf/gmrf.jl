@@ -1,6 +1,7 @@
 using SparseArrays
 using LinearAlgebra
 using ComradeBase
+using Serialization
 
 export GaussMarkovRandomField
 
@@ -144,6 +145,19 @@ struct MarkovTransform{TΛ, P}
     Λ::TΛ
     p::P
 end
+
+function Serialization.serialize(s::Serialization.AbstractSerializer, cache::MarkovTransform)
+    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
+    Serialization.serialize(s, typeof(cache))
+    Serialization.serialize(s, cache.Λ)
+end
+
+function Serialization.deserialize(s::AbstractSerializer, ::Type{<:MarkovTransform})
+    Λ = Serialization.deserialize(s)
+    p = plan_fft(Λ)
+    return MarkovTransform(Λ, p)
+end
+
 
 function (θ::MarkovTransform)(x::AbstractArray, mean, σ, κ, ν=1)
     (;Λ, p) = θ
