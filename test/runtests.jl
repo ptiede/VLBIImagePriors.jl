@@ -9,6 +9,17 @@ using HypercubeTransform
 using Test
 using ComradeBase
 
+function moment_test(d, nsamples=100_000, atol=5e-2)
+    c = cov(d)
+    s = reduce(hcat, reshape.(rand(d, nsamples), :))
+    cs = cov(s; dims=2)
+    ms = reshape(mean(s; dims=2), size(d))
+    @test isapprox(c, cs; atol)
+    @test isapprox(mean(d), ms; atol)
+end
+
+
+
 @testset "VLBIImagePriors.jl" begin
 
     npix = 10
@@ -226,28 +237,18 @@ using ComradeBase
     end
 
     @testset "GMRF" begin
-        function moment_test(d, nsamples=100_000, atol=5e-2)
-            c = cov(d)
-            s = reduce(hcat, reshape.(rand(d, nsamples), :))
-            cs = cov(s; dims=2)
-            ms = reshape(mean(s; dims=2), size(d))
-            @test isapprox(c, cs; atol)
-            @test isapprox(mean(d), ms; atol)
-        end
-
         @testset "Tall" begin
             mimg = rand(10, 8)
-            d1 = GaussMarkovRandomField(mimg, 3.0, 0.2)
+            d1 = GaussMarkovRandomField(3.0, 0.2, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
+            d2 = GaussMarkovRandomField(3.0, 0.2, c)
 
             moment_test(d1)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
             Q = invcov(d1)
-            b = Q*reshape(mimg, :)
-            dd = MvNormalCanon(b, Array(Q))
+            dd = MvNormalCanon(Array(Q))
 
             @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
 
@@ -257,15 +258,14 @@ using ComradeBase
 
         @testset "Wide" begin
             mimg = rand(8, 10)
-            d1 = GaussMarkovRandomField(mimg, 3.0, 0.2)
+            d1 = GaussMarkovRandomField(3.0, 0.2, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
+            d2 = GaussMarkovRandomField(3.0, 0.2, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
             Q = invcov(d1)
-            b = Q*reshape(mimg, :)
-            dd = MvNormalCanon(b, Array(Q))
+            dd = MvNormalCanon(Array(Q))
 
             @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
 
@@ -275,9 +275,9 @@ using ComradeBase
 
         @testset "Equal" begin
             mimg = rand(10, 10)
-            d1 = GaussMarkovRandomField(mimg, 3.0, 0.2)
+            d1 = GaussMarkovRandomField(3.0, 0.2, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(mimg, 3.0, 0.2, c)
+            d2 = GaussMarkovRandomField(3.0, 0.2, c)
             trf, d = standardize(c, Normal)
 
             p = trf(rand(d), mimg, 1.0, 0.1, 0.0)
@@ -290,8 +290,7 @@ using ComradeBase
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
             Q = invcov(d1)
-            b = Q*reshape(mimg, :)
-            dd = MvNormalCanon(b, Array(Q))
+            dd = MvNormalCanon(Array(Q))
 
             @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
 
@@ -310,9 +309,9 @@ using ComradeBase
     @testset "TDistMRF" begin
         @testset "Tall" begin
             mimg = rand(10, 8)
-            d1 = TDistMarkovRandomField(mimg, 3.0, 2.0, 1.0)
+            d1 = TDistMarkovRandomField(3.0, 2.0, 1.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = TDistMarkovRandomField(mimg, 3.0, 2.0, 1.0, c)
+            d2 = TDistMarkovRandomField(3.0, 2.0, 1.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -321,9 +320,9 @@ using ComradeBase
 
         @testset "Wide" begin
             mimg = rand(8, 10)
-            d1 = TDistMarkovRandomField(mimg, 3.0, 2.0, 5.0)
+            d1 = TDistMarkovRandomField(3.0, 2.0, 5.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = TDistMarkovRandomField(mimg, 3.0, 2.0, 5.0, c)
+            d2 = TDistMarkovRandomField(3.0, 2.0, 5.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -332,9 +331,9 @@ using ComradeBase
 
         @testset "Equal" begin
             mimg = rand(10, 10)
-            d1 = TDistMarkovRandomField(mimg, 3.0, 2.0, 100.0)
+            d1 = TDistMarkovRandomField(3.0, 2.0, 100.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = TDistMarkovRandomField(mimg, 3.0, 2.0, 100.0, c)
+            d2 = TDistMarkovRandomField(3.0, 2.0, 100.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
