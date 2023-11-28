@@ -63,8 +63,8 @@ struct CenterImage{K,D}
     dims::D
     function CenterImage(X, Y)
         # normalize by the step to make sure the numerics are alright
-        x = ones(length(Y)).*X'./step(X)
-        y = Y.*ones(length(X))'./step(Y)
+        x = X.*ones(length(Y))'./step(X)
+        y = ones(length(X)).*Y'./step(Y)
         XY = zeros(2, length(x))
         XY[1,:] .= reshape(x, :)
         XY[2,:] .= reshape(y, :)
