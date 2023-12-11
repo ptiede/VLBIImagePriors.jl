@@ -35,14 +35,47 @@ struct MarkovRandomFieldCache{A, TD, M}
     λQ::M
 end
 
+struct ConditionalMarkov{B,C}
+    cache::C
+end
+
+"""
+    ConditionalMarkov(D, args...)
+
+Creates a Conditional Markov measure, that behaves as a Julia functional. The functional
+returns a probability measure defined by the arguments passed to the functional.
+
+# Arguments
+
+ - `D`: The base distribution or measure of the random field. Currently `Normal` and `TDist`
+        are valid random fields
+ - `args`: Additional arguments used to construct the Markov random field cache.
+           See [`MarkovRandomFieldCache`](@ref) for more information.
+
+# Example
+```julia-repl
+julia> grid = imagepixels(10.0, 10.0, 64, 64)
+julia> ℓ = ConditionalMarkov(Normal, grid)
+julia> d = ℓ(16) # This is now a distribution
+julia> rand(d)
+```
+"""
+function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist}}, args...)
+    c = MarkovRandomFieldCache(args...)
+    return ConditionalMarkov{D, typeof(c)}(c)
+end
+
+
+(c::ConditionalMarkov{<:Dists.Normal})(ρ)     = GaussMarkovRandomField(ρ, c.cache)
+(c::ConditionalMarkov{<:Dists.TDist})(ρ, ν)   = TDistMarkovRandomField(ρ, ν, c.cache)
+
+
 Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
 
 """
     MarkovRandomFieldCache(mean::AbstractMatrix)
 
-Contructs the [`MarkovRandomFieldCache`](@ref) from the mean image `mean`.
-This is useful for hierarchical priors where you change the hyperparameters
-of the [`GaussMarkovRandomField`](@ref), ρ and `Σ`.
+Contructs the [`MarkovRandomFieldCache`](@ref) cache.
 """
 function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2})
 
@@ -84,16 +117,16 @@ end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
-function sq_manoblis(::MarkovRandomFieldCache, ΔI::AbstractMatrix, ρ, Σ)
+function sq_manoblis(::MarkovRandomFieldCache, ΔI::AbstractMatrix, ρ)
     s = igrmf_1n(ΔI)
-    return (inv(Σ))*(s + inv(ρ^2)*sum(abs2, ΔI))
+    return (s + inv(ρ^2)*sum(abs2, ΔI))
 end
 
-function LinearAlgebra.logdet(d::MarkovRandomFieldCache, ρ, Σ)
-    return sum(log, inv(Σ).*(inv(ρ^2) .+ d.λQ))
+function LinearAlgebra.logdet(d::MarkovRandomFieldCache, ρ)
+    return sum(log, (inv(ρ^2) .+ d.λQ))
 end
 
-Dists.invcov(d::MarkovRandomFieldCache, ρ, Σ) =  inv(Σ).*(d.Λ .+ d.D.*inv(ρ^2))
+Dists.invcov(d::MarkovRandomFieldCache, ρ) =  (d.Λ .+ d.D.*inv(ρ^2))
 
 function eigenvals(dims)
     m, n = dims

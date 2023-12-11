@@ -14,7 +14,7 @@ end
 
 
 function Dists.invcov(d::MarkovRandomField)
-    return Dists.invcov(d.cache, d.ρ, d.Σ)
+    return Dists.invcov(d.cache, d.ρ)
 end
 
 

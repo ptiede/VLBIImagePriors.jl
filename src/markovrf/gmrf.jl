@@ -3,20 +3,20 @@ using LinearAlgebra
 using ComradeBase
 using Serialization
 
-export GaussMarkovRandomField
+export GaussMarkovRandomField, ConditionalMarkov
 
 """
     $(TYPEDEF)
 
-A image prior based off of the first-order zero mean Gaussian Markov random field.
+A image prior based off of the first-order zero mean unit variance Gaussian Markov random field.
 This prior is similar to the combination of *total squared variation* TSV and L₂ norm, and
 is given by
 
-    (π²Σ)⁻¹ TSV(I) + (ρ^2π²Σ)L₂(I) + lognorm(ρ, Σ)
+    TSV(I) + (ρ²π²)L₂(I) + lognorm(ρ)
 
-where ρ and Σ are the correlation length and variance of the random field and
-`lognorm(ρ,Σ)` is the log-normalization of the random field. This normalization is needed to
-jointly infer `I` and the hyperparameters ρ, Σ.
+where ρ is the correlation length the random field and
+`lognorm(ρ)` is the log-normalization of the random field. This normalization is needed to
+jointly infer `I` and the hyperparameters ρ.
 
 
 # Fields
@@ -25,10 +25,10 @@ $(FIELDS)
 # Example
 
 ```julia
-julia> ρ, Σ = 2.0, 1.0
-julia> d = GaussMarkovRandomField(ρ, Σ, (32, 32))
+julia> ρ = 10.0
+julia> d = GaussMarkovRandomField(ρ, (32, 32))
 julia> cache = MarkovRandomFieldCache(Float64, (32, 32)) # now instead construct the cache
-julia> d2 = GaussMarkovRandomField(ρ, Σ, cache)
+julia> d2 = GaussMarkovRandomField(ρ, cache)
 julia> invcov(d) ≈ invcov(d2)
 true
 ```
@@ -38,10 +38,6 @@ struct GaussMarkovRandomField{T<:Number,C} <: MarkovRandomField
     The correlation length of the random field.
     """
     ρ::T
-    """
-    The variance of the random field
-    """
-    Σ::T
     """
     The Markov Random Field cache used to define the specific Markov random field class used.
     """
@@ -57,49 +53,46 @@ Dists.cov(d::GaussMarkovRandomField)  = inv(Array(Dists.invcov(d)))
 HC.asflat(d::GaussMarkovRandomField) = TV.as(Matrix, size(d)...)
 
 """
-    GaussMarkovRandomField(ρ, Σ, img::AbstractArray)
+    GaussMarkovRandomField(ρ, img::AbstractArray)
 
 Constructs a first order zero-mean Gaussian Markov random field with
-dimensions `size(img)`, correlation `ρ` and diagonal covariance `Σ`.
+dimensions `size(img)`, correlation `ρ` and unit covariance.
 """
-function GaussMarkovRandomField(ρ::Number, Σ::Number, img::AbstractMatrix)
+function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix)
     cache = MarkovRandomFieldCache(eltype(img), size(img))
-    return GaussMarkovRandomField(ρ, Σ, cache)
+    return GaussMarkovRandomField(ρ, cache)
 end
 
 """
-    GaussMarkovRandomField(ρ, Σ, dims)
+    GaussMarkovRandomField(ρ, dims)
 
-Constructs a first order zero-mean Gaussian Markov random field with
-dimensions `dims`, correlation `ρ` and diagonal covariance `Σ`.
+Constructs a first order zero-mean unit variance Gaussian Markov random field with
+dimensions `dims`, correlation `ρ`.
 """
-function GaussMarkovRandomField(ρ::Number, Σ::Number, dims::Dims{2})
-    T = promote_type(typeof(ρ), typeof(Σ))
-    cache = MarkovRandomFieldCache(T, dims)
-    return GaussMarkovRandomField{T, typeof(cache)}(convert(T, ρ), convert(T, Σ), cache)
+function GaussMarkovRandomField(ρ::Number, dims::Dims{2})
+    cache = MarkovRandomFieldCache(typeof(ρ), dims)
+    return GaussMarkovRandomField(ρ, cache)
 end
 
 
 """
-    GaussMarkovRandomField(ρ, Σ, cache::MarkovRandomFieldCache)
+    GaussMarkovRandomField(ρ, cache::MarkovRandomFieldCache)
 
-Constructs a first order Gaussian Markov random field using the precomputed cache `cache`.
-`ρ` and diagonal covariance `Σ` and the precomputed MarkovRandomFieldCache `cache`.
-If `mean` is not included then it is assume the mean is identically zero.
+Constructs a first order zero-mean and unit variance Gaussian Markov random field using the
+precomputed cache `cache`.
 """
-function GaussMarkovRandomField(ρ::Number, Σ::Number, cache::MarkovRandomFieldCache)
-    T = promote_type(typeof(ρ), typeof(Σ))
-    GaussMarkovRandomField{T, typeof(cache)}(convert(T,ρ), convert(T,Σ), cache)
+function GaussMarkovRandomField(ρ::Number, cache::MarkovRandomFieldCache)
+    GaussMarkovRandomField{typeof(ρ), typeof(cache)}(ρ, cache)
 end
 
 function lognorm(d::GaussMarkovRandomField)
     N = length(d)
-    return (logdet(d.cache, d.ρ, d.Σ) - Dists.log2π*N)/2
+    return (logdet(d.cache, d.ρ) - Dists.log2π*N)/2
 end
 
 function unnormed_logpdf(d::GaussMarkovRandomField, I::AbstractMatrix)
-    (;ρ, Σ) = d
-    return -sq_manoblis(d.cache, I, ρ, Σ)/2
+    (;ρ) = d
+    return -sq_manoblis(d.cache, I, ρ)/2
 end
 
 function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMatrix{<:Real})

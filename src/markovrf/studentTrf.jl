@@ -15,10 +15,10 @@ $(FIELDS)
 # Examples
 
 ```julia
-julia> ρ, Σ = 2.0, 1.0
-julia> d = TDistMarkovRandomField(ρ, Σ, (32, 32))
+julia> ρ, ν = 16.0, 1.0
+julia> d = TDistMarkovRandomField(ρ, ν, (32, 32))
 julia> cache = MarkovRandomFieldCache(Float64, (32, 32)) # now instead construct the cache
-julia> d2 = TDistMarkovRandomField(ρ, Σ, cache)
+julia> d2 = TDistMarkovRandomField(ρ, ν, cache)
 julia> invcov(d) ≈ invcov(d2)
 true
 ```
@@ -28,10 +28,6 @@ struct TDistMarkovRandomField{T<:Number,C} <: MarkovRandomField
     The correlation length of the random field.
     """
     ρ::T
-    """
-    The variance of the random field
-    """
-    Σ::T
     """
     The student T "degrees of freedom parameter which ≥ 1 for a proper prior
     """
@@ -50,37 +46,52 @@ Dists.cov(d::TDistMarkovRandomField)  = inv(Array(Dists.invcov(d)))
 HC.asflat(d::TDistMarkovRandomField) = TV.as(Matrix, size(d)...)
 
 """
-    TDistMarkovRandomField(ρ, Σ, img::AbstractArray)
+    TDistMarkovRandomField(ρ, ν, img::AbstractArray)
 
-Constructs a first order TDist Markov random field with mean image
-`mean` and correlation `ρ` and diagonal covariance `Σ`.
+Constructs a first order TDist Markov random field with zero mean if it exists,
+correlation `ρ` and degrees of freedom ν.
 """
-function TDistMarkovRandomField(ρ::Number, Σ::Number, ν::Number, img::AbstractMatrix)
+function TDistMarkovRandomField(ρ::Number, ν::Number, img::AbstractMatrix)
     cache = MarkovRandomFieldCache(eltype(img), size(img))
-    return TDistMarkovRandomField(ρ, Σ, ν, cache)
+    return TDistMarkovRandomField(ρ, ν, cache)
 end
 
 """
-    TDistMarkovRandomField(ρ, Σ, cache::MarkovRandomFieldCache)
+    TDistMarkovRandomField(ρ, ν, cache::MarkovRandomFieldCache)
 
 Constructs a first order TDist Markov random field with zero mean ,correlation `ρ`,
-diagonal covariance `Σ`, and the precomputed MarkovRandomFieldCache `cache`.
+degrees of freedom `ν`, and the precomputed MarkovRandomFieldCache `cache`.
 """
-function TDistMarkovRandomField(ρ::Number, Σ::Number, ν::Number, cache::MarkovRandomFieldCache)
-    T = promote_type(typeof(ρ), typeof(Σ), typeof(ν))
-    return TDistMarkovRandomField{T, typeof(cache)}(convert(T,ρ), convert(T,Σ), convert(T,ν), cache)
+function TDistMarkovRandomField(ρ::Number, ν::Number, cache::MarkovRandomFieldCache)
+    T = promote_type(typeof(ρ), typeof(ν))
+    return TDistMarkovRandomField{T, typeof(cache)}(convert(T,ρ), convert(T,ν), cache)
 end
+
+"""
+    TDistMarkovRandomField(ρ, ν, dims)
+
+Constructs a first order TDist Markov random field with zero mean ,correlation `ρ`,
+degrees of freedom `ν`, with dimension `dims`.
+"""
+function TDistMarkovRandomField(ρ::Number, ν::Number, dims::Dims{2})
+    T = promote_type(typeof(ρ), typeof(ν))
+    cache = MarkovRandomFieldCache(typeof(ρ), dims)
+    return TDistMarkovRandomField{T, typeof(cache)}(convert(T,ρ), convert(T,ν), cache)
+end
+
+
+
 
 function lognorm(d::TDistMarkovRandomField)
     ν = d.ν
     N = length(d)
-    det = logdet(d.cache, d.ρ, d.Σ)
+    det = logdet(d.cache, d.ρ)
     return loggamma((ν+N)/2) - loggamma(ν/2) - N/2*log(ν*π) + det/2
 end
 
 function unnormed_logpdf(d::TDistMarkovRandomField, I::AbstractMatrix)
-    (;ρ, Σ, ν) = d
-    sq = sq_manoblis(d.cache, I, ρ, Σ)
+    (;ρ, ν) = d
+    sq = sq_manoblis(d.cache, I, ρ)
     return -((ν+length(I))/2)*log1p(inv(ν)*sq)
 end
 

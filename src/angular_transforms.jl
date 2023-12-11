@@ -87,7 +87,7 @@ TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::NTuple{N, 
 
 function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}
     T = TV.robust_eltype(y)
-    index2 = index + N +1
+    index2 = index + N + 1
     # normalized vector
     vy = NTuple{N+1,T}(@view(y[index:(index2-1)]))
     sly = sum(abs2, vy)

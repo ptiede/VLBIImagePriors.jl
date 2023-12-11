@@ -10,7 +10,7 @@ using Test
 using ComradeBase
 using Serialization
 
-function moment_test(d, nsamples=100_000, atol=5e-2)
+function moment_test(d, nsamples=2_000_000, atol=5e-2)
     c = cov(d)
     s = reduce(hcat, reshape.(rand(d, nsamples), :))
     cs = cov(s; dims=2)
@@ -305,9 +305,9 @@ end
     @testset "GMRF" begin
         @testset "Tall" begin
             mimg = rand(10, 8)
-            d1 = GaussMarkovRandomField(3.0, 0.2, mimg)
+            d1 = GaussMarkovRandomField(3.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(3.0, 0.2, c)
+            d2 = GaussMarkovRandomField(3.0, c)
 
             moment_test(d1)
 
@@ -324,9 +324,9 @@ end
 
         @testset "Wide" begin
             mimg = rand(8, 10)
-            d1 = GaussMarkovRandomField(3.0, 0.2, mimg)
+            d1 = GaussMarkovRandomField(3.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(3.0, 0.2, c)
+            d2 = GaussMarkovRandomField(3.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -341,9 +341,9 @@ end
 
         @testset "Equal" begin
             mimg = rand(10, 10)
-            d1 = GaussMarkovRandomField(3.0, 0.2, mimg)
+            d1 = GaussMarkovRandomField(3.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(3.0, 0.2, c)
+            d2 = GaussMarkovRandomField(3.0, c)
             trf, d = standardize(c, Normal)
 
             serialize("test.jls" ,trf)
@@ -375,16 +375,32 @@ end
         @testset "rrules" begin
             test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
         end
+    end
 
+    @testset "ConditionalMarkov" begin
+        grid = imagepixels(10.0, 5.0, 64, 62)
+        c = ConditionalMarkov(Normal, grid)
+        d = c(5.0)
+        s = rand(d)
+
+        dm = GaussMarkovRandomField(5.0, (64, 62))
+        @test logdensityof(d, s) == logdensityof(dm, s)
+
+        c = ConditionalMarkov(TDist, grid)
+        d = c(5.0, 1.0)
+        s = rand(d)
+
+        dm = TDistMarkovRandomField(5.0, 1.0, (64, 62))
+        @test logdensityof(d, s) == logdensityof(dm, s)
 
     end
 
     @testset "TDistMRF" begin
         @testset "Tall" begin
             mimg = rand(10, 8)
-            d1 = TDistMarkovRandomField(3.0, 2.0, 1.0, mimg)
+            d1 = TDistMarkovRandomField(3.0, 1.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = TDistMarkovRandomField(3.0, 2.0, 1.0, c)
+            d2 = TDistMarkovRandomField(3.0, 1.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -393,9 +409,9 @@ end
 
         @testset "Wide" begin
             mimg = rand(8, 10)
-            d1 = TDistMarkovRandomField(3.0, 2.0, 5.0, mimg)
+            d1 = TDistMarkovRandomField(3.0, 5.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = TDistMarkovRandomField(3.0, 2.0, 5.0, c)
+            d2 = TDistMarkovRandomField(3.0, 5.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
@@ -404,9 +420,9 @@ end
 
         @testset "Equal" begin
             mimg = rand(10, 10)
-            d1 = TDistMarkovRandomField(3.0, 2.0, 100.0, mimg)
+            d1 = TDistMarkovRandomField(3.0, 100.0, mimg)
             c = MarkovRandomFieldCache(mimg)
-            d2 = TDistMarkovRandomField(3.0, 2.0, 100.0, c)
+            d2 = TDistMarkovRandomField(3.0, 100.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
