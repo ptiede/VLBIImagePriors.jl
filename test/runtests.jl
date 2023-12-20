@@ -393,7 +393,52 @@ end
         dm = TDistMarkovRandomField(5.0, 1.0, (64, 62))
         @test logdensityof(d, s) == logdensityof(dm, s)
 
+        c = ConditionalMarkov(Exponential, grid)
+        d = c(5.0)
+        s = rand(d)
+
+        dm = ExpMarkovRandomField(5.0, (64, 62))
+        @test logdensityof(d, s) == logdensityof(dm, s)
+
+
     end
+
+    @testset "ExpMRF" begin
+        @testset "Tall" begin
+            mimg = rand(10, 8)
+            d1 = ExpMarkovRandomField(3.0, mimg)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = ExpMarkovRandomField(3.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+        end
+
+        @testset "Wide" begin
+            mimg = rand(8, 10)
+            d1 = ExpMarkovRandomField(3.0, mimg)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = ExpMarkovRandomField(3.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+            Q = invcov(d1)
+        end
+
+        @testset "Equal" begin
+            mimg = rand(10, 10)
+            d1 = ExpMarkovRandomField(3.0, mimg)
+            c = MarkovRandomFieldCache(mimg)
+            d2 = ExpMarkovRandomField(3.0, c)
+
+            x = rand(d1)
+            @test logpdf(d1, x) ≈ logpdf(d2, x)
+        end
+
+    end
+
+
 
     @testset "TDistMRF" begin
         @testset "Tall" begin

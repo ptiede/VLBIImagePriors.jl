@@ -21,3 +21,4 @@ end
 include("cache.jl")
 include("gmrf.jl")
 include("studentTrf.jl")
+include("exponential.jl")

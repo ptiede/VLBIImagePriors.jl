@@ -60,7 +60,7 @@ julia> d = ℓ(16) # This is now a distribution
 julia> rand(d)
 ```
 """
-function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist}}, args...)
+function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist, Dists.Exponential}}, args...)
     c = MarkovRandomFieldCache(args...)
     return ConditionalMarkov{D, typeof(c)}(c)
 end
