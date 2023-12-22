@@ -67,7 +67,7 @@ end
 
 
 (c::ConditionalMarkov{<:Dists.Normal})(ρ)     = GaussMarkovRandomField(ρ, c.cache)
-(c::ConditionalMarkov{<:Dists.TDist})(ρ, ν)   = TDistMarkovRandomField(ρ, ν, c.cache)
+(c::ConditionalMarkov{<:Dists.TDist})(ρ, ν=1)   = TDistMarkovRandomField(ρ, ν, c.cache)
 
 
 Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
