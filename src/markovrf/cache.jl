@@ -17,7 +17,7 @@ julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(-5.0,5.0),
 julia> x0 = rand(d)
 ```
 """
-struct MarkovRandomFieldCache{A, TD, M}
+struct MarkovRandomFieldCache{Order, A, TD, M}
     """
     Intrinsic Gaussian Random Field pseudo-precison matrix.
     This is similar to the TSV regularizer
@@ -77,7 +77,7 @@ Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
 
 Contructs the [`MarkovRandomFieldCache`](@ref) cache.
 """
-function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2})
+function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2}; order::Int=1)
 
     # build the 1D correlation matrices
     q1 = build_q1d(T, dims[1])
@@ -87,9 +87,9 @@ function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2})
     Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
     D = Diagonal(ones(eltype(Λ), size(Λ,1)))
     λQ = eigenvals(dims)
-    return MarkovRandomFieldCache(Λ, D, λQ)
+    return MarkovRandomFieldCache{order, typeof(Λ), typeof(D), typeof(λQ)}(Λ, D, λQ)
 end
-MarkovRandomFieldCache(img::AbstractMatrix{T}) where {T} = MarkovRandomFieldCache(T, size(img))
+MarkovRandomFieldCache(img::AbstractMatrix{T}) where {T} = MarkovRandomFieldCache(T, size(img); order=1)
 
 
 """
@@ -117,16 +117,24 @@ end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
-function sq_manoblis(::MarkovRandomFieldCache, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(::MarkovRandomFieldCache{1}, ΔI::AbstractMatrix, ρ)
     s = igrmf_1n(ΔI)
     return (s + inv(ρ^2)*sum(abs2, ΔI))
 end
 
-function LinearAlgebra.logdet(d::MarkovRandomFieldCache, ρ)
-    return sum(log, (inv(ρ^2) .+ d.λQ))
+function sq_manoblis(::MarkovRandomFieldCache{2}, ΔI::AbstractMatrix, ρ)
+    return igmrf_2n(ΔI, ρ)
 end
 
-Dists.invcov(d::MarkovRandomFieldCache, ρ) =  (d.Λ .+ d.D.*inv(ρ^2))
+function sq_manoblis(d::MarkovRandomFieldCache{N}, ΔI::AbstractMatrix, ρ) where {N}
+    return dot(ΔI, (inv(ρ^2)*d.D + d.Λ)^(N), vec(ΔI))
+end
+
+function LinearAlgebra.logdet(d::MarkovRandomFieldCache{N}, ρ) where {N}
+    return N*sum(log, (inv(ρ^2) .+ d.λQ))
+end
+
+Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N} =  (d.Λ .+ d.D.*inv(ρ^2))^N
 
 function eigenvals(dims)
     m, n = dims
@@ -144,6 +152,33 @@ function build_q1d(T, n)
     Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1), (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
     return Q
 end
+
+function igmrf_2n(I::AbstractMatrix, ρ)
+    value = zero(eltype(I))
+    for iy in axes(I, 2), ix in axes(I,1)
+        value = value + igrmf_2n_pixel(I, ρ, ix, iy)
+    end
+    return value
+end
+
+@inline function igrmf_2n_pixel(I::AbstractArray, ρ, ix::Integer, iy::Integer)
+    value = (4+inv(ρ)^2)*I[ix, iy]
+    if ix < lastindex(I, 1)
+        @inbounds ΔIx = I[ix+1, iy] + I[ix-1, iy]
+    else
+        ΔIx = I[begin, iy] + I[ix,iy]
+    end
+
+    if iy < lastindex(I, 2)
+        @inbounds ΔIy = I[ix, iy+1] + I[ix, iy]
+    else
+        @inbounds ΔIy = I[ix, begin] + I[ix,iy]
+    end
+
+    value += ΔIx + ΔIy
+    return abs2(value)
+end
+
 
 
 # computes the intrinsic gaussian process of a 1-neighbor method
