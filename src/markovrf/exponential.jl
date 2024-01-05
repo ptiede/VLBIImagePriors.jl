@@ -87,7 +87,7 @@ end
 
 function unnormed_logpdf(d::ExpMarkovRandomField, I::AbstractMatrix)
     (;ρ) = d
-    return -2*sqrt(sq_manoblis(d.cache, I, ρ)*length(d))
+    return -sqrt(sq_manoblis(d.cache, I, ρ)*length(d))
 end
 
 function Dists._rand!(rng::AbstractRNG, d::ExpMarkovRandomField, x::AbstractMatrix{<:Real})
@@ -95,5 +95,5 @@ function Dists._rand!(rng::AbstractRNG, d::ExpMarkovRandomField, x::AbstractMatr
     cQ = cholesky(Q)
     z = randn(rng, length(x))
     R = rand(rng, Dists.Chisq(2*length(d)))
-    x .= R.*reshape(cQ.PtL'\z, size(d))./norm(z)/sqrt(4*length(d))
+    x .= R.*reshape(cQ.PtL'\z, size(d))./norm(z)/sqrt(length(d))
 end
