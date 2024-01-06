@@ -113,33 +113,58 @@ function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims; order=1)
     return MarkovRandomFieldCache(eltype(grid.X), size(grid); order)
 end
 
+function κ(ρ, ::Val{1})
+    return inv(ρ)
+end
+
+function κ(ρ, ::Val{N}) where {N}
+    return sqrt(8*(N-1))/ρ
+end
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
 function sq_manoblis(::MarkovRandomFieldCache{1}, ΔI::AbstractMatrix, ρ)
     s = igrmf_1n(ΔI)
-    return (s + inv(ρ^2)*sum(abs2, ΔI))
+    κ² = κ(ρ, Val(1))^2
+    return (s + κ²*sum(abs2, ΔI))
 end
 
 function sq_manoblis(::MarkovRandomFieldCache{2}, ΔI::AbstractMatrix, ρ)
-    return igmrf_2n(ΔI, ρ)
+    κ² = κ(ρ, Val(2))^2
+    return igmrf_2n(ΔI, κ²)/mrfnorm(κ², Val(2))
 end
 
 function sq_manoblis(d::MarkovRandomFieldCache{N}, ΔI::AbstractMatrix, ρ) where {N}
-    return dot(ΔI, (inv(ρ^2)*d.D + d.Λ)^(N), vec(ΔI))
+    κ² = κ(ρ, Val(N))^2
+    return dot(ΔI, (κ²*d.D + d.Λ)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
 end
 
 function LinearAlgebra.logdet(d::MarkovRandomFieldCache{N}, ρ) where {N}
-    return N*sum(d.λQ) do x
-                log(inv(ρ^2) + x)
+    κ² = κ(ρ, Val(N))^2
+    a =  N*sum(d.λQ) do x
+                log(κ² + x)
         end
+    return a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
 end
 
-function mrfnorm(ρ::T, ::Val{2}) where {T<:Number}
-    println("HERE")
-    convert(T, 4π)*8/ρ^2
+# This is the σ to ensure we have a unit variance GMRF
+function mrfnorm(::T, ::Val{1}) where {T<:Number}
+    return one(T)
 end
 
-Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N} =  (d.Λ .+ d.D.*inv(ρ^2))^N.*mrfnorm(ρ, Val(N))
+
+function mrfnorm(κ²::T, ::Val{2}) where {T<:Number}
+    return convert(T, 4π)*κ²
+end
+
+function mrfnorm(κ²::T, ::Val{N}) where {T<:Number, N}
+    return (N+1)*convert(T, 4π)*κ²^((N-1))
+end
+
+
+function Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N}
+    κ² = κ(ρ, Val(N))^2
+    return (d.Λ .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
+end
 
 function eigenvals(dims)
     m, n = dims
@@ -158,16 +183,16 @@ function build_q1d(T, n)
     return Q
 end
 
-function igmrf_2n(I::AbstractMatrix, ρ)
+function igmrf_2n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
     for iy in axes(I, 2), ix in axes(I,1)
-        value = value + igrmf_2n_pixel(I, ρ, ix, iy)
+        value = value + igrmf_2n_pixel(I, κ², ix, iy)
     end
     return value
 end
 
-@inline function igrmf_2n_pixel(I::AbstractArray, ρ, ix::Integer, iy::Integer)
-    value = (4+inv(ρ)^2)*I[ix, iy]
+@inline function igrmf_2n_pixel(I::AbstractArray, κ², ix::Integer, iy::Integer)
+    value = (4 + κ²)*I[ix, iy]
     ΔIx  = ix < lastindex(I, 1)  ? I[ix+1, iy] : I[begin, iy]
     ΔIx += ix > firstindex(I, 1) ? I[ix-1, iy] : I[end, iy]
 
