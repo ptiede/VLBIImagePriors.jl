@@ -2,7 +2,7 @@ using SparseArrays
 using LinearAlgebra
 using ComradeBase
 
-export TDistMarkovRandomField
+export TDistMarkovRandomField, CauchyMarkovRandomField
 
 """
     $(TYPEDEF)
@@ -38,6 +38,8 @@ struct TDistMarkovRandomField{T<:Number,C} <: MarkovRandomField
     cache::C
 end
 
+(c::ConditionalMarkov{<:Dists.TDist})(ρ, ν=1)   = TDistMarkovRandomField(ρ, ν, c.cache)
+
 Base.size(d::TDistMarkovRandomField)  = size(d.cache)
 Dists.mean(d::TDistMarkovRandomField{T}) where {T} = FillArrays.Zeros(T, size(d))
 Dists.cov(d::TDistMarkovRandomField)  = inv(Array(Dists.invcov(d)))
@@ -51,10 +53,12 @@ HC.asflat(d::TDistMarkovRandomField) = TV.as(Matrix, size(d)...)
 Constructs a first order TDist Markov random field with zero mean if it exists,
 correlation `ρ` and degrees of freedom ν.
 """
-function TDistMarkovRandomField(ρ::Number, ν::Number, img::AbstractMatrix)
-    cache = MarkovRandomFieldCache(eltype(img), size(img))
+function TDistMarkovRandomField(ρ::Number, ν::Number, img::AbstractMatrix; order=1)
+    cache = MarkovRandomFieldCache(eltype(img), size(img); order)
     return TDistMarkovRandomField(ρ, ν, cache)
 end
+
+CauchyMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1) = TDistMarkovRandomField(ρ, 1, img; order)
 
 """
     TDistMarkovRandomField(ρ, ν, cache::MarkovRandomFieldCache)
@@ -67,17 +71,23 @@ function TDistMarkovRandomField(ρ::Number, ν::Number, cache::MarkovRandomField
     return TDistMarkovRandomField{T, typeof(cache)}(convert(T,ρ), convert(T,ν), cache)
 end
 
+CauchyMarkovRandomField(ρ::Number, cache::MarkovRandomFieldCache) = TDistMarkovRandomField(ρ, 1, cache)
+
+
 """
     TDistMarkovRandomField(ρ, ν, dims)
 
 Constructs a first order TDist Markov random field with zero mean ,correlation `ρ`,
 degrees of freedom `ν`, with dimension `dims`.
 """
-function TDistMarkovRandomField(ρ::Number, ν::Number, dims::Dims{2})
+function TDistMarkovRandomField(ρ::Number, ν::Number, dims::Dims{2}; order=1)
     T = promote_type(typeof(ρ), typeof(ν))
-    cache = MarkovRandomFieldCache(typeof(ρ), dims)
+    cache = MarkovRandomFieldCache(typeof(ρ), dims; order)
     return TDistMarkovRandomField{T, typeof(cache)}(convert(T,ρ), convert(T,ν), cache)
 end
+
+CauchyMarkovRandomField(ρ::Number, dims::Dims{2}; order=1) = TDistMarkovRandomField(ρ, 1, dims; order)
+
 
 
 

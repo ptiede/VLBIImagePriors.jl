@@ -304,39 +304,85 @@ end
 
     @testset "GMRF" begin
         @testset "Tall" begin
-            mimg = rand(10, 8)
-            d1 = GaussMarkovRandomField(3.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(3.0, c)
+            @testset "Order 1" begin
+                mimg = rand(10, 8)
+                d1 = GaussMarkovRandomField(3.0, mimg)
+                c = MarkovRandomFieldCache(mimg)
+                d2 = GaussMarkovRandomField(3.0, c)
 
-            moment_test(d1)
+                moment_test(d1)
 
-            x = rand(d1)
-            @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
-            dd = MvNormalCanon(Array(Q))
+                x = rand(d1)
+                @test logpdf(d1, x) ≈ logpdf(d2, x)
+                Q = invcov(d1)
+                dd = MvNormalCanon(Array(Q))
 
-            @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+                @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
 
-            @test cov(d1) ≈ cov(dd)
-            @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+                @test cov(d1) ≈ cov(dd)
+                @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+            end
+
+            @testset "Order 2" begin
+                mimg = rand(10, 8)
+                d1 = GaussMarkovRandomField(3.0, mimg; order=2)
+                c = MarkovRandomFieldCache(mimg; order=2)
+                d2 = GaussMarkovRandomField(3.0, c)
+
+                moment_test(d1)
+
+                x = rand(d1)
+                @test logpdf(d1, x) ≈ logpdf(d2, x)
+                Q = invcov(d1)
+                dd = MvNormalCanon(Array(Q))
+
+                @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+
+                @test cov(d1) ≈ cov(dd)
+                @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+            end
+
         end
 
         @testset "Wide" begin
-            mimg = rand(8, 10)
-            d1 = GaussMarkovRandomField(3.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
-            d2 = GaussMarkovRandomField(3.0, c)
+            @testset "Order 1" begin
+                mimg = rand(8, 10)
+                d1 = GaussMarkovRandomField(3.0, mimg)
+                c = MarkovRandomFieldCache(mimg)
+                d2 = GaussMarkovRandomField(3.0, c)
 
-            x = rand(d1)
-            @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
-            dd = MvNormalCanon(Array(Q))
+                moment_test(d1)
 
-            @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+                x = rand(d1)
+                @test logpdf(d1, x) ≈ logpdf(d2, x)
+                Q = invcov(d1)
+                dd = MvNormalCanon(Array(Q))
 
-            @test cov(d1) ≈ cov(dd)
-            @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+                @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+
+                @test cov(d1) ≈ cov(dd)
+                @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+            end
+
+            @testset "Order 2" begin
+                mimg = rand(8, 10)
+                d1 = GaussMarkovRandomField(3.0, mimg; order=2)
+                c = MarkovRandomFieldCache(mimg; order=2)
+                d2 = GaussMarkovRandomField(3.0, c)
+
+                moment_test(d1)
+
+                x = rand(d1)
+                @test logpdf(d1, x) ≈ logpdf(d2, x)
+                Q = invcov(d1)
+                dd = MvNormalCanon(Array(Q))
+
+                @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
+
+                @test cov(d1) ≈ cov(dd)
+                @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+            end
+
         end
 
         @testset "Equal" begin

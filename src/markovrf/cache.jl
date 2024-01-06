@@ -66,8 +66,6 @@ function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist, Dists.Expo
 end
 
 
-(c::ConditionalMarkov{<:Dists.Normal})(ρ)     = GaussMarkovRandomField(ρ, c.cache)
-(c::ConditionalMarkov{<:Dists.TDist})(ρ, ν=1)   = TDistMarkovRandomField(ρ, ν, c.cache)
 
 
 Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
@@ -89,7 +87,7 @@ function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2}; order::Int=1)
     λQ = eigenvals(dims)
     return MarkovRandomFieldCache{order, typeof(Λ), typeof(D), typeof(λQ)}(Λ, D, λQ)
 end
-MarkovRandomFieldCache(img::AbstractMatrix{T}) where {T} = MarkovRandomFieldCache(T, size(img); order=1)
+MarkovRandomFieldCache(img::AbstractMatrix{T}; order=1) where {T} = MarkovRandomFieldCache(T, size(img); order)
 
 
 """
@@ -111,8 +109,8 @@ Create a GMRF cache out of a `Comrade` model as the mean image.
 julia> m = MarkovRandomFieldCache(imagepixels(10.0, 10.0, 64, 64))
 ```
 """
-function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims)
-    return MarkovRandomFieldCache(eltype(grid.X), size(grid))
+function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims; order=1)
+    return MarkovRandomFieldCache(eltype(grid.X), size(grid); order)
 end
 
 
@@ -131,10 +129,17 @@ function sq_manoblis(d::MarkovRandomFieldCache{N}, ΔI::AbstractMatrix, ρ) wher
 end
 
 function LinearAlgebra.logdet(d::MarkovRandomFieldCache{N}, ρ) where {N}
-    return N*sum(log, (inv(ρ^2) .+ d.λQ))
+    return N*sum(d.λQ) do x
+                log(inv(ρ^2) + x)
+        end
 end
 
-Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N} =  (d.Λ .+ d.D.*inv(ρ^2))^N
+function mrfnorm(ρ::T, ::Val{2}) where {T<:Number}
+    println("HERE")
+    convert(T, 4π)*8/ρ^2
+end
+
+Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N} =  (d.Λ .+ d.D.*inv(ρ^2))^N.*mrfnorm(ρ, Val(N))
 
 function eigenvals(dims)
     m, n = dims
@@ -163,20 +168,14 @@ end
 
 @inline function igrmf_2n_pixel(I::AbstractArray, ρ, ix::Integer, iy::Integer)
     value = (4+inv(ρ)^2)*I[ix, iy]
-    if ix < lastindex(I, 1)
-        @inbounds ΔIx = I[ix+1, iy] + I[ix-1, iy]
-    else
-        ΔIx = I[begin, iy] + I[ix,iy]
-    end
+    ΔIx  = ix < lastindex(I, 1)  ? I[ix+1, iy] : I[begin, iy]
+    ΔIx += ix > firstindex(I, 1) ? I[ix-1, iy] : I[end, iy]
 
-    if iy < lastindex(I, 2)
-        @inbounds ΔIy = I[ix, iy+1] + I[ix, iy]
-    else
-        @inbounds ΔIy = I[ix, begin] + I[ix,iy]
-    end
+    ΔIy  = iy < lastindex(I, 2)  ? I[ix, iy+1] : I[ix, begin]
+    ΔIy += iy > firstindex(I, 2) ? I[ix, iy-1] : I[ix, end]
 
-    value += ΔIx + ΔIy
-    return abs2(value)
+    value = value - ΔIx - ΔIy
+    return value*value
 end
 
 

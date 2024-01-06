@@ -53,8 +53,8 @@ HC.asflat(d::ExpMarkovRandomField) = TV.as(Matrix, size(d)...)
 Constructs a first order zero-mean Exponential Markov random field with
 dimensions `size(img)`, correlation `ρ` and unit covariance.
 """
-function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix)
-    cache = MarkovRandomFieldCache(eltype(img), size(img))
+function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
+    cache = MarkovRandomFieldCache(eltype(img), size(img); order)
     return ExpMarkovRandomField(ρ, cache)
 end
 
@@ -64,8 +64,8 @@ end
 Constructs a first order zero-mean unit variance Exponential Markov random field with
 dimensions `dims`, correlation `ρ`.
 """
-function ExpMarkovRandomField(ρ::Number, dims::Dims{2})
-    cache = MarkovRandomFieldCache(typeof(ρ), dims)
+function ExpMarkovRandomField(ρ::Number, dims::Dims{2}; order=1)
+    cache = MarkovRandomFieldCache(typeof(ρ), dims; order)
     return ExpMarkovRandomField(ρ, cache)
 end
 

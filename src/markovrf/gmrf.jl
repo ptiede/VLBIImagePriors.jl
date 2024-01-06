@@ -49,6 +49,8 @@ Base.size(d::GaussMarkovRandomField)  = size(d.cache)
 Dists.mean(d::GaussMarkovRandomField{T}) where {T} = FillArrays.Zeros(T, size(d))
 Dists.cov(d::GaussMarkovRandomField)  = inv(Array(Dists.invcov(d)))
 
+(c::ConditionalMarkov{<:Dists.Normal})(ρ)     = GaussMarkovRandomField(ρ, c.cache)
+
 
 HC.asflat(d::GaussMarkovRandomField) = TV.as(Matrix, size(d)...)
 
@@ -58,8 +60,8 @@ HC.asflat(d::GaussMarkovRandomField) = TV.as(Matrix, size(d)...)
 Constructs a first order zero-mean Gaussian Markov random field with
 dimensions `size(img)`, correlation `ρ` and unit covariance.
 """
-function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix)
-    cache = MarkovRandomFieldCache(eltype(img), size(img))
+function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
+    cache = MarkovRandomFieldCache(eltype(img), size(img); order)
     return GaussMarkovRandomField(ρ, cache)
 end
 
@@ -69,8 +71,8 @@ end
 Constructs a first order zero-mean unit variance Gaussian Markov random field with
 dimensions `dims`, correlation `ρ`.
 """
-function GaussMarkovRandomField(ρ::Number, dims::Dims{2})
-    cache = MarkovRandomFieldCache(typeof(ρ), dims)
+function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order=1)
+    cache = MarkovRandomFieldCache(typeof(ρ), dims; order)
     return GaussMarkovRandomField(ρ, cache)
 end
 
