@@ -121,21 +121,6 @@ function κ(ρ, ::Val{N}) where {N}
     return sqrt(8*(N-1))/ρ
 end
 
-function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldCache, ΔI, ρ)
-    s = sq_manoblis(d, ΔI, ρ)
-    prI = ProjectTo(ΔI)
-    function _sq_manoblis_pullback(Δ)
-        Δf = NoTangent()
-        Δd = NoTangent()
-        dI = zero(ΔI)
-
-        ((_, _, dρ), ) = autodiff(Reverse, sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
-
-        dI .= Δ.*dI
-        return Δf, Δd, prI(dI), Δ*dρ
-    end
-    return s, _sq_manoblis_pullback
-end
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
 function sq_manoblis(::MarkovRandomFieldCache{1}, ΔI::AbstractMatrix, ρ)
@@ -153,6 +138,23 @@ function sq_manoblis(d::MarkovRandomFieldCache{N}, ΔI::AbstractMatrix, ρ) wher
     κ² = κ(ρ, Val(N))^2
     return dot(ΔI, (κ²*d.D + d.Λ)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
 end
+
+function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldCache, ΔI, ρ)
+    s = sq_manoblis(d, ΔI, ρ)
+    prI = ProjectTo(ΔI)
+    function _sq_manoblis_pullback(Δ)
+        Δf = NoTangent()
+        Δd = NoTangent()
+        dI = zero(ΔI)
+
+        ((_, _, dρ), ) = autodiff(Reverse, sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
+
+        dI .= Δ.*dI
+        return Δf, Δd, prI(dI), Δ*dρ
+    end
+    return s, _sq_manoblis_pullback
+end
+
 
 function LinearAlgebra.logdet(d::MarkovRandomFieldCache{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
