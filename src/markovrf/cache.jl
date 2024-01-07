@@ -60,8 +60,8 @@ julia> d = ℓ(16) # This is now a distribution
 julia> rand(d)
 ```
 """
-function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist, Dists.Exponential}}, args...)
-    c = MarkovRandomFieldCache(args...)
+function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist, Dists.Exponential}}, args...; kwargs...)
+    c = MarkovRandomFieldCache(args...; kwargs...)
     return ConditionalMarkov{D, typeof(c)}(c)
 end
 
@@ -119,6 +119,22 @@ end
 
 function κ(ρ, ::Val{N}) where {N}
     return sqrt(8*(N-1))/ρ
+end
+
+function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldCache, ΔI, ρ)
+    s = sq_manoblis(d, ΔI, ρ)
+    prI = ProjectTo(ΔI)
+    function _sq_manoblis_pullback(Δ)
+        Δf = NoTangent()
+        Δd = NoTangent()
+        dI = zero(ΔI)
+
+        ((_, _, dρ), ) = autodiff(Reverse, sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
+
+        dI .= Δ.*dI
+        return Δf, Δd, prI(dI), Δ*dρ
+    end
+    return s, _sq_manoblis_pullback
 end
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
@@ -182,6 +198,7 @@ function build_q1d(T, n)
     Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1), (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
     return Q
 end
+
 
 function igmrf_2n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
