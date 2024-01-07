@@ -321,6 +321,8 @@ end
 
                 @test cov(d1) ≈ cov(dd)
                 @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+
+                test_rrule(VLBIImagePriors.sq_manoblis, c ⊢ NoTangent(), x, d1.ρ)
             end
 
             @testset "Order 2" begin
@@ -340,6 +342,9 @@ end
 
                 @test cov(d1) ≈ cov(dd)
                 @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+
+                test_rrule(VLBIImagePriors.sq_manoblis, c ⊢ NoTangent(), x, d1.ρ)
+
             end
 
         end
@@ -362,6 +367,9 @@ end
 
                 @test cov(d1) ≈ cov(dd)
                 @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+
+                test_rrule(VLBIImagePriors.sq_manoblis, c ⊢ NoTangent(), x, d1.ρ)
+
             end
 
             @testset "Order 2" begin
@@ -381,6 +389,9 @@ end
 
                 @test cov(d1) ≈ cov(dd)
                 @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+
+                test_rrule(VLBIImagePriors.sq_manoblis, c ⊢ NoTangent(), x, d1.ρ)
+
             end
 
         end
@@ -415,6 +426,9 @@ end
 
             @test cov(d1) ≈ cov(dd)
             @test mean(d1) ≈ reshape(mean(dd), size(mimg))
+
+            test_rrule(VLBIImagePriors.sq_manoblis, c ⊢ NoTangent(), x, d1.ρ)
+
         end
 
 
@@ -459,6 +473,8 @@ end
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
             Q = invcov(d1)
+
+
         end
 
         @testset "Wide" begin
