@@ -3,7 +3,13 @@ export MarkovRandomFieldCache
 """
     $(TYPEDEF)
 
-A cache for a Markov random field.
+Stores the graph for a Markov random field. This stores the dependency graph
+for neighbors for a Markov Random field. The Markov random field implemented is
+near identical to 2D Matern process albeit with integer powers of the power spectrum.
+Note the first order process is not actually a Matern process but rather a de Wiij process
+and is related to a 2D random walk on a lattice. Higher order processes are build from the
+first order process.
+
 
 # Fields
 $(FIELDS)
@@ -11,11 +17,17 @@ $(FIELDS)
 # Examples
 ```julia
 julia> mean = zeros(2,2) # define a zero mean
-julia> cache = GRMFCache(mean)
-julia> prior_map(x) = GaussMarkovRandomField(mean, x[1], x[2], cache)
-julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(-5.0,5.0), Uniform(0.0, 10.0)]))
+julia> cache = MarkovRandomFieldCache(mean)
+julia> prior_map(ρ) = GaussMarkovRandomField(ρ, cache)
+julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(0.0, 10.0)]))
 julia> x0 = rand(d)
 ```
+
+## Warning
+
+Currently only the first and second order processes are efficient. The others still scale better
+than the usual Gaussian process but they have not been optimized to the same extent.
+
 """
 struct MarkovRandomFieldCache{Order, A, TD, M}
     """
@@ -33,6 +45,33 @@ struct MarkovRandomFieldCache{Order, A, TD, M}
     log-normalization constant of the GMRF.
     """
     λQ::M
+
+    """
+        MarkovRandomFieldCache([T=Float64], dims::Dims{2}; order=1)
+
+    Constructs the cache for a `order` Markov Random Field with dimension `dims`.
+    The first optional argument specifies the type used for the internal graph structure
+    usually given by a sparse matrix of type `T`.
+
+    The `order` keyword argument specifies the order of the Markov random process. The default
+    is first order which is a de Wiij process and it equivalent to TSV and L₂ regularizers from
+    RML imaging.
+
+    """
+    function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2}; order::Integer=1)
+        order < 1 && ArgumentError("`order` parameter must be greater than or equal to 1, not $order")
+
+        # build the 1D correlation matrices
+        q1 = build_q1d(T, dims[1])
+        q2 = build_q1d(T, dims[2])
+
+        # We do this ordering because Julia like column major
+        Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
+        D = Diagonal(ones(eltype(Λ), size(Λ,1)))
+        λQ = eigenvals(dims)
+        return new{order, typeof(Λ), typeof(D), typeof(λQ)}(Λ, D, λQ)
+    end
+
 end
 
 struct ConditionalMarkov{B,C}
@@ -70,38 +109,20 @@ end
 
 Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
 
-"""
-    MarkovRandomFieldCache(mean::AbstractMatrix)
 
-Contructs the [`MarkovRandomFieldCache`](@ref) cache.
-"""
-function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2}; order::Int=1)
-
-    # build the 1D correlation matrices
-    q1 = build_q1d(T, dims[1])
-    q2 = build_q1d(T, dims[2])
-
-    # We do this ordering because Julia like column major
-    Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
-    D = Diagonal(ones(eltype(Λ), size(Λ,1)))
-    λQ = eigenvals(dims)
-    return MarkovRandomFieldCache{order, typeof(Λ), typeof(D), typeof(λQ)}(Λ, D, λQ)
-end
-MarkovRandomFieldCache(img::AbstractMatrix{T}; order=1) where {T} = MarkovRandomFieldCache(T, size(img); order)
+MarkovRandomFieldCache(dims::Dims{2}; order::Integer=1) = MarkovRandomField(Float64, dims; order)
+MarkovRandomFieldCache(img::AbstractMatrix{T}; order::Integer=1) where {T} = MarkovRandomFieldCache(T, size(img); order)
 
 
 """
-    MarkovRandomFieldCache(grid::AbstractDims)
+    MarkovRandomFieldCache(grid::AbstractDims; order=1)
+    MarkovRandomFieldCache(img::AbstractMatrix; order=1)
 
-Create a GMRF cache out of a `Comrade` model as the mean image.
+Create a `order` Markov random field using the `grid` or `image` as its dimension.
 
-# Arguments
- - `m`: Comrade model used for the mean image.
- - `grid`: The grid of points you want to create the model image on.
-
-# Keyword arguments
- - `transform = identity`: A transform to apply to the image when creating the mean image. See the examples
-
+The `order` keyword argument specifies the order of the Markov random process. The default
+is first order which is a de Wiij process and it equivalent to TSV and L₂ regularizers from
+RML imaging.
 
 # Example
 
@@ -109,7 +130,7 @@ Create a GMRF cache out of a `Comrade` model as the mean image.
 julia> m = MarkovRandomFieldCache(imagepixels(10.0, 10.0, 64, 64))
 ```
 """
-function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims; order=1)
+function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims; order::Integer=1)
     return MarkovRandomFieldCache(eltype(grid.X), size(grid); order)
 end
 
@@ -118,7 +139,7 @@ function κ(ρ, ::Val{1})
 end
 
 function κ(ρ, ::Val{N}) where {N}
-    return sqrt(8*(N-1))/ρ
+    return sqrt(oftype(ρ, 8*(N-1)))*inv(ρ)
 end
 
 

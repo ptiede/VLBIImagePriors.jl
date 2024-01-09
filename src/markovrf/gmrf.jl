@@ -55,12 +55,16 @@ Dists.cov(d::GaussMarkovRandomField)  = inv(Array(Dists.invcov(d)))
 HC.asflat(d::GaussMarkovRandomField) = TV.as(Matrix, size(d)...)
 
 """
-    GaussMarkovRandomField(ρ, img::AbstractArray)
+    GaussMarkovRandomField(ρ, img::AbstractArray; order::Integer=1)
 
-Constructs a first order zero-mean Gaussian Markov random field with
+Constructs a `order`ᵗʰ order  Gaussian Markov random field with
 dimensions `size(img)`, correlation `ρ` and unit covariance.
+
+The `order` parameter controls the smoothness of the field with higher orders being smoother.
+We recommend sticking with either `order=1,2`. Noting that `order=1` is equivalent to the
+usual TSV and L₂ regularization from RML imaging.
 """
-function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
+function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order::Integer=1)
     cache = MarkovRandomFieldCache(eltype(img), size(img); order)
     return GaussMarkovRandomField(ρ, cache)
 end
@@ -68,10 +72,15 @@ end
 """
     GaussMarkovRandomField(ρ, dims)
 
-Constructs a first order zero-mean unit variance Gaussian Markov random field with
-dimensions `dims`, correlation `ρ`.
+Constructs a `order`ᵗʰ order Gaussian Markov random field with
+dimensions `size(img)`, correlation `ρ` and unit covariance.
+
+The `order` parameter controls the smoothness of the field with higher orders being smoother.
+We recommend sticking with either `order=1,2`. Noting that `order=1` is equivalent to the
+usual TSV and L₂ regularization from RML imaging.
+
 """
-function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order=1)
+function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order::Integer=1)
     cache = MarkovRandomFieldCache(typeof(ρ), dims; order)
     return GaussMarkovRandomField(ρ, cache)
 end
@@ -80,8 +89,8 @@ end
 """
     GaussMarkovRandomField(ρ, cache::MarkovRandomFieldCache)
 
-Constructs a first order zero-mean and unit variance Gaussian Markov random field using the
-precomputed cache `cache`.
+Constructs a unit variance Gaussian Markov random field using the
+precomputed Markov Random Field graph cache `cache`.
 """
 function GaussMarkovRandomField(ρ::Number, cache::MarkovRandomFieldCache)
     GaussMarkovRandomField{typeof(ρ), typeof(cache)}(ρ, cache)
@@ -132,39 +141,4 @@ __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
 
 function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<: Real, N}
     return randn!(rng, x)
-end
-
-
-struct MarkovTransform{TΛ, P}
-    Λ::TΛ
-    p::P
-end
-
-function Serialization.serialize(s::Serialization.AbstractSerializer, cache::MarkovTransform)
-    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
-    Serialization.serialize(s, typeof(cache))
-    Serialization.serialize(s, cache.Λ)
-end
-
-function Serialization.deserialize(s::AbstractSerializer, ::Type{<:MarkovTransform})
-    Λ = Serialization.deserialize(s)
-    p = plan_fft(Λ)
-    return MarkovTransform(Λ, p)
-end
-
-
-function (θ::MarkovTransform)(x::AbstractArray, mean, σ, κ, ν=1)
-    (;Λ, p) = θ
-    T = eltype(x)
-    τ = σ*κ^ν*sqrt(ν)
-    rast = (@. τ*(κ^2 + Λ)^(-(ν+1)/2)*x)
-    return real.(p*rast.*complex(one(T), one(T)))./sqrt(prod(size(Λ))) .+ mean
-end
-
-export standardize
-function standardize(d::MarkovRandomFieldCache, ::Type{<:Dists.Normal})
-    kx = fftfreq(size(d.λQ, 1))
-    ky = fftfreq(size(d.λQ, 2))
-    k2 = kx.*kx .+ ky'.*ky'
-    return MarkovTransform(k2, plan_fft(d.λQ)), StdNormal(size(d))
 end

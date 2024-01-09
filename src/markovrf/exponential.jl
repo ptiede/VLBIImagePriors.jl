@@ -3,15 +3,8 @@ export ExpMarkovRandomField
 """
     $(TYPEDEF)
 
-A image prior based off of the first-order zero mean unit variance Exponential Markov random field.
-This prior is similar to the combination of *total variation* TSV and L₁ norm and is given by
-
-    √TV(I)² + inv(ρ²)L₁(I)²) + lognorm(ρ)
-
-where ρ is the correlation length the random field and
-`lognorm(ρ)` is the log-normalization of the random field. This normalization is needed to
-jointly infer `I` and the hyperparameters ρ.
-
+A image prior based off of the zero mean unit variance Exponential Markov random field.
+The order of the Markov random field is specified
 
 # Fields
 $(FIELDS)
