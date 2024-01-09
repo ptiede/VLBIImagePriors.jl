@@ -44,10 +44,14 @@ Dists.mean(d::ExpMarkovRandomField{T}) where {T} = FillArrays.Zeros(T, size(d))
 
 
 """
-    ExpMarkovRandomField(ρ, img::AbstractArray)
+    ExpMarkovRandomField(ρ, img::AbstractArray; order::Integer=1)
 
-Constructs a first order zero-mean Exponential Markov random field with
+Constructs a `order`ᵗʰ order  Exponential Markov random field with
 dimensions `size(img)`, correlation `ρ` and unit covariance.
+
+The `order` parameter controls the smoothness of the field with higher orders being smoother.
+We recommend sticking with either `order=1,2`. For more information about the
+impact of the order see [MarkovRandomFieldGraph](@ref).
 """
 function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
     cache = MarkovRandomFieldGraph(eltype(img), size(img); order)
@@ -55,10 +59,14 @@ function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
 end
 
 """
-    ExpMarkovRandomField(ρ, dims)
+    ExpMarkovRandomField(ρ, dims; order=1)
 
 Constructs a first order zero-mean unit variance Exponential Markov random field with
 dimensions `dims`, correlation `ρ`.
+
+The `order` parameter controls the smoothness of the field with higher orders being smoother.
+We recommend sticking with either `order=1,2`. For more information about the
+impact of the order see [MarkovRandomFieldGraph](@ref).
 """
 function ExpMarkovRandomField(ρ::Number, dims::Dims{2}; order=1)
     cache = MarkovRandomFieldGraph(typeof(ρ), dims; order)

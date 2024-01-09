@@ -61,10 +61,16 @@ end
 
 
 """
-    TDistMarkovRandomField(ρ, ν, img::AbstractArray)
+    TDistMarkovRandomField(ρ, ν, img::AbstractArray; order=1)
 
-Constructs a first order TDist Markov random field with zero mean if it exists,
-correlation `ρ` and degrees of freedom ν.
+Constructs a first order TDist Markov random field with zero median
+dimensions `size(img)`, correlation `ρ` and degrees of freedom ν.
+
+Note `ν ≥ 1` to be a well-defined probability distribution.
+
+The `order` parameter controls the smoothness of the field with higher orders being smoother.
+We recommend sticking with either `order=1,2`. For more information about the
+impact of the order see [MarkovRandomFieldGraph](@ref).
 """
 function TDistMarkovRandomField(ρ::Number, ν::Number, img::AbstractMatrix; order=1)
     cache = MarkovRandomFieldGraph(eltype(img), size(img); order)
@@ -92,6 +98,10 @@ CauchyMarkovRandomField(ρ::Number, cache::MarkovRandomFieldGraph) = TDistMarkov
 
 Constructs a first order TDist Markov random field with zero mean ,correlation `ρ`,
 degrees of freedom `ν`, with dimension `dims`.
+
+The `order` parameter controls the smoothness of the field with higher orders being smoother.
+We recommend sticking with either `order=1,2`. For more information about the
+impact of the order see [MarkovRandomFieldGraph](@ref).
 """
 function TDistMarkovRandomField(ρ::Number, ν::Number, dims::Dims{2}; order=1)
     T = promote_type(typeof(ρ), typeof(ν))
