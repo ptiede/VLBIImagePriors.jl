@@ -1,4 +1,4 @@
-export ExpMarkovRandomField
+export ExpMarkovRandomField, EMRF
 
 """
     $(TYPEDEF)
@@ -14,9 +14,9 @@ $(FIELDS)
 ```julia
 julia> ρ = 10.0
 julia> d = ExpMarkovRandomField(ρ, (32, 32))
-julia> cache = MarkovRandomFieldCache(Float64, (32, 32)) # now instead construct the cache
+julia> cache = MarkovRandomFieldGraph(Float64, (32, 32)) # now instead construct the cache
 julia> d2 = ExpMarkovRandomField(ρ, cache)
-julia> invcov(d) ≈ invcov(d2)
+julia> scalematrix(d) ≈ scalematrix(d2)
 true
 ```
 """
@@ -26,19 +26,22 @@ struct ExpMarkovRandomField{T<:Number,C} <: MarkovRandomField
     """
     ρ::T
     """
-    The Markov Random Field cache used to define the specific Markov random field class used.
+    The Markov Random Field graph cache used to define the specific Markov random field class used.
     """
-    cache::C
+    graph::C
 end
 
-(c::ConditionalMarkov{<:Dists.Exponential})(ρ) = ExpMarkovRandomField(ρ, c.cache)
+"""
+    Alias for `ExpMarkovRandomField`
+"""
+const EMRF = ExpMarkovRandomField
 
 
-Base.size(d::ExpMarkovRandomField)  = size(d.cache)
+(c::ConditionalMarkov{<:EMRF})(ρ) = ExpMarkovRandomField(ρ, c.cache)
+
+
 Dists.mean(d::ExpMarkovRandomField{T}) where {T} = FillArrays.Zeros(T, size(d))
-Dists.cov(d::ExpMarkovRandomField)  = inv(Array(Dists.invcov(d)))
 
-HC.asflat(d::ExpMarkovRandomField) = TV.as(Matrix, size(d)...)
 
 """
     ExpMarkovRandomField(ρ, img::AbstractArray)
@@ -47,7 +50,7 @@ Constructs a first order zero-mean Exponential Markov random field with
 dimensions `size(img)`, correlation `ρ` and unit covariance.
 """
 function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
-    cache = MarkovRandomFieldCache(eltype(img), size(img); order)
+    cache = MarkovRandomFieldGraph(eltype(img), size(img); order)
     return ExpMarkovRandomField(ρ, cache)
 end
 
@@ -58,33 +61,33 @@ Constructs a first order zero-mean unit variance Exponential Markov random field
 dimensions `dims`, correlation `ρ`.
 """
 function ExpMarkovRandomField(ρ::Number, dims::Dims{2}; order=1)
-    cache = MarkovRandomFieldCache(typeof(ρ), dims; order)
+    cache = MarkovRandomFieldGraph(typeof(ρ), dims; order)
     return ExpMarkovRandomField(ρ, cache)
 end
 
 
 """
-    ExpMarkovRandomField(ρ, cache::MarkovRandomFieldCache)
+    ExpMarkovRandomField(ρ, cache::MarkovRandomFieldGraph)
 
 Constructs a first order zero-mean and unit variance Exponential Markov random field using the
 precomputed cache `cache`.
 """
-function ExpMarkovRandomField(ρ::Number, cache::MarkovRandomFieldCache)
+function ExpMarkovRandomField(ρ::Number, cache::MarkovRandomFieldGraph)
     ExpMarkovRandomField{typeof(ρ), typeof(cache)}(ρ, cache)
 end
 
 function lognorm(d::ExpMarkovRandomField)
     N = length(d)
-    return (logdet(d.cache, d.ρ) - Dists.log2π*N)/2
+    return (logdet(d)- Dists.log2π*N)/2
 end
 
 function unnormed_logpdf(d::ExpMarkovRandomField, I::AbstractMatrix)
-    (;ρ) = d
-    return -sqrt(sq_manoblis(d.cache, I, ρ)*length(d))
+    ρ = corrparam(d)
+    return -sqrt(sq_manoblis(graph(d), I, ρ)*length(d))
 end
 
 function Dists._rand!(rng::AbstractRNG, d::ExpMarkovRandomField, x::AbstractMatrix{<:Real})
-    Q = Dists.invcov(d)
+    Q = scalematrix(d)
     cQ = cholesky(Q)
     z = randn(rng, length(x))
     R = rand(rng, Dists.Chisq(2*length(d)))

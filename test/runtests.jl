@@ -9,14 +9,26 @@ using HypercubeTransform
 using Test
 using ComradeBase
 using Serialization
+using LinearAlgebra
 
-function moment_test(d, nsamples=2_000_000, atol=5e-2)
+function moment_test(d, nsamples=200_000, atol=5e-2)
     # c = cov(d)
     s = reduce(hcat, reshape.(rand(d, nsamples), :))
     # cs = cov(s; dims=2)
     ms = reshape(mean(s; dims=2), size(d))
     # @test isapprox(c, cs; atol)
     @test isapprox(mean(d), ms; atol)
+end
+
+function test_interface(d::VLBIImagePriors.MarkovRandomField)
+    @inferred VLBIImagePriors.lognorm(d)
+    @inferred VLBIImagePriors.unnormed_logpdf(d, rand(d))
+    @inferred graph(d)
+    @inferred size(d)
+    @inferred scalematrix(d)
+    c = ConditionalMarkov(typeof(d), Float64, size(d))
+    asflat(d)
+    @inferred logdet(d)
 end
 
 
@@ -303,18 +315,20 @@ end
     end
 
     @testset "GMRF" begin
+
+        test_interface(GaussMarkovRandomField(3.0, rand(10, 8)))
         @testset "Tall" begin
             @testset "Order 1" begin
                 mimg = rand(10, 8)
                 d1 = GaussMarkovRandomField(3.0, mimg)
-                c = MarkovRandomFieldCache(mimg)
+                c = MarkovRandomFieldGraph(mimg)
                 d2 = GaussMarkovRandomField(3.0, c)
 
                 moment_test(d1)
 
                 x = rand(d1)
                 @test logpdf(d1, x) ≈ logpdf(d2, x)
-                Q = invcov(d1)
+                Q = scalematrix(d1)
                 dd = MvNormalCanon(Array(Q))
 
                 @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
@@ -328,14 +342,14 @@ end
             @testset "Order 2" begin
                 mimg = rand(10, 8)
                 d1 = GaussMarkovRandomField(3.0, mimg; order=2)
-                c = MarkovRandomFieldCache(mimg; order=2)
+                c = MarkovRandomFieldGraph(mimg; order=2)
                 d2 = GaussMarkovRandomField(3.0, c)
 
                 moment_test(d1)
 
                 x = rand(d1)
                 @test logpdf(d1, x) ≈ logpdf(d2, x)
-                Q = invcov(d1)
+                Q = scalematrix(d1)
                 dd = MvNormalCanon(Array(Q))
 
                 @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
@@ -353,14 +367,14 @@ end
             @testset "Order 1" begin
                 mimg = rand(8, 10)
                 d1 = GaussMarkovRandomField(3.0, mimg)
-                c = MarkovRandomFieldCache(mimg)
+                c = MarkovRandomFieldGraph(mimg)
                 d2 = GaussMarkovRandomField(3.0, c)
 
                 moment_test(d1)
 
                 x = rand(d1)
                 @test logpdf(d1, x) ≈ logpdf(d2, x)
-                Q = invcov(d1)
+                Q = scalematrix(d1)
                 dd = MvNormalCanon(Array(Q))
 
                 @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
@@ -375,14 +389,14 @@ end
             @testset "Order 2" begin
                 mimg = rand(8, 10)
                 d1 = GaussMarkovRandomField(3.0, mimg; order=2)
-                c = MarkovRandomFieldCache(mimg; order=2)
+                c = MarkovRandomFieldGraph(mimg; order=2)
                 d2 = GaussMarkovRandomField(3.0, c)
 
                 moment_test(d1)
 
                 x = rand(d1)
                 @test logpdf(d1, x) ≈ logpdf(d2, x)
-                Q = invcov(d1)
+                Q = scalematrix(d1)
                 dd = MvNormalCanon(Array(Q))
 
                 @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
@@ -399,27 +413,27 @@ end
         @testset "Equal" begin
             mimg = rand(10, 10)
             d1 = GaussMarkovRandomField(3.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = GaussMarkovRandomField(3.0, c)
-            trf, d = standardize(c, Normal)
+            trf, d = matern(size(d2))
 
             serialize("test.jls" ,trf)
             trf_2 = deserialize("test.jls")
             rm("test.jls")
 
             x = rand(d)
-            @test trf(x, mimg, 1.0, 0.1, 0.0) == trf_2(x, mimg, 1.0, 0.1, 0.0)
+            @test trf(x, 1.0, 0.1) == trf_2(x, 1.0, 0.1)
 
-            p = trf(rand(d), mimg, 1.0, 0.1, 0.0)
-            trf(rand(d), mimg, 1.0, 0.1, 1.0)
-            dimg = mean(map(_->trf(rand(d), 1.0, 1.0, 0.0), 1:1_000_000))
+            p = trf(rand(d), 1.0, 0.1)
+            trf(rand(d), 1.0, 0.1)
+            dimg = mean(map(_->trf(rand(d), 1.0, 1.0), 1:1_000_000))
             isapprox(dimg, mimg, atol=1e-2)
             @test size(p) == size(rand(d2))
             logdensityof(d, rand(d))
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
+            Q = scalematrix(d1)
             dd = MvNormalCanon(Array(Q))
 
             @test logpdf(d1, x) ≈ logpdf(dd, reshape(x, :))
@@ -437,42 +451,18 @@ end
         end
     end
 
-    @testset "ConditionalMarkov" begin
-        grid = imagepixels(10.0, 5.0, 64, 62)
-        c = ConditionalMarkov(Normal, grid)
-        d = c(5.0)
-        s = rand(d)
-
-        dm = GaussMarkovRandomField(5.0, (64, 62))
-        @test logdensityof(d, s) == logdensityof(dm, s)
-
-        c = ConditionalMarkov(TDist, grid)
-        d = c(5.0, 1.0)
-        s = rand(d)
-
-        dm = TDistMarkovRandomField(5.0, 1.0, (64, 62))
-        @test logdensityof(d, s) == logdensityof(dm, s)
-
-        c = ConditionalMarkov(Exponential, grid)
-        d = c(5.0)
-        s = rand(d)
-
-        dm = ExpMarkovRandomField(5.0, (64, 62))
-        @test logdensityof(d, s) == logdensityof(dm, s)
-
-
-    end
 
     @testset "ExpMRF" begin
+        test_interface(ExpMarkovRandomField(3.0, rand(10, 8)))
         @testset "Tall" begin
             mimg = rand(10, 8)
             d1 = ExpMarkovRandomField(3.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = ExpMarkovRandomField(3.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
+            Q = scalematrix(d1)
 
 
         end
@@ -480,18 +470,18 @@ end
         @testset "Wide" begin
             mimg = rand(8, 10)
             d1 = ExpMarkovRandomField(3.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = ExpMarkovRandomField(3.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
+            Q = scalematrix(d1)
         end
 
         @testset "Equal" begin
             mimg = rand(10, 10)
             d1 = ExpMarkovRandomField(3.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = ExpMarkovRandomField(3.0, c)
 
             x = rand(d1)
@@ -502,39 +492,66 @@ end
 
 
 
+
+
     @testset "TDistMRF" begin
+        test_interface(TDistMarkovRandomField(3.0, 1.0, rand(10, 8)))
         @testset "Tall" begin
             mimg = rand(10, 8)
             d1 = TDistMarkovRandomField(3.0, 1.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = TDistMarkovRandomField(3.0, 1.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
+            Q = scalematrix(d1)
         end
 
         @testset "Wide" begin
             mimg = rand(8, 10)
             d1 = TDistMarkovRandomField(3.0, 5.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = TDistMarkovRandomField(3.0, 5.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
-            Q = invcov(d1)
+            Q = scalematrix(d1)
         end
 
         @testset "Equal" begin
             mimg = rand(10, 10)
             d1 = TDistMarkovRandomField(3.0, 100.0, mimg)
-            c = MarkovRandomFieldCache(mimg)
+            c = MarkovRandomFieldGraph(mimg)
             d2 = TDistMarkovRandomField(3.0, 100.0, c)
 
             x = rand(d1)
             @test logpdf(d1, x) ≈ logpdf(d2, x)
         end
 
+    end
+
+    @testset "ConditionalMarkov" begin
+        grid = imagepixels(10.0, 5.0, 64, 62)
+        c = ConditionalMarkov(GMRF, grid)
+        d = c(5.0)
+        s = rand(d)
+
+        dm = GaussMarkovRandomField(5.0, (64, 62))
+        @test logdensityof(d, s) == logdensityof(dm, s)
+
+        c = ConditionalMarkov(TMRF, grid)
+        d = c(5.0, 1.0)
+        s = rand(d)
+
+        dm = TDistMarkovRandomField(5.0, 1.0, (64, 62))
+        @test logdensityof(d, s) == logdensityof(dm, s)
+
+        c = ConditionalMarkov(EMRF, grid)
+        d = c(5.0)
+        s = rand(d)
+
+        dm = ExpMarkovRandomField(5.0, (64, 62))
+        @test logdensityof(d, s) == logdensityof(dm, s)
     end
 
 

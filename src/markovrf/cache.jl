@@ -1,23 +1,21 @@
-export MarkovRandomFieldCache
+export MarkovRandomFieldGraph
 
-"""
-    $(TYPEDEF)
+#=
 
 Stores the graph for a Markov random field. This stores the dependency graph
-for neighbors for a Markov Random field. The Markov random field implemented is
-near identical to 2D Matern process albeit with integer powers of the power spectrum.
+for neighbors for a Markov Random field. The Markov random field implemented is to match
+the 2D Matern process albeit restricted integer powers smoothness paramters.
+
 Note the first order process is not actually a Matern process but rather a de Wiij process
 and is related to a 2D random walk on a lattice. Higher order processes are build from the
 first order process.
 
 
-# Fields
-$(FIELDS)
 
 # Examples
 ```julia
 julia> mean = zeros(2,2) # define a zero mean
-julia> cache = MarkovRandomFieldCache(mean)
+julia> cache = MarkovRandomFieldGraph(mean)
 julia> prior_map(ρ) = GaussMarkovRandomField(ρ, cache)
 julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(0.0, 10.0)]))
 julia> x0 = rand(d)
@@ -28,28 +26,28 @@ julia> x0 = rand(d)
 Currently only the first and second order processes are efficient. The others still scale better
 than the usual Gaussian process but they have not been optimized to the same extent.
 
-"""
-struct MarkovRandomFieldCache{Order, A, TD, M}
+=#
+struct MarkovRandomFieldGraph{Order, A, TD, M}
     """
     Intrinsic Gaussian Random Field pseudo-precison matrix.
     This is similar to the TSV regularizer
     """
-    Λ::A
+    G::A
     """
     Gaussian Random Field diagonal precision matrix.
     This is similar to the L2-regularizer
     """
     D::TD
     """
-    The eigenvalues of the Λ matrix which is needed to compute the
+    The eigenvalues of the G matrix which is needed to compute the
     log-normalization constant of the GMRF.
     """
     λQ::M
 
     """
-        MarkovRandomFieldCache([T=Float64], dims::Dims{2}; order=1)
+        MarkovRandomFieldGraph([T=Float64], dims::Dims{2}; order=1)
 
-    Constructs the cache for a `order` Markov Random Field with dimension `dims`.
+    Constructs the graph for a `order` Markov Random Field with dimension `dims`.
     The first optional argument specifies the type used for the internal graph structure
     usually given by a sparse matrix of type `T`.
 
@@ -58,7 +56,7 @@ struct MarkovRandomFieldCache{Order, A, TD, M}
     RML imaging.
 
     """
-    function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2}; order::Integer=1)
+    function MarkovRandomFieldGraph(T::Type{<:Number}, dims::Dims{2}; order::Integer=1)
         order < 1 && ArgumentError("`order` parameter must be greater than or equal to 1, not $order")
 
         # build the 1D correlation matrices
@@ -66,72 +64,74 @@ struct MarkovRandomFieldCache{Order, A, TD, M}
         q2 = build_q1d(T, dims[2])
 
         # We do this ordering because Julia like column major
-        Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
-        D = Diagonal(ones(eltype(Λ), size(Λ,1)))
+        G = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
+        D = Diagonal(ones(eltype(G), size(G,1)))
         λQ = eigenvals(dims)
-        return new{order, typeof(Λ), typeof(D), typeof(λQ)}(Λ, D, λQ)
+        return new{order, typeof(G), typeof(D), typeof(λQ)}(G, D, λQ)
     end
 
 end
 
-struct ConditionalMarkov{B,C}
-    cache::C
-end
-
-"""
-    ConditionalMarkov(D, args...)
-
-Creates a Conditional Markov measure, that behaves as a Julia functional. The functional
-returns a probability measure defined by the arguments passed to the functional.
-
-# Arguments
-
- - `D`: The base distribution or measure of the random field. Currently `Normal` and `TDist`
-        are valid random fields
- - `args`: Additional arguments used to construct the Markov random field cache.
-           See [`MarkovRandomFieldCache`](@ref) for more information.
-
-# Example
-```julia-repl
-julia> grid = imagepixels(10.0, 10.0, 64, 64)
-julia> ℓ = ConditionalMarkov(Normal, grid)
-julia> d = ℓ(16) # This is now a distribution
-julia> rand(d)
-```
-"""
-function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist, Dists.Exponential}}, args...; kwargs...)
-    c = MarkovRandomFieldCache(args...; kwargs...)
-    return ConditionalMarkov{D, typeof(c)}(c)
-end
 
 
+Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
 
-Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
-
-
-MarkovRandomFieldCache(dims::Dims{2}; order::Integer=1) = MarkovRandomField(Float64, dims; order)
-MarkovRandomFieldCache(img::AbstractMatrix{T}; order::Integer=1) where {T} = MarkovRandomFieldCache(T, size(img); order)
+MarkovRandomFieldGraph(dims::Dims{2}; order::Integer=1) = MarkovRandomField(Float64, dims; order)
+MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer=1) where {T} = MarkovRandomFieldGraph(T, size(img); order)
 
 
 """
-    MarkovRandomFieldCache(grid::AbstractDims; order=1)
-    MarkovRandomFieldCache(img::AbstractMatrix; order=1)
+    MarkovRandomFieldGraph(grid::AbstractDims; order=1)
+    MarkovRandomFieldGraph(img::AbstractMatrix; order=1)
 
 Create a `order` Markov random field using the `grid` or `image` as its dimension.
 
-The `order` keyword argument specifies the order of the Markov random process. The default
-is first order which is a de Wiij process and it equivalent to TSV and L₂ regularizers from
-RML imaging.
+The `order` keyword argument specifies the order of the Markov random process and is generally
+given by the precision matrix
+
+    Qₙ = τ(κI + G)ⁿ
+
+where `n = order`, I is the identity matrix, G is specified by the first order stencil
+
+    .  -1  .
+    -1  4  -1
+    .   4  .
+
+κ is the Markov process hyper-parameters. For `n=1` κ is related to the correlation length
+ρ of the random field by
+
+    ρ = 1/κ
+
+while for `n>1` it is given by
+
+    ρ = √(8(n-1))/κ
+
+Note that κ isn't set in the `MarkovRandomFieldGraph`, but rather once the noise process is
+set, i.e. one of the subtypes of [MarkovRandomField](@ref).
+
+Finally τ is chosen so that the marginal variance of the random field is unity. For `n=1`
+
+    τ = 1
+
+for `n=2`
+
+    τ = 4πκ²
+
+and for `n>2` we have
+
+    τ = (N+1)4π κ²⁽ⁿ⁺¹⁾
 
 # Example
 
 ```julia-repl
-julia> m = MarkovRandomFieldCache(imagepixels(10.0, 10.0, 64, 64))
+julia> m = MarkovRandomFieldGraph(imagepixels(10.0, 10.0, 64, 64))
+julia> ρ = 10 # correlation length
+julia> d = GaussMarkovRandomField(ρ, m) # build the Gaussian Markov random field
 ```
 """
-function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims; order::Integer=1)
-    return MarkovRandomFieldCache(eltype(grid.X), size(grid); order)
+function MarkovRandomFieldGraph(grid::ComradeBase.AbstractDims; order::Integer=1)
+    return MarkovRandomFieldGraph(eltype(grid.X), size(grid); order)
 end
 
 function κ(ρ, ::Val{1})
@@ -144,23 +144,23 @@ end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
-function sq_manoblis(::MarkovRandomFieldCache{1}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
     s = igrmf_1n(ΔI)
     κ² = κ(ρ, Val(1))^2
     return (s + κ²*sum(abs2, ΔI))
 end
 
-function sq_manoblis(::MarkovRandomFieldCache{2}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(2))^2
     return igmrf_2n(ΔI, κ²)/mrfnorm(κ², Val(2))
 end
 
-function sq_manoblis(d::MarkovRandomFieldCache{N}, ΔI::AbstractMatrix, ρ) where {N}
+function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return dot(ΔI, (κ²*d.D + d.Λ)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
+    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
 end
 
-function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldCache, ΔI, ρ)
+function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldGraph, ΔI, ρ)
     s = sq_manoblis(d, ΔI, ρ)
     prI = ProjectTo(ΔI)
     function _sq_manoblis_pullback(Δ)
@@ -177,7 +177,7 @@ function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldCache, 
 end
 
 
-function LinearAlgebra.logdet(d::MarkovRandomFieldCache{N}, ρ) where {N}
+function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
     a =  N*sum(d.λQ) do x
                 log(κ² + x)
@@ -200,9 +200,9 @@ function mrfnorm(κ²::T, ::Val{N}) where {T<:Number, N}
 end
 
 
-function Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N}
+function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return (d.Λ .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
+    return (d.G .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
 end
 
 function eigenvals(dims)

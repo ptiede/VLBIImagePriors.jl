@@ -26,8 +26,7 @@ end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMatern})
     k2 = Serialization.deserialize(s)
-    p = plan_fft(Λ)
-    return StationaryMatern(k2, p)
+    return StationaryMatern(eltype(k2), size(k2))
 end
 
 
@@ -83,3 +82,33 @@ Creates an approximate Matern Gaussian process with dimension `size(img)`
 
 """
 matern(img::AbstractMatrix{T}) where {T} = matern(T, size(img))
+
+
+struct StdNormal{T, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
+    dims::Dims{N}
+end
+
+StdNormal(d::Dims{N}) where {N} = StdNormal{Float64, N}(d)
+
+Base.size(d::StdNormal) = d.dims
+Base.length(d::StdNormal) = prod(d.dims)
+Base.eltype(::StdNormal{T}) where {T} = T
+Dists.insupport(::StdNormal, x::AbstractVector) = true
+
+HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
+Dists.mean(d::StdNormal) = zeros(size(d))
+Dists.cov(d::StdNormal)  = Diagonal(prod(size(d)))
+
+
+function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<:Real, N}
+    return __logpdf(d, x)
+end
+Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T<:Real} = __logpdf(d, x)
+
+
+__logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
+
+
+function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<: Real, N}
+    return randn!(rng, x)
+end
