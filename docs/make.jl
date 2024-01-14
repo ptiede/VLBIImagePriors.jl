@@ -15,6 +15,8 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        #"mrf.md",
+        #"polarization.md"
     ],
 )
 

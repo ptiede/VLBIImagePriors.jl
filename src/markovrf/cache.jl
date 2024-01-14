@@ -1,140 +1,209 @@
-export MarkovRandomFieldCache
+export MarkovRandomFieldGraph
 
-"""
-    $(TYPEDEF)
+#=
 
-A cache for a Markov random field.
+Stores the graph for a Markov random field. This stores the dependency graph
+for neighbors for a Markov Random field. The Markov random field implemented is to match
+the 2D Matern process albeit restricted integer powers smoothness paramters.
 
-# Fields
-$(FIELDS)
+Note the first order process is not actually a Matern process but rather a de Wiij process
+and is related to a 2D random walk on a lattice. Higher order processes are build from the
+first order process.
+
+
 
 # Examples
 ```julia
 julia> mean = zeros(2,2) # define a zero mean
-julia> cache = GRMFCache(mean)
-julia> prior_map(x) = GaussMarkovRandomField(mean, x[1], x[2], cache)
-julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(-5.0,5.0), Uniform(0.0, 10.0)]))
+julia> cache = MarkovRandomFieldGraph(mean)
+julia> prior_map(ρ) = GaussMarkovRandomField(ρ, cache)
+julia> d = HierarchicalPrior(prior_map, product_distribution([Uniform(0.0, 10.0)]))
 julia> x0 = rand(d)
 ```
-"""
-struct MarkovRandomFieldCache{Order, A, TD, M}
+
+## Warning
+
+Currently only the first and second order processes are efficient. The others still scale better
+than the usual Gaussian process but they have not been optimized to the same extent.
+
+=#
+struct MarkovRandomFieldGraph{Order, A, TD, M}
     """
     Intrinsic Gaussian Random Field pseudo-precison matrix.
     This is similar to the TSV regularizer
     """
-    Λ::A
+    G::A
     """
     Gaussian Random Field diagonal precision matrix.
     This is similar to the L2-regularizer
     """
     D::TD
     """
-    The eigenvalues of the Λ matrix which is needed to compute the
+    The eigenvalues of the G matrix which is needed to compute the
     log-normalization constant of the GMRF.
     """
     λQ::M
+
+    """
+        MarkovRandomFieldGraph([T=Float64], dims::Dims{2}; order=1)
+
+    Constructs the graph for a `order` Markov Random Field with dimension `dims`.
+    The first optional argument specifies the type used for the internal graph structure
+    usually given by a sparse matrix of type `T`.
+
+    The `order` keyword argument specifies the order of the Markov random process. The default
+    is first order which is a de Wiij process and it equivalent to TSV and L₂ regularizers from
+    RML imaging.
+
+    """
+    function MarkovRandomFieldGraph(T::Type{<:Number}, dims::Dims{2}; order::Integer=1)
+        order < 1 && ArgumentError("`order` parameter must be greater than or equal to 1, not $order")
+
+        # build the 1D correlation matrices
+        q1 = build_q1d(T, dims[1])
+        q2 = build_q1d(T, dims[2])
+
+        # We do this ordering because Julia like column major
+        G = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
+        D = Diagonal(ones(eltype(G), size(G,1)))
+        λQ = eigenvals(dims)
+        return new{order, typeof(G), typeof(D), typeof(λQ)}(G, D, λQ)
+    end
+
 end
 
-struct ConditionalMarkov{B,C}
-    cache::C
-end
+
+
+Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
+
+
+MarkovRandomFieldGraph(dims::Dims{2}; order::Integer=1) = MarkovRandomField(Float64, dims; order)
+MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer=1) where {T} = MarkovRandomFieldGraph(T, size(img); order)
+
 
 """
-    ConditionalMarkov(D, args...)
+    MarkovRandomFieldGraph(grid::AbstractGrid; order=1)
+    MarkovRandomFieldGraph(img::AbstractMatrix; order=1)
 
-Creates a Conditional Markov measure, that behaves as a Julia functional. The functional
-returns a probability measure defined by the arguments passed to the functional.
+Create a `order` Markov random field using the `grid` or `image` as its dimension.
 
-# Arguments
+The `order` keyword argument specifies the order of the Markov random process and is generally
+given by the precision matrix
 
- - `D`: The base distribution or measure of the random field. Currently `Normal` and `TDist`
-        are valid random fields
- - `args`: Additional arguments used to construct the Markov random field cache.
-           See [`MarkovRandomFieldCache`](@ref) for more information.
+    Qₙ = τ(κI + G)ⁿ
+
+where `n = order`, I is the identity matrix, G is specified by the first order stencil
+
+    .  -1  .
+    -1  4  -1
+    .   4  .
+
+κ is the Markov process hyper-parameters. For `n=1` κ is related to the correlation length
+ρ of the random field by
+
+    ρ = 1/κ
+
+while for `n>1` it is given by
+
+    ρ = √(8(n-1))/κ
+
+Note that κ isn't set in the `MarkovRandomFieldGraph`, but rather once the noise process is
+set, i.e. one of the subtypes of [`MarkovRandomField`](@ref).
+
+Finally τ is chosen so that the marginal variance of the random field is unity. For `n=1`
+
+    τ = 1
+
+for `n=2`
+
+    τ = 4πκ²
+
+and for `n>2` we have
+
+    τ = (N+1)4π κ²⁽ⁿ⁺¹⁾
 
 # Example
-```julia-repl
-julia> grid = imagepixels(10.0, 10.0, 64, 64)
-julia> ℓ = ConditionalMarkov(Normal, grid)
-julia> d = ℓ(16) # This is now a distribution
-julia> rand(d)
-```
-"""
-function ConditionalMarkov(D::Type{<:Union{Dists.Normal, Dists.TDist, Dists.Exponential}}, args...)
-    c = MarkovRandomFieldCache(args...)
-    return ConditionalMarkov{D, typeof(c)}(c)
-end
-
-
-(c::ConditionalMarkov{<:Dists.Normal})(ρ)     = GaussMarkovRandomField(ρ, c.cache)
-(c::ConditionalMarkov{<:Dists.TDist})(ρ, ν=1)   = TDistMarkovRandomField(ρ, ν, c.cache)
-
-
-Base.size(c::MarkovRandomFieldCache) = size(c.λQ)
-
-"""
-    MarkovRandomFieldCache(mean::AbstractMatrix)
-
-Contructs the [`MarkovRandomFieldCache`](@ref) cache.
-"""
-function MarkovRandomFieldCache(T::Type{<:Number}, dims::Dims{2}; order::Int=1)
-
-    # build the 1D correlation matrices
-    q1 = build_q1d(T, dims[1])
-    q2 = build_q1d(T, dims[2])
-
-    # We do this ordering because Julia like column major
-    Λ = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
-    D = Diagonal(ones(eltype(Λ), size(Λ,1)))
-    λQ = eigenvals(dims)
-    return MarkovRandomFieldCache{order, typeof(Λ), typeof(D), typeof(λQ)}(Λ, D, λQ)
-end
-MarkovRandomFieldCache(img::AbstractMatrix{T}) where {T} = MarkovRandomFieldCache(T, size(img); order=1)
-
-
-"""
-    MarkovRandomFieldCache(grid::AbstractDims)
-
-Create a GMRF cache out of a `Comrade` model as the mean image.
-
-# Arguments
- - `m`: Comrade model used for the mean image.
- - `grid`: The grid of points you want to create the model image on.
-
-# Keyword arguments
- - `transform = identity`: A transform to apply to the image when creating the mean image. See the examples
-
-
-# Example
 
 ```julia-repl
-julia> m = MarkovRandomFieldCache(imagepixels(10.0, 10.0, 64, 64))
+julia> m = MarkovRandomFieldGraph(imagepixels(10.0, 10.0, 64, 64))
+julia> ρ = 10 # correlation length
+julia> d = GaussMarkovRandomField(ρ, m) # build the Gaussian Markov random field
 ```
 """
-function MarkovRandomFieldCache(grid::ComradeBase.AbstractDims)
-    return MarkovRandomFieldCache(eltype(grid.X), size(grid))
+function MarkovRandomFieldGraph(grid::ComradeBase.AbstractGrid; order::Integer=1)
+    return MarkovRandomFieldGraph(eltype(grid.X), size(grid); order)
+end
+
+function κ(ρ, ::Val{1})
+    return inv(ρ)
+end
+
+function κ(ρ, ::Val{N}) where {N}
+    return sqrt(oftype(ρ, 8*(N-1)))*inv(ρ)
 end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
-function sq_manoblis(::MarkovRandomFieldCache{1}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
     s = igrmf_1n(ΔI)
-    return (s + inv(ρ^2)*sum(abs2, ΔI))
+    κ² = κ(ρ, Val(1))^2
+    return (s + κ²*sum(abs2, ΔI))
 end
 
-function sq_manoblis(::MarkovRandomFieldCache{2}, ΔI::AbstractMatrix, ρ)
-    return igmrf_2n(ΔI, ρ)
+function sq_manoblis(::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
+    κ² = κ(ρ, Val(2))^2
+    return igmrf_2n(ΔI, κ²)/mrfnorm(κ², Val(2))
 end
 
-function sq_manoblis(d::MarkovRandomFieldCache{N}, ΔI::AbstractMatrix, ρ) where {N}
-    return dot(ΔI, (inv(ρ^2)*d.D + d.Λ)^(N), vec(ΔI))
+function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) where {N}
+    κ² = κ(ρ, Val(N))^2
+    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
 end
 
-function LinearAlgebra.logdet(d::MarkovRandomFieldCache{N}, ρ) where {N}
-    return N*sum(log, (inv(ρ^2) .+ d.λQ))
+function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldGraph, ΔI, ρ)
+    s = sq_manoblis(d, ΔI, ρ)
+    prI = ProjectTo(ΔI)
+    function _sq_manoblis_pullback(Δ)
+        Δf = NoTangent()
+        Δd = NoTangent()
+        dI = zero(ΔI)
+
+        ((_, _, dρ), ) = autodiff(Reverse, sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
+
+        dI .= Δ.*dI
+        return Δf, Δd, prI(dI), Δ*dρ
+    end
+    return s, _sq_manoblis_pullback
 end
 
-Dists.invcov(d::MarkovRandomFieldCache{N}, ρ) where {N} =  (d.Λ .+ d.D.*inv(ρ^2))^N
+
+function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
+    κ² = κ(ρ, Val(N))^2
+    a =  N*sum(d.λQ) do x
+                log(κ² + x)
+        end
+    return a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
+end
+
+# This is the σ to ensure we have a unit variance GMRF
+function mrfnorm(::T, ::Val{1}) where {T<:Number}
+    return one(T)
+end
+
+
+function mrfnorm(κ²::T, ::Val{2}) where {T<:Number}
+    return convert(T, 4π)*κ²
+end
+
+function mrfnorm(κ²::T, ::Val{N}) where {T<:Number, N}
+    return (N+1)*convert(T, 4π)*κ²^((N-1))
+end
+
+
+function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
+    κ² = κ(ρ, Val(N))^2
+    return (d.G .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
+end
 
 function eigenvals(dims)
     m, n = dims
@@ -153,30 +222,25 @@ function build_q1d(T, n)
     return Q
 end
 
-function igmrf_2n(I::AbstractMatrix, ρ)
+
+function igmrf_2n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
     for iy in axes(I, 2), ix in axes(I,1)
-        value = value + igrmf_2n_pixel(I, ρ, ix, iy)
+        value = value + igrmf_2n_pixel(I, κ², ix, iy)
     end
     return value
 end
 
-@inline function igrmf_2n_pixel(I::AbstractArray, ρ, ix::Integer, iy::Integer)
-    value = (4+inv(ρ)^2)*I[ix, iy]
-    if ix < lastindex(I, 1)
-        @inbounds ΔIx = I[ix+1, iy] + I[ix-1, iy]
-    else
-        ΔIx = I[begin, iy] + I[ix,iy]
-    end
+@inline function igrmf_2n_pixel(I::AbstractArray, κ², ix::Integer, iy::Integer)
+    value = (4 + κ²)*I[ix, iy]
+    ΔIx  = ix < lastindex(I, 1)  ? I[ix+1, iy] : I[begin, iy]
+    ΔIx += ix > firstindex(I, 1) ? I[ix-1, iy] : I[end, iy]
 
-    if iy < lastindex(I, 2)
-        @inbounds ΔIy = I[ix, iy+1] + I[ix, iy]
-    else
-        @inbounds ΔIy = I[ix, begin] + I[ix,iy]
-    end
+    ΔIy  = iy < lastindex(I, 2)  ? I[ix, iy+1] : I[ix, begin]
+    ΔIy += iy > firstindex(I, 2) ? I[ix, iy-1] : I[ix, end]
 
-    value += ΔIx + ΔIy
-    return abs2(value)
+    value = value - ΔIx - ΔIy
+    return value*value
 end
 
 
