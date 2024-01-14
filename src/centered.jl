@@ -77,7 +77,7 @@ end
 """
     CenterImage(X, Y)
     CenterImage(img::IntensityMap)
-    CenterImage(grid::ComradeBase.AbstractDims)
+    CenterImage(grid::RectiGrid)
 
 Constructs a projections operator that will take an arbritrary image and return
 a transformed version whose centroid is at the origin.
@@ -128,7 +128,7 @@ K = CC'.
 Our centered image is then given by `I₀ = KI`.
 """
 CenterImage(img::ComradeBase.IntensityMap) = CenterImage(img.X, img.Y)
-CenterImage(img::ComradeBase.AbstractDims) = CenterImage(img.X, img.Y)
+CenterImage(img::RectiGrid) = CenterImage(img.X, img.Y)
 
 function (c::CenterImage)(img::AbstractMatrix)
     return center_kernel(c.kernel, img)
