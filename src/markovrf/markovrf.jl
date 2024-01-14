@@ -60,7 +60,7 @@ Returns the graph or graph cache of the Markov Random field `m`.
     corrparam(m::MarkovRandomField)
 
 Returns the correlation parameter of the Markov Random field `m`. For details
-about the correlation parmeter see [MarkovRandomFieldGraph](@ref).
+about the correlation parmeter see [`MarkovRandomFieldGraph`](@ref).
 """
 @inline corrparam(m::MarkovRandomField) = m.ρ
 

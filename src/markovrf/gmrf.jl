@@ -65,7 +65,7 @@ dimensions `size(img)`, correlation `ρ` and unit covariance.
 The `order` parameter controls the smoothness of the field with higher orders being smoother.
 We recommend sticking with either `order=1,2`. Noting that `order=1` is equivalent to the
 usual TSV and L₂ regularization from RML imaging. For more information about the
-impact of the order see [MarkovRandomFieldGraph](@ref).
+impact of the order see [`MarkovRandomFieldGraph`](@ref).
 """
 function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order::Integer=1)
     cache = MarkovRandomFieldGraph(eltype(img), size(img); order)
@@ -81,7 +81,7 @@ dimensions `size(img)`, correlation `ρ` and unit covariance.
 The `order` parameter controls the smoothness of the field with higher orders being smoother.
 We recommend sticking with either `order=1,2`. Noting that `order=1` is equivalent to the
 usual TSV and L₂ regularization from RML imaging. For more information about the
-impact of the order see [MarkovRandomFieldGraph](@ref).
+impact of the order see [`MarkovRandomFieldGraph`](@ref).
 
 """
 function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order::Integer=1)

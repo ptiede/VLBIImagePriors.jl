@@ -108,7 +108,7 @@ while for `n>1` it is given by
     ρ = √(8(n-1))/κ
 
 Note that κ isn't set in the `MarkovRandomFieldGraph`, but rather once the noise process is
-set, i.e. one of the subtypes of [MarkovRandomField](@ref).
+set, i.e. one of the subtypes of [`MarkovRandomField`](@ref).
 
 Finally τ is chosen so that the marginal variance of the random field is unity. For `n=1`
 

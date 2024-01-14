@@ -8,6 +8,22 @@ A common spatial modeling prior used in other fields such as geostatistics are *
 
 ## Relation to RML Regularizers
 
-In *regularized maximum likelihood* (RML) imaging these additional assumptions are encoded into regularizers that enforce things like smoothness, sparsity, similarity to some fiducial image structure, etc. 
+In *regularized maximum likelihood* (RML) imaging these additional assumptions are encoded into regularizers that enforce things like smoothness, sparsity, similarity to some fiducial image structure. The cost function for regularized imaging is
+
+```math
+    J_λ(I) = \sum_d χ_d²(I) + \sum_r \alpha_r R(I), 
+```
+where ``R`` are the regularizers and ``\alpha_r`` are the regularizer hyperparameters. The problem with RML imaging is that the values of the hyperparameters is often unknown. Therefore, to find their values people often use heuristics and surveys over different values to find what *looks good*. However, this can often lead to biases and imaging artifacts. 
+
+However, probabilistic or statistical imaging provides a formalism simultaneously solve for the image and the regularizer or *prior* hyperparameters. For this we will assume that our prior `p` with hyperparameters ``\alpha`` are of the form
+
+```math
+    p(x | \alpha) = N(\alpha) f(x^T Q x),
+```
+where`Q` is the scale matrix that sets the variation and correlation scale of the problem, `f` is a function, and `N` is the normalization. We then seek a set of distributions for which the inner-product ``x^t Q x`` and `N` are easy to compute. To accomplish this we will look at Markov Random Fields and specifically the PDE
+
+```math
+    (\kappa^2 - \Delta)^n \varphi = \mathcal{W}(x)
+```
 
 
