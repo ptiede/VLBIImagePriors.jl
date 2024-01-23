@@ -52,9 +52,10 @@ abstract type MarkovRandomField <: Dists.ContinuousMatrixDistribution end
 function Base.show(io::IO, d::T) where {T<:MarkovRandomField}
     s = "$T"
     t = split(s, "{")[1]
-    println(io, "$t")
-    print(io, "\tGraph: ", d.graph)
-    println(io, "\tCorrelation Parameter: ", d.ρ)
+    println(io, "$t(")
+    println(io, "Graph: ", d.graph)
+    println(io, "Correlation Parameter: ", d.ρ)
+    print(io, ")")
 end
 
 """

@@ -5,6 +5,14 @@ struct HierarchicalPrior{M,P} <: Dists.ContinuousMultivariateDistribution
     hyperprior::P
 end
 
+function Base.show(io::IO, d::HierarchicalPrior)
+    println(io, "HierarchicalPrior(")
+    print(io, "\tmap: \n\t", d.priormap)
+    println(io, "\thyper prior: \n\t", d.hyperprior)
+    println(io, ")")
+end
+
+
 function Dists.logpdf(d::HierarchicalPrior, x::NamedTuple)
     hp = x.hyperparams
     p  = x.params

@@ -39,11 +39,12 @@ struct TDistMarkovRandomField{T<:Number,C} <: MarkovRandomField
 end
 
 function Base.show(io::IO, d::TDistMarkovRandomField)
-    t = "TDistMarkovRandomField"
+    t = "TDistMarkovRandomField("
     println(io, t)
     print(io, "\tGraph: ", d.graph)
     println(io, "\tCorrelation Parameter: ", d.ρ)
     println(io, "\tDegrees of Freedom: ", d.ν)
+    print(io, ")")
 end
 
 
