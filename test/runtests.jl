@@ -21,6 +21,7 @@ function moment_test(d, nsamples=200_000, atol=5e-2)
 end
 
 function test_interface(d::VLBIImagePriors.MarkovRandomField)
+    show(d)
     @inferred VLBIImagePriors.lognorm(d)
     @inferred VLBIImagePriors.unnormed_logpdf(d, rand(d))
     @inferred graph(d)

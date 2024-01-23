@@ -38,6 +38,15 @@ struct TDistMarkovRandomField{T<:Number,C} <: MarkovRandomField
     graph::C
 end
 
+function Base.show(io::IO, d::TDistMarkovRandomField)
+    t = "TDistMarkovRandomField"
+    println(io, t)
+    print(io, "\tGraph: ", d.graph)
+    println(io, "\tCorrelation Parameter: ", d.ρ)
+    println(io, "\tDegrees of Freedom: ", d.ν)
+end
+
+
 """
     Alias for `TDistMarkovRandomField`
 """

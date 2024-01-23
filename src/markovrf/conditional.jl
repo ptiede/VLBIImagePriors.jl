@@ -28,3 +28,9 @@ function ConditionalMarkov(D::Type{<:MarkovRandomField}, args...; kwargs...)
     c = MarkovRandomFieldGraph(args...; kwargs...)
     return ConditionalMarkov{D, typeof(c)}(c)
 end
+
+function Base.show(io::IO, x::ConditionalMarkov{B}) where {B}
+    println(io, "ConditionalMarkov:")
+    println(io, "\tRandom Field: $(B)")
+    println(io, "\tGraph: ", x.cache)
+end

@@ -134,6 +134,11 @@ function MarkovRandomFieldGraph(grid::ComradeBase.AbstractGrid; order::Integer=1
     return MarkovRandomFieldGraph(eltype(grid.X), size(grid); order)
 end
 
+function Base.show(io::IO, d::MarkovRandomFieldGraph{O}) where {O}
+    println(io, "MarkovRandomFieldGraph{$O}")
+    println(io, "\tdims: ", size(d))
+end
+
 function κ(ρ, ::Val{1})
     return inv(ρ)
 end

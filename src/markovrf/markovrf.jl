@@ -49,6 +49,14 @@ For an example implementation see e.g., [GaussMarkovRandomField](@ref)
 """
 abstract type MarkovRandomField <: Dists.ContinuousMatrixDistribution end
 
+function Base.show(io::IO, d::T) where {T<:MarkovRandomField}
+    s = "$T"
+    t = split(s, "{")[1]
+    println(io, "$t")
+    print(io, "\tGraph: ", d.graph)
+    println(io, "\tCorrelation Parameter: ", d.ρ)
+end
+
 """
     graph(m::MarkovRandomField)
 
