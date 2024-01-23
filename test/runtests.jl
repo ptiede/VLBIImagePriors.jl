@@ -593,6 +593,8 @@ end
         # tc = ascube(d2)
         @inferred TV.transform(tf, randn(dimension(tf)))
         # @inferred TV.transform(tc, rand(dimension(tc)))
+        show(d1)
+        show(d2)
 
     end
 

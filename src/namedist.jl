@@ -76,6 +76,15 @@ end
 
 NamedDist(;kwargs...) = NamedDist((;kwargs...))
 
+function Base.show(io::IO, d::NamedDist{N}) where {N}
+    dists = getfield(d, :dists)
+    if length(N) < 4
+        show(io, NamedTuple{N}(getfield(d, :dists)))
+    else
+        println(io, "($(N[1]) = $(dists[1]), $(N[2]) = $(dists[2]), $(N[3]) = $(dists[3]), ...)")
+    end
+end
+
 
 # Now this is a bunch of convienence stuff to automatically convert collection of distributions
 # to something NamedDist will like
