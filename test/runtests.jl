@@ -28,6 +28,7 @@ function test_interface(d::VLBIImagePriors.MarkovRandomField)
     @inferred size(d)
     @inferred scalematrix(d)
     c = ConditionalMarkov(typeof(d), Float64, size(d))
+    show(c)
     asflat(d)
     @inferred logdet(d)
 end
