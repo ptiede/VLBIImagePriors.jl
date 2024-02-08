@@ -66,7 +66,7 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
         # We do this ordering because Julia like column major
         G = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
         D = Diagonal(ones(eltype(G), size(G,1)))
-        λQ = eigenvals(dims)
+        λQ = eigenvals(T, dims)
         return new{order, typeof(G), typeof(D), typeof(λQ)}(G, D, λQ)
     end
 
@@ -77,7 +77,7 @@ end
 Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
 
-MarkovRandomFieldGraph(dims::Dims{2}; order::Integer=1) = MarkovRandomField(Float64, dims; order)
+MarkovRandomFieldGraph(dims::Dims{2}; order::Integer=1) = MarkovRandomFieldGraph(Float64, dims; order)
 MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer=1) where {T} = MarkovRandomFieldGraph(T, size(img); order)
 
 
@@ -151,9 +151,8 @@ end
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
 function sq_manoblis(::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
-    s = igrmf_1n(ΔI)
     κ² = κ(ρ, Val(1))^2
-    return (s + κ²*sum(abs2, ΔI))
+    return igmrf_1n(ΔI, κ²)
 end
 
 function sq_manoblis(::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
@@ -211,20 +210,31 @@ function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     return (d.G .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
 end
 
-function eigenvals(dims)
+function eigenvals(T, dims)
     m, n = dims
-    ix = 0:(m-1)
-    iy = 0:(n-1)
+    ix = 1:m
+    iy = 1:n
     # Eigenvalues are the Σᵢⱼcos2π(ii'/m + jj'/n)
-    return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))
+    return @. 4 + 2*cos(convert(T, π)*ix/(m+1)) + 2*cos(convert(T, π)*iy'/(n+1))
+    # return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))
 end
+
+# function eigenvals(dims)
+#     m, n = dims
+#     ix = 0:(m-1)
+#     iy = 0:(n-1)
+#     # Eigenvalues are the Σᵢⱼcos2π(ii'/m + jj'/n)
+#     return
+#     return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))
+# end
+
 
 
 function build_q1d(T, n)
     d1 = Vector{T}(undef, n)
     fill!(d1, 2)
     d1[begin] = d1[end] = 2
-    Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1), (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
+    Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1))#, (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
     return Q
 end
 
@@ -232,15 +242,15 @@ end
 function igmrf_2n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
     for iy in axes(I, 2), ix in axes(I,1)
-        value = value + igrmf_2n_pixel(I, κ², ix, iy)
+        value = value + igmrf_qv(I, κ², ix, iy)^2
     end
     return value
 end
 
-@inline function igrmf_2n_pixel(I::AbstractArray, κ², ix::Integer, iy::Integer)
+@inline function igmrf_2n_pixel(I::AbstractArray, κ², ix::Integer, iy::Integer)
     value = (4 + κ²)*I[ix, iy]
-    ΔIx  = ix < lastindex(I, 1)  ? I[ix+1, iy] : I[begin, iy]
-    ΔIx += ix > firstindex(I, 1) ? I[ix-1, iy] : I[end, iy]
+    ΔIx  = ix < lastindex(I, 1)  ? I[ix+1, iy] : zero(eltype(I))
+    ΔIx += ix > firstindex(I, 1) ? I[ix-1, iy] :
 
     ΔIy  = iy < lastindex(I, 2)  ? I[ix, iy+1] : I[ix, begin]
     ΔIy += iy > firstindex(I, 2) ? I[ix, iy-1] : I[ix, end]
@@ -253,98 +263,102 @@ end
 
 # computes the intrinsic gaussian process of a 1-neighbor method
 # this is equivalent to TSV regularizer
-function igrmf_1n(I::AbstractMatrix)
+function igmrf_1n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
     for iy in axes(I,2), ix in axes(I,1)
-        value = value + igrmf_1n_pixel(I, ix, iy)
+        value = value + igmrf_qv(I, κ², ix, iy)*I[ix, iy]
     end
     return value
 end
 
 
-@inline function igrmf_1n_pixel(I::AbstractArray, ix::Integer, iy::Integer)
+@inline @inbounds function igmrf_qv(I::AbstractMatrix, κ², ix::Integer, iy::Integer)
+    value = (4 + κ²)*I[ix, iy]
     if ix < lastindex(I, 1)
-         @inbounds ΔIx = I[ix+1, iy] - I[ix, iy]
-    else
-        ΔIx = I[begin, iy] - I[ix,iy]
+         value -= I[ix+1, iy]
     end
 
     if iy < lastindex(I, 2)
-         @inbounds ΔIy = I[ix, iy+1] - I[ix, iy]
-    else
-        @inbounds ΔIy = I[ix, begin] - I[ix,iy]
+         value -= I[ix, iy+1]
     end
 
-    ΔI2 = ΔIx^2 + ΔIy^2
-    return ΔI2
+    if ix > firstindex(I, 1)
+        value -= I[ix-1, iy]
+    end
+
+   if iy > firstindex(I, 2)
+        value -= I[ix, iy-1]
+   end
+
+    return value
 end
 
 
-@inline function igrmf_1n_grad_pixel(I::AbstractArray, ix::Integer, iy::Integer)
-    nx = lastindex(I, 1)
-    ny = lastindex(I, 2)
+# @inline function igmrf_1n_grad_pixel(I::AbstractArray, ix::Integer, iy::Integer)
+#     nx = lastindex(I, 1)
+#     ny = lastindex(I, 2)
 
-    i1 = ix
-    j1 = iy
-    i0 = i1 - 1
-    j0 = j1 - 1
-    i2 = i1 + 1
-    j2 = j1 + 1
+#     i1 = ix
+#     j1 = iy
+#     i0 = i1 - 1
+#     j0 = j1 - 1
+#     i2 = i1 + 1
+#     j2 = j1 + 1
 
-    grad = 0.0
+#     grad = 0.0
 
-    # For ΔIx = I[i+1,j] - I[i,j]
-    if i2 < nx + 1
-        @inbounds grad += -2 * (I[i2, j1] - I[i1, j1])
-    else
-        @inbounds grad += -2*(I[begin, j1] - I[i1, j1])
-    end
-
-
-    # For ΔIy = I[i,j+1] - I[i,j]
-    if j2 < ny + 1
-        @inbounds grad += -2 * (I[i1, j2] - I[i1, j1])
-    else
-        @inbounds grad += -2*(I[i1, begin] - I[i1, j1])
-    end
-
-    # For ΔIx = I[i,j] - I[i-1,j]
-    if i0 > 0
-        @inbounds grad += 2 * (I[i1, j1] - I[i0, j1])
-    else
-        @inbounds grad += 2*(I[i1, j1] - I[end, j1])
-    end
-
-    # For ΔIy = I[i,j] - I[i,j-1]
-    if j0 > 0
-        @inbounds grad += 2 * (I[i1, j1] - I[i1, j0])
-    else
-        @inbounds grad += 2*(I[i1, j1] - I[i1, end])
-    end
-
-    return grad
-end
+#     # For ΔIx = I[i+1,j] - I[i,j]
+#     if i2 < nx + 1
+#         @inbounds grad += -2 * (I[i2, j1] - I[i1, j1])
+#     else
+#         @inbounds grad += -2*(I[begin, j1] - I[i1, j1])
+#     end
 
 
+#     # For ΔIy = I[i,j+1] - I[i,j]
+#     if j2 < ny + 1
+#         @inbounds grad += -2 * (I[i1, j2] - I[i1, j1])
+#     else
+#         @inbounds grad += -2*(I[i1, begin] - I[i1, j1])
+#     end
+
+#     # For ΔIx = I[i,j] - I[i-1,j]
+#     if i0 > 0
+#         @inbounds grad += 2 * (I[i1, j1] - I[i0, j1])
+#     else
+#         @inbounds grad += 2*(I[i1, j1] - I[end, j1])
+#     end
+
+#     # For ΔIy = I[i,j] - I[i,j-1]
+#     if j0 > 0
+#         @inbounds grad += 2 * (I[i1, j1] - I[i1, j0])
+#     else
+#         @inbounds grad += 2*(I[i1, j1] - I[i1, end])
+#     end
+
+#     return grad
+# end
 
 
 
-function ChainRulesCore.rrule(::typeof(igrmf_1n), x::AbstractArray)
-    y = igrmf_1n(x)
-    px = ProjectTo(x)
-    function pullback(Δy)
-        f̄bar = NoTangent()
-        xbar = @thunk(igrmf_1n_grad(x) .* Δy)
-        return f̄bar, px(xbar)
-    end
-    return y, pullback
-end
 
 
-@inline function igrmf_1n_grad(I::AbstractArray)
-    grad = similar(I)
-    for iy in axes(I,2), ix in axes(I,1)
-        @inbounds grad[ix, iy] = igrmf_1n_grad_pixel(I, ix, iy)
-    end
-    return grad
-end
+# function ChainRulesCore.rrule(::typeof(igmrf_1n), x::AbstractArray)
+#     y = igmrf_1n(x)
+#     px = ProjectTo(x)
+#     function pullback(Δy)
+#         f̄bar = NoTangent()
+#         xbar = @thunk(igmrf_1n_grad(x) .* Δy)
+#         return f̄bar, px(xbar)
+#     end
+#     return y, pullback
+# end
+
+
+# @inline function igmrf_1n_grad(I::AbstractArray)
+#     grad = similar(I)
+#     for iy in axes(I,2), ix in axes(I,1)
+#         @inbounds grad[ix, iy] = igmrf_1n_grad_pixel(I, ix, iy)
+#     end
+#     return grad
+# end

@@ -318,6 +318,31 @@ end
 
     @testset "GMRF" begin
 
+        @testset "MarkovRandomFieldGraph" begin
+            g1 = MarkovRandomFieldGraph((4,5); order=1)
+            g2 = MarkovRandomFieldGraph(Float64, (4,5); order=1)
+            g3 = MarkovRandomFieldGraph(zeros(4, 5); order=1)
+            @test g1.G ≈ g2.G
+            @test g1.D ≈ g2.D
+            @test g1.λQ ≈ g2.λQ
+            @test g1.G ≈ g3.G
+            @test g1.D ≈ g3.D
+            @test g1.λQ ≈ g3.λQ
+
+
+            g1 = MarkovRandomFieldGraph((4,5); order=2)
+            g2 = MarkovRandomFieldGraph(Float64, (4,5); order=2)
+            g3 = MarkovRandomFieldGraph(zeros(4, 5); order=2)
+            @test g1.G ≈ g2.G
+            @test g1.D ≈ g2.D
+            @test g1.λQ ≈ g2.λQ
+            @test g1.G ≈ g3.G
+            @test g1.D ≈ g3.D
+            @test g1.λQ ≈ g3.λQ
+
+
+        end
+
         test_interface(GaussMarkovRandomField(3.0, rand(10, 8)))
         @testset "Tall" begin
             @testset "Order 1" begin
@@ -448,9 +473,9 @@ end
         end
 
 
-        @testset "rrules" begin
-            test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
-        end
+        # @testset "rrules" begin
+        #     test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
+        # end
     end
 
 
