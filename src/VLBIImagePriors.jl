@@ -32,6 +32,7 @@ include("matern.jl")
 include("heirarchical.jl")
 include("logratio_transform.jl")
 include("namedist.jl")
+include("componentdist.jl")
 
 
 
