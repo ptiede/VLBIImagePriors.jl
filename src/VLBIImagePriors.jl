@@ -5,8 +5,9 @@ using Reexport
 using ArgCheck
 using Bessels
 using ChainRulesCore
-@reexport using DensityInterface
 using ComradeBase
+using ComponentArrays
+@reexport using DensityInterface
 import Distributions as Dists
 using DocStringExtensions
 using Enzyme
@@ -33,6 +34,7 @@ include("heirarchical.jl")
 include("logratio_transform.jl")
 include("namedist.jl")
 include("componentdist.jl")
+include("component_transform.jl")
 
 
 
