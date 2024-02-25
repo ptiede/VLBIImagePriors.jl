@@ -40,10 +40,19 @@ public interface.
 """
 function ComponentDist(d::NamedTuple{N}) where {N}
     d = values(d)
-    dd = map(_distize, d)
+    dd = map(_distize_comp, d)
     axis = getaxes(ComponentVector(NamedTuple{N}(map(rand, dd))))
     return ComponentDist{N,typeof(dd), typeof(axis)}(dd, axis)
 end
+
+_distize_comp(d::Dists.Distribution) = d
+_distize_comp(d::NTuple{N, <:Dists.Distribution}) where {N} = TupleDist(d)
+_distize_comp(d::Tuple) = TupleDist(map(_distize, d))
+_distize_comp(d::AbstractArray{<:Dists.Distribution}) = Dists.product_distribution(d)
+_distize_comp(d::NamedTuple{N}) where {N} = ComponentDist(NamedTuple{N}(map(_distize_comp, d)))
+
+
+ComponentDist(;kwargs...) = ComponentDist((;kwargs...))
 
 
 function Dists.logpdf(d::ComponentDist{N}, x::NamedTuple{N}) where {N}
@@ -52,17 +61,37 @@ function Dists.logpdf(d::ComponentDist{N}, x::NamedTuple{N}) where {N}
     sum(map((dist, acc) -> Dists.logpdf(dist, acc), dists, vt))
 end
 
-function Dists.logpdf(d::ComponentDist{N}, x::ComponentArray) where {N}
-    s = mapreduce(+, valkeys(x)) do k
-        Dists.logpdf(getproperty(d, k), getproperty(x, k))
+# TODO do I really need  generated function for this?
+@generated function Dists.logpdf(d::ComponentDist{N}, x::ComponentArray) where {N}
+    exprs = [:(Dists.logpdf(d.$k, x.$k)) for k in N]
+    return :((+($(exprs...))))
+end
+
+flexible_setproperty!(d::ComponentVector, ::Val{k}, v) where {k} = setproperty!(d, Val(k), v); nothing
+@generated function flexible_setproperty!(d::ComponentVector, ::Val{k}, v::NamedTuple{N}) where {k, N}
+    exprs = []
+    for n in N
+        sym = QuoteNode(Symbol("$n"))
+        push!(exprs, :(flexible_setproperty!(d.$k, Val($sym), v.$n)))
     end
-    return s
+
+    return quote
+        $(exprs...)
+        return nothing
+    end
 end
 
 function Dists.rand(rng::AbstractRNG, d::ComponentDist)
     x = ComponentVector(zeros(length(d)), getfield(d, :axis))
     for v in valkeys(x)
-        setproperty!(x, v, Dists.rand(rng, getproperty(d, v)))
+        r = Dists.rand(rng, getproperty(d, v))
+        flexible_setproperty!(x, v, r)
     end
     return x
+end
+
+function HC.asflat(d::ComponentDist{N}) where {N}
+    dists = getfield(d, :dists)
+    trfs = HC.asflat(NamedTuple{N}(fieldvalues(dists))).transformations
+    return TV.as(getfield(d, :axis), trfs)
 end
