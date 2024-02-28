@@ -27,6 +27,21 @@ function TV.transform_with(flag::TV.LogJacFlag, ::AngleTransform, y::AbstractVec
     return atan(x1, x2), ℓi, index+2
 end
 
+function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:AngleTransform}, y::AbstractVector, index)
+    (;inner_transformation, dims) = t
+    T = TV.robust_eltype(y)
+    ℓ = TV.logjac_zero(flag, T)
+    out = similar(y, dims)
+    for i in eachindex(out)
+        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
+        index = index2
+        ℓ += ℓi
+        out[i] = θ
+    end
+    return out, ℓ, index
+end
+
+
 function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:AngleTransform}, y::AbstractVector, index)
     out = TV.transform_with(flag, t, y, index)
     py = ProjectTo(y)
@@ -105,14 +120,18 @@ end
 
 function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
     (;inner_transformation, dims) = t
-    # NOTE not using index increments as that somehow breaks type inference
-    d = TV.dimension(inner_transformation) # length of an element transformation
-    len = prod(dims)              # number of elements
-    𝐼 = reshape(range(index; length = len, step = d), dims)
-    xℓ = map(index -> ((x, ℓ, _) = TV.transform_with(flag, inner_transformation, y, index); (x, ℓ)), 𝐼)
-    ℓz = TV.logjac_zero(flag, TV.robust_eltype(y))
-    index′ = index + d * len
-    ntuple(i->getindex.(first.(xℓ), i), N+1), isempty(xℓ) ? ℓz : ℓz + sum(last, xℓ), index′
+    T = TV.robust_eltype(y)
+    ℓ = TV.logjac_zero(flag, T)
+    out = ntuple(_->similar(y, dims), Val(N+1))
+    for i in eachindex(out...)
+        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
+        ℓ += ℓi
+        index = index2
+        for n in 1:(N+1)
+            out[n][i] = θ[n]
+        end
+    end
+    return out, ℓ, index
 end
 
 

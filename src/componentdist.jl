@@ -54,14 +54,32 @@ _distize_comp(d::NamedTuple{N}) where {N} = ComponentDist(NamedTuple{N}(map(_dis
 
 ComponentDist(;kwargs...) = ComponentDist((;kwargs...))
 
+function ChainRulesCore.rrule(
+    ::typeof(Dists.logpdf),
+    d::ComponentDist{N}, x::ComponentArray) where {N}
 
-function Dists.logpdf(d::ComponentDist{N}, x::NamedTuple{N}) where {N}
-    vt = values(x)
-    dists = getfield(d, :dists)
-    sum(map((dist, acc) -> Dists.logpdf(dist, acc), dists, vt))
+    out = Dists.logpdf(d, x)
+
+    function _logpdf_pullback_componentdist(Δ)
+        dx = zero(x)
+        # dd = copy(d)
+        autodiff(Reverse, Dists.logpdf, Const(d), Duplicated(x, dx))
+        return NoTangent(), NoTangent(), Δ*dx
+    end
+    return out, _logpdf_pullback_componentdist
 end
 
-# TODO do I really need  generated function for this?
+tangent_set_proprerty!(x::ComponentArray, ::Val{k}, v) where {k} = setproperty!(x, Val(k), v)
+tangent_set_proprerty!(x::ComponentArray, ::Val{k}, v::ZeroTangent) where {k} = setproperty!(x, Val(k), 0)
+tangent_set_proprerty!(x::ComponentArray, ::Val{k}, v::NoTangent) where {k} = setproperty!(x, Val(k), 0)
+
+# function Dists.logpdf(d::ComponentDist{N}, x::ComponentArray) where {N}
+#     return mapreduce(+, N) do n
+#         Dists.logpdf(getproperty(d, n), getproperty(x, n))
+#     end
+# end
+
+# # TODO do I really need  generated function for this?
 @generated function Dists.logpdf(d::ComponentDist{N}, x::ComponentArray) where {N}
     exprs = [:(Dists.logpdf(d.$k, x.$k)) for k in N]
     return :((+($(exprs...))))

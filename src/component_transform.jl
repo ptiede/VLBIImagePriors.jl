@@ -23,9 +23,32 @@ function TV.transform_with(flag::TV.LogJacFlag, tt::ComponentTransform, x::Abstr
     return out, ℓ, index2
 end
 
+function TV.inverse_eltype(t::ComponentTransform, ::ComponentVector{T}) where {T}
+    return T
+end
+
+function TV.inverse_at!(x, index, t::ComponentTransform{T}, y::ComponentArray) where {N, T<:NamedTuple{N}}
+    for n in N
+        yn = getproperty(y, n)
+        tn = getproperty(t.transformations, n)
+        ycn = convert_comp_to_ttype(tn, yn)
+        index = TV.inverse_at!(x, index, tn, ycn)
+    end
+    return index
+end
+
+convert_comp_to_ttype(t, x) = x
+convert_comp_to_ttype(::TV.TransformTuple{<:Tuple}, x::Array) = Tuple(x)
+function convert_comp_to_ttype(::TV.TransformTuple{<:NamedTuple{N}}, x::ComponentArray) where {N}
+    NamedTuple(x)
+end
+
+
+
 function _transform_components(flag::TV.LogJacFlag, tt::ComponentTransform, x, index)
     (;transformations, axes) = tt
     data = similar(x, lastindex(axes[1])+1)
+    data[end] = 0
     index2 = transform_components!(data, axes, flag, transformations, x, index)
     return data, index2
 end
@@ -46,7 +69,7 @@ Base.@constprop :aggressive getvalproperty(tt::NamedTuple, k) = getproperty(tt, 
         push!(exprs, :(($(y_sym), $(ℓ_sym), $(index_sym)) = TV.transform_with(flag, $(trf_sym), x, index)))
         push!(exprs, :(index = $(index_sym)))
         push!(exprs, :(flexible_setproperty!(out, Val(Symbol($sym)), $(y_sym))))
-        if flag isa TV.LogJac
+        if flag === TV.LogJac
             push!(exprs, :(data[end] += $(ℓ_sym)))
         end
     end
@@ -57,7 +80,7 @@ Base.@constprop :aggressive getvalproperty(tt::NamedTuple, k) = getproperty(tt, 
 end
 
 function ChainRulesCore.rrule(::typeof(_transform_components), flag::TV.LogJacFlag, tt::ComponentTransform, x, index)
-    data, index = _transform_components(flag, tt, x, index)
+    data, index2 = _transform_components(flag, tt, x, index)
     px = ProjectTo(x)
     function _transform_components_pullback(Δ)
         Δdata = similar(data)
@@ -72,8 +95,7 @@ function ChainRulesCore.rrule(::typeof(_transform_components), flag::TV.LogJacFl
         trfs = tt.transformations
         Δx = zero(x)
         autodiff(Reverse, transform_components!, Const, Duplicated(dd, Δdata), Const(axes), Const(flag), Const(trfs), Duplicated(x, Δx), Const(index))
-        @info Δx
         return (Δf, Δflag, Δt, px(Δx), Δindex)
     end
-    return (data, index), _transform_components_pullback
+    return (data, index2), _transform_components_pullback
 end
