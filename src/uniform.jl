@@ -106,6 +106,57 @@ function Dists.rand(rng::Random.AbstractRNG, d::ImageSphericalUniform)
     return (r1, r2, r3)
 end
 
+
+# struct ImageSphericalUniform{T} <: Dists.Distribution{Dists.ArrayLikeVariate{3}, Dists.Continuous}
+#     nx::Int
+#     ny::Int
+# end
+
+# ImageSphericalUniform(nx::Int, ny::Int) = ImageSphericalUniform{Float64}(nx, ny)
+
+# HC.asflat(d::VLBIImagePriors.ImageSphericalUniform) = TV.as(Array, SphericalUnitVector{2}(), 3, d.nx, d.ny)
+
+
+# Base.size(d::ImageSphericalUniform) = (3, d.nx, d.ny)
+
+# function Dists._logpdf(d::ImageSphericalUniform, ::AbstractArray{T, 3}) where {T<:Number}
+#     return -d.nx*d.ny*log(4π)
+# end
+
+# function Dists._rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, R::AbstractArray{T, 3}) where {T<:Number}
+#     X = @view R[1,:,:]
+#     Y = @view R[2,:,:]
+#     Z = @view R[3,:,:]
+
+#     for i in eachindex(X,Y,Z)
+#         x = randn(rng)
+#         y = randn(rng)
+#         z = randn(rng)
+#         r = hypot(x, y, z)
+#         X[i] = x/r
+#         Y[i] = y/r
+#         Z[i] = z/r
+#     end
+#     return R
+# end
+
+# # Dists.rand!(d::ImageSphericalUniform, X) = Dists.rand!(Random.default_rng(), d, X)
+
+# # function Dists.rand(rng::Random.AbstractRNG, d::ImageSphericalUniform)
+# #     R = randn(rng, d.nx, d.ny, 3)
+# #     X = @view R[:,:,1]
+# #     Y = @view R[:,:,2]
+# #     Z = @view R[:,:,3]
+# #     for i in eachindex(X,Y,Z)
+# #         r = hypot(X[i], Y[i], Z[i])
+# #         X[i] /= r
+# #         Y[i] /= r
+# #         Z[i] /= r
+# #     end
+
+# #     return R
+# # end
+# #
 function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::NTuple{3,<:AbstractMatrix{S}}) where {S<:Number}
     lp =  Dists.logpdf(d, x)
     function _spherical_uniform_pullback(Δ)

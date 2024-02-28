@@ -61,6 +61,11 @@ function _vonlogpdf(μ, κ, x)
         s += (cos(x[i] - μ[i]) - 1)*κ[i]
     end
     return s
+    # Enzyme bugs out on this
+    # s = sum(zip(μ, κ, x); init=zero(eltype(μ))) do (μs, κs, xs)
+    #     return (cos(xs - μs) - 1)*κs
+    # end
+
 end
 
 function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVector}, κ::Union{Real, AbstractVector}, x::Union{Real, AbstractVector})
