@@ -1,4 +1,4 @@
-export ComponentDist
+# export ComponentDist
 
 using ComponentArrays
 
@@ -12,7 +12,9 @@ Base.getproperty(d::ComponentDist, ::Val{N}) where {N} = getproperty(d, N)
 Base.propertynames(::ComponentDist{N}) where {N} = N
 Base.length(d::ComponentDist) = mapreduce(length, +, getfield(d, :dists))
 
-"""
+# TODO This doesn't fully work for a few reasons, especially when it comes to nested priors
+# that use tuples. Plus is turns out the NamedDist construct tends to be a lot faster
+#=
     ComponentDist(d::NamedTuple{N})
     ComponentDist(;dists...)
 
@@ -37,7 +39,7 @@ julia> d = ComponentDist(a = Normal(),
 ```
 How this is done internally is considered an implementation detail and is not part of the
 public interface.
-"""
+=#
 function ComponentDist(d::NamedTuple{N}) where {N}
     d = values(d)
     dd = map(_distize_comp, d)
