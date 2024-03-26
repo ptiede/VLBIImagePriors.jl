@@ -41,6 +41,7 @@ function Dists._rand!(rng::AbstractRNG, d::DiagonalVonMises, x::AbstractVector)
 end
 
 HC.asflat(d::DiagonalVonMises) = TV.as(Vector, AngleTransform(), length(d))
+HC.asflat(d::DiagonalVonMises{<:Real, <:Real, <:Real}) = AngleTransform()
 
 
 function _vonmisesnorm(μ, κ)
@@ -48,6 +49,8 @@ function _vonmisesnorm(μ, κ)
     n = length(μ)
     return -n*log2π - sum(x->log(besseli0x(x)), κ)
 end
+
+Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Real) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
 
 function Dists._logpdf(d::DiagonalVonMises, x::Union{Real, AbstractVector{<:Real}})
     μ = d.μ
@@ -67,6 +70,7 @@ function _vonlogpdf(μ, κ, x)
     # end
 
 end
+_vonlogpdf(μ::Real, κ::Real, x::Real) = (cos(x - μ) - 1)*κ
 
 function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVector}, κ::Union{Real, AbstractVector}, x::Union{Real, AbstractVector})
     s = _vonlogpdf(μ, κ, x)
