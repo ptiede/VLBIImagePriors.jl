@@ -5,8 +5,9 @@ using Reexport
 using ArgCheck
 using Bessels
 using ChainRulesCore
-@reexport using DensityInterface
 using ComradeBase
+using ComponentArrays
+@reexport using DensityInterface
 import Distributions as Dists
 using DocStringExtensions
 using Enzyme
@@ -20,6 +21,9 @@ import TransformVariables as TV
 import HypercubeTransform as HC
 using NamedTupleTools
 
+# Enzyme.API.runtimeActivity!(true)
+
+
 include("imagesimplex.jl")
 include("dirichlet.jl")
 include("uniform.jl")
@@ -32,6 +36,8 @@ include("matern.jl")
 include("heirarchical.jl")
 include("logratio_transform.jl")
 include("namedist.jl")
+include("componentdist.jl")
+include("component_transform.jl")
 
 
 
