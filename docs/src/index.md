@@ -11,7 +11,7 @@ This package implements a number of priors that are helpful when imaging VLBI da
 
 For polarized imaging we also include a number of useful priors that parameterize the unit n-sphere which are required to parameterize the Poincaré sphere [Polarization Priors](@ref).
 
-In addition we include a [`NamedDist`](@ref) which is a distribution composed of `NamedTuples`. This distribution also attempts to be rather smart and does certain conversions automatically, such at converting an array and/or tuple of distributions to a `Distributions.jl` object. 
+As of v0.8 `NamedDist` has been moved to HypercubeTransforms.jl. If you depended on it please load that package instead.
 
 Documentation for [VLBIImagePriors](https://github.com/ptiede/VLBIImagePriors.jl).
 
