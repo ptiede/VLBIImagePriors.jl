@@ -82,7 +82,7 @@ MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer=1) where {T} = Mar
 
 
 """
-    MarkovRandomFieldGraph(grid::AbstractGrid; order=1)
+    MarkovRandomFieldGraph(grid::AbstractRectiGrid; order=1)
     MarkovRandomFieldGraph(img::AbstractMatrix; order=1)
 
 Create a `order` Markov random field using the `grid` or `image` as its dimension.
@@ -130,7 +130,7 @@ julia> ρ = 10 # correlation length
 julia> d = GaussMarkovRandomField(ρ, m) # build the Gaussian Markov random field
 ```
 """
-function MarkovRandomFieldGraph(grid::ComradeBase.AbstractGrid; order::Integer=1)
+function MarkovRandomFieldGraph(grid::ComradeBase.AbstractRectiGrid; order::Integer=1)
     return MarkovRandomFieldGraph(eltype(grid.X), size(grid); order)
 end
 
