@@ -6,7 +6,6 @@ using ArgCheck
 using Bessels
 using ChainRulesCore
 using ComradeBase
-using ComponentArrays
 @reexport using DensityInterface
 import Distributions as Dists
 using DocStringExtensions

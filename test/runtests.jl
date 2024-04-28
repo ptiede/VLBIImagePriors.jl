@@ -10,9 +10,7 @@ using Test
 using ComradeBase
 using Serialization
 using LinearAlgebra
-using ComponentArrays
 using Enzyme
-Enzyme.API.runtimeActivity!(true)
 
 
 
@@ -22,6 +20,5 @@ Enzyme.API.runtimeActivity!(true)
     include("centering.jl")
     include("imagepriors.jl")
     include("mrf.jl")
-    include("named_comp_dist.jl")
     include("simplex.jl")
 end

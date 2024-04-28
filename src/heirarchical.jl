@@ -15,7 +15,7 @@ function Base.show(io::IO, d::HierarchicalPrior)
 end
 
 
-function Dists.logpdf(d::HierarchicalPrior, x::Union{ComponentArray, NamedTuple})
+function Dists.logpdf(d::HierarchicalPrior, x::NamedTuple)
     hp = x.hyperparams
     p  = x.params
     pr = d.priormap(hp)
