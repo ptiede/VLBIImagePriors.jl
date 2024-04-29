@@ -5,6 +5,8 @@ struct HierarchicalPrior{M,P} <: Dists.ContinuousMultivariateDistribution
     hyperprior::P
 end
 
+Base.length(d::HierarchicalPrior) = length(d.priormap(rand(d.hyperprior))) + length(d.hyperprior)
+
 function Base.show(io::IO, d::HierarchicalPrior)
     println(io, "HierarchicalPrior(")
     print(io, "\tmap: \n\t", d.priormap)

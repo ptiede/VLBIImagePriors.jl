@@ -5,8 +5,8 @@ using Reexport
 using ArgCheck
 using Bessels
 using ChainRulesCore
-@reexport using DensityInterface
 using ComradeBase
+@reexport using DensityInterface
 import Distributions as Dists
 using DocStringExtensions
 using Enzyme
@@ -19,6 +19,9 @@ using StatsFuns
 import TransformVariables as TV
 import HypercubeTransform as HC
 using NamedTupleTools
+
+# Enzyme.API.runtimeActivity!(true)
+
 
 include("imagesimplex.jl")
 include("dirichlet.jl")
