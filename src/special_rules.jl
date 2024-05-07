@@ -28,7 +28,10 @@ function _transform_with_loop!(flag, t, xout, ysub)
     for i in eachindex(ysub)
         x, ℓ, _ = TV.transform_with(flag, t, ysub, i)
         xout[i] = x
-        xout[end] += ℓ
+        if flag === TV.LogJac()
+            xout[end] += ℓ
+        end
+        # xout[end] += ℓ
     end
     return nothing
 end
