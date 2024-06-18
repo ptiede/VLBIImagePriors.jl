@@ -73,7 +73,7 @@ function TV.inverse_at!(x, index, ::AngleTransform, y::Number)
     return index+2
 end
 
-TV.inverse_eltype(::AngleTransform, x) = float(typeof(x))
+TV.inverse_eltype(::AngleTransform, x) = float(eltype(x))
 
 
 """

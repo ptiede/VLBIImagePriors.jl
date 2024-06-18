@@ -1,6 +1,10 @@
 @testset "Angular Distributions" begin
     @testset "DiagonalVonMises" begin
         d0 = DiagonalVonMises(0.0, 0.5)
+
+        t0 = asflat(d0)
+        @test transform(t0, inverse(t0, π/4)) ≈ π/4
+
         d1 = DiagonalVonMises([0.5, 0.1], [inv(0.1), inv(π^2)])
         d2 = product_distribution(VonMises.(d1.μ, d1.κ))
 
