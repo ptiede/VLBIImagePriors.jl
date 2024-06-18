@@ -40,6 +40,8 @@ function Dists._rand!(rng::AbstractRNG, d::DiagonalVonMises, x::AbstractVector)
     rand!(rng, dv, x)
 end
 
+Dists.rand(rng::AbstractRNG, d::DiagonalVonMises{<:Real, <:Real}) = rand(rng, Dists.VonMises.(d.μ, d.κ))
+
 HC.asflat(d::DiagonalVonMises) = TV.as(Vector, AngleTransform(), length(d))
 HC.asflat(d::DiagonalVonMises{<:Real, <:Real, <:Real}) = AngleTransform()
 
