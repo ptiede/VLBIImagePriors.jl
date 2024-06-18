@@ -148,16 +148,24 @@ Base.eltype(d::WrappedUniform) = eltype(d.periods)
 Dists.insupport(::WrappedUniform, x) = true
 
 function WrappedUniform(p::AbstractVector)
-    @assert all(>(0), p) "Periods must be positive"
+    all(>(0), p) && ArgumentError("Periods must be positive")
     lnorm = sum(log, p)
     return WrappedUniform(p, lnorm)
 end
 
 function WrappedUniform(p::Real, n::Int)
-    @assert p > 0 "Period `p` must be positive"
+    p > 0 && ArgumentError("Period `p` must be positive")
     pvec = Fill(p, n)
     return WrappedUniform(pvec, n*log(p))
 end
+
+function WrappedUniform(p::Real)
+    p > 0 && ArgumentError("Period `p` must be positive")
+    return WrappedUniform(p, log(p))
+end
+
+Dists.logpdf(d::WrappedUniform{<:Real}, ::Real) = -d.lnorm
+Dists.rand(rng::AbstractRNG, d::WrappedUniform{<:Real}) = rand(rng)*d.periods
 
 Dists._logpdf(d::WrappedUniform, ::AbstractVector) = -d.lnorm
 
@@ -174,3 +182,4 @@ function Dists.product_distribution(dists::AbstractVector{<:WrappedUniform})
 end
 
 HC.asflat(d::WrappedUniform) = TV.as(Vector, AngleTransform(), length(d))
+HC.asflat(::WrappedUniform{<:Real}) = AngleTransform()

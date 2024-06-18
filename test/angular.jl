@@ -57,6 +57,10 @@
 
         test_rrule(Distributions.logpdf, d1, xx, atol=1e-8)
 
+        d0 = WrappedUniform(2π)
+        @test 0 ≤ rand(d0) ≤ 2π
+        @test logpdf(d0, 0.0) == logpdf(d0, 1.0)
+        @test asflat(d0) isa VLBIImagePriors.AngleTransform
     end
 
     @testset "SphericalUniform" begin
