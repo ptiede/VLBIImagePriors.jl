@@ -182,10 +182,10 @@ function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldGraph, 
 end
 
 
-function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
+@inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
     a =  N*sum(d.λQ) do x
-                log(κ² + x)
+                @fastmath log(κ² + x)
         end
     return a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
 end

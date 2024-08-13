@@ -33,7 +33,7 @@ julia> invcov(d) ≈ invcov(d2)
 true
 ```
 =#
-struct GaussMarkovRandomField{T<:Number,C} <: MarkovRandomField
+struct GaussMarkovRandomField{T<:Number,C<:MarkovRandomFieldGraph} <: MarkovRandomField
     """
     The correlation length of the random field.
     """
@@ -73,7 +73,8 @@ function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order::Integer=
 end
 
 """
-    GaussMarkovRandomField(ρ, dims)
+    GaussMarkovRandomField(ρ, dims; order=1)
+    GaussMarkovRandomField(ρ, g::AbstractRectiGrid; order=1)
 
 Constructs a `order`ᵗʰ order Gaussian Markov random field with
 dimensions `size(img)`, correlation `ρ` and unit covariance.
@@ -89,18 +90,13 @@ function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order::Integer=1)
     return GaussMarkovRandomField(ρ, cache)
 end
 
-
-"""
-    GaussMarkovRandomField(ρ, cache::MarkovRandomFieldGraph)
-
-Constructs a unit variance Gaussian Markov random field using the
-precomputed Markov Random Field graph cache `cache`.
-"""
-function GaussMarkovRandomField(ρ::Number, cache::MarkovRandomFieldGraph)
-    GaussMarkovRandomField{typeof(ρ), typeof(cache)}(ρ, cache)
+function GaussMarkovRandomField(ρ::Number, g::ComradeBase.AbstractRectiGrid{<:Tuple{ComradeBase.X, ComradeBase.Y}}; order::Integer=1)
+    return GaussMarkovRandomField(ρ, size(g); order)
 end
 
-function lognorm(d::GaussMarkovRandomField)
+
+
+@inline function lognorm(d::GaussMarkovRandomField)
     N = length(d)
 
     return (logdet(d) - Dists.log2π*N)/2
