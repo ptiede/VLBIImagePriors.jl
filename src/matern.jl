@@ -1,5 +1,7 @@
 export matern
 
+# TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
+Enzyme.@import_rrule(typeof(*), AbstractFFTs.Plan, AbstractArray)
 struct StationaryMatern{TΛ, P}
     k2::TΛ
     p::P

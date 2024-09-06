@@ -184,10 +184,11 @@ end
 
 @inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    a =  N*sum(d.λQ) do x
-                @fastmath log(κ² + x)
-        end
-    return a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
+    a = zero(eltype(d.λQ))
+    @fastmath @simd for i in eachindex(d.λQ)
+        a += log(κ² + d.λQ[i])
+    end
+    return N*a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
 end
 
 # This is the σ to ensure we have a unit variance GMRF
