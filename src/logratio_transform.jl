@@ -56,7 +56,7 @@ julia> to_simplex(AdditiveLR(), x)
 
 ```
 """
-function to_simplex(t::LogRatioTransform, x)
+@inline function to_simplex(t::LogRatioTransform, x)
     y = similar(x)
     to_simplex!(t::LogRatioTransform, y, x)
     return y
@@ -80,12 +80,12 @@ julia> to_simplex(AdditiveLR(), x)
 
 ```
 """
-function to_simplex!(::AdditiveLR, y, x)
+@inline function to_simplex!(::AdditiveLR, y, x)
     alrinv!(y, x)
     return nothing
 end
 
-function to_simplex!(::CenteredLR, y, x)
+@inline function to_simplex!(::CenteredLR, y, x)
     clrinv!(y, x)
     return nothing
 end
@@ -106,22 +106,23 @@ julia> y .= y./sum(y)
 julia> to_real(CenteredLR(), y)
 julia> to_real(AdditiveLR(), y)
 """
-function to_real(t::LogRatioTransform, y)
+@inline function to_real(t::LogRatioTransform, y)
     # @argcheck sum(y) ≈ 1
     x = similar(y)
     to_real!(t, x, y)
     return x
 end
 
-function to_real!(::AdditiveLR, x, y)
+@inline function to_real!(::AdditiveLR, x, y)
     alr!(x, y)
     return nothing
 end
 
-function to_real!(::CenteredLR, x, y)
+@inline function to_real!(::CenteredLR, x, y)
     clr!(x, y)
     return nothing
 end
+
 
 """
     clrinv!(x, y)
@@ -130,14 +131,23 @@ Computes the additive logit transform inplace. This converts from
 ℜⁿ → Δⁿ where Δⁿ is the n-simplex
 
 
+
 # Notes
 This function is mainly to transform the GaussMarkovRandomField to live on the simplex.
 """
-function clrinv!(x, y)
+@inline @fastmath function clrinv!(x, y)
     x .= exp.(y)
-    tot = sum(x)
+    tot = _fastsum(x)
     x .= x./tot
     nothing
+end
+
+@inline function _fastsum(x)
+    tot = zero(eltype(x))
+    @simd for i in eachindex(x)
+        tot += x[i]
+    end
+    return tot
 end
 
 """
