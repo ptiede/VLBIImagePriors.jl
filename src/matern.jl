@@ -1,7 +1,6 @@
 export matern
 
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
-Enzyme.@import_rrule(typeof(*), AbstractFFTs.Plan, AbstractArray)
 struct StationaryMatern{TΛ, P}
     k2::TΛ
     p::P
@@ -31,13 +30,18 @@ function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMat
     return StationaryMatern(eltype(k2), size(k2))
 end
 
+using FastBroadcast
 
-function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
+@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
     (;k2, p) = θ
     T = eltype(x)
     κ = sqrt(8*ν)/ρ
     τ = κ^ν*sqrt(ν)*π
-    rast = (@. τ*(κ^2 + k2)^(-(ν+1)/2)*x)
+    rast = similar(x)
+    # for i in eachindex(x, rast, k2)
+    #     rast[i] = @inline τ*(κ^2 + k2[i])^(-(ν+1)/2)*x[i]
+    # end
+    rast = (@.. τ*(κ^2 + k2)^(-(ν+1)/2)*x)
     return real.(p*rast.*complex(one(T), one(T)))./sqrt(prod(size(k2)))
 end
 

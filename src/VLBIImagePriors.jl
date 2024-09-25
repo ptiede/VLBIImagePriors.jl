@@ -9,7 +9,6 @@ using ComradeBase
 @reexport using DensityInterface
 import Distributions as Dists
 using DocStringExtensions
-using Enzyme
 using FFTW
 import FillArrays
 using LinearAlgebra
