@@ -9,11 +9,11 @@ using AbstractFFTs
 Enzyme.@import_rrule(typeof(*), AbstractFFTs.Plan, AbstractArray)
 
 function ChainRulesCore.rrule(::typeof(VLBIImagePriors.lcol), d::CenteredRegularizer, img)
-    f = lcol(d, img)
+    f = VLBIImagePriors.lcol(d, img)
     pimg = ProjectTo(img)
     function _lcol_pullback(Δ)
         dimg = zero(img)
-        autodiff(Reverse, lcol, Active, Const(d), Duplicated(copy(img), dimg))
+        autodiff(Reverse, VLBIImagePriors.lcol, Active, Const(d), Duplicated(copy(img), dimg))
         return (NoTangent(), NoTangent(), pimg(Δ*dimg))
     end
     return (f, _lcol_pullback)
@@ -60,7 +60,7 @@ function ChainRulesCore.rrule(::typeof(VLBIImagePriors.sq_manoblis), d::MarkovRa
 end
 
 function ChainRulesCore.rrule(::typeof(VLBIImagePriors.simplex_fwd), flag::TV.LogJacFlag, t::VLBIImagePriors.ImageSimplex, y::AbstractArray)
-    x = simplex_fwd(flag, t, y)
+    x = VLBIImagePriors.simplex_fwd(flag, t, y)
     py = ProjectTo(y)
     function _simplex_fwd_pullback(ΔX)
         Δf = NoTangent()
