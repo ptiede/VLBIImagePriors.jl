@@ -16,10 +16,10 @@ As of v0.8 `NamedDist` has been moved to HypercubeTransforms.jl. If you depended
 Documentation for [VLBIImagePriors](https://github.com/ptiede/VLBIImagePriors.jl).
 
 !!! warn
-    As of 0.9 VLBIImagePriors requires you to load Enzyme explicitly for many AD operations since 
+    As of 0.9 VLBIImagePriors requires you to load Enzyme explicitly even if using Zygote since 
     rules will generically call into Enzyme as needed.
 
-    
+
 ```@index
 ```
 
