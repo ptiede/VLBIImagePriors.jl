@@ -59,6 +59,54 @@ function ChainRulesCore.rrule(::typeof(VLBIImagePriors.sq_manoblis), d::MarkovRa
     return s, _sq_manoblis_pullback
 end
 
+function ChainRulesCore.rrule(::typeof(VLBIImagePriors.simplex_fwd), flag::TV.LogJacFlag, t::VLBIImagePriors.ImageSimplex, y::AbstractArray)
+    x = simplex_fwd(flag, t, y)
+    py = ProjectTo(y)
+    function _simplex_fwd_pullback(ΔX)
+        Δf = NoTangent()
+        Δflag = NoTangent()
+        Δt = NoTangent()
+        dx = zero(x)
+        if !(unthunk(ΔX) isa AbstractZero)
+            dx .= unthunk(ΔX)
+        end
+        Δy = zero(y)
+
+        f = (flag isa TV.NoLogJac) ? true : false
+        #copy is because sometimes y is a subarray :(
+        Enzyme.autodiff(Reverse, VLBIImagePriors.simplex_fwd!, Const, Duplicated(x, dx), Duplicated(copy(y), Δy), Const(f))
+        return (Δf, Δflag, Δt, py(Δy))
+    end
+    return x, _simplex_fwd_pullback
+end
+
+using ChainRulesCore
+function ChainRulesCore.rrule(::typeof(VLBIImagePriors.to_simplex), t::VLBIImagePriors.LogRatioTransform, y)
+    x = VLBIImagePriors.to_simplex(t, y)
+    function _to_simplex_pullback(Δ)
+        Δf = NoTangent()
+        dx = zero(x)
+        dx .= unthunk(Δ)
+        Δy = zero(y)
+        Enzyme.autodiff(Reverse, VLBIImagePriors.to_simplex!, Const, Const(t), Duplicated(x, dx), Duplicated(y, Δy))
+        return (Δf, NoTangent(), Δy)
+    end
+    return x, _to_simplex_pullback
+end
+
+function ChainRulesCore.rrule(::typeof(VLBIImagePriors.to_real), t::VLBIImagePriors.LogRatioTransform, y)
+    x = VLBIImagePriors.to_real(t, y)
+    function _to_simplex_pullback(Δ)
+        Δf = NoTangent()
+        dx = zero(x)
+        dx .= unthunk(Δ)
+        Δy = zero(y)
+        Enzyme.autodiff(Reverse, VLBIImagePriors.to_real!, Const, Const(t), Duplicated(x, dx), Duplicated(y, Δy))
+        return (Δf, NoTangent(), Δy)
+    end
+    return x, _to_simplex_pullback
+end
+
 
 
 
