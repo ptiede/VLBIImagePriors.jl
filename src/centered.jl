@@ -43,16 +43,6 @@ function lcol(d::CenteredRegularizer, img)
     return -(dx^2 + dy^2)/(2*d.σ^2)*prod(size(img))
 end
 
-function ChainRulesCore.rrule(::typeof(lcol), d::CenteredRegularizer, img)
-    f = lcol(d, img)
-    pimg = ProjectTo(img)
-    function _lcol_pullback(Δ)
-        dimg = zero(img)
-        autodiff(Reverse, lcol, Active, Const(d), Duplicated(copy(img), dimg))
-        return (NoTangent(), NoTangent(), pimg(Δ*dimg))
-    end
-    return (f, _lcol_pullback)
-end
 
 function Dists._logpdf(d::CenteredRegularizer, x::AbstractMatrix{<:Real})
     return Dists.logpdf(d.distI, x) + lcol(d, x)

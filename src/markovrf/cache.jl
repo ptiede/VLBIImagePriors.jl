@@ -165,23 +165,6 @@ function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) wher
     return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
 end
 
-function ChainRulesCore.rrule(::typeof(sq_manoblis), d::MarkovRandomFieldGraph, ΔI, ρ)
-    s = sq_manoblis(d, ΔI, ρ)
-    prI = ProjectTo(ΔI)
-    function _sq_manoblis_pullback(Δ)
-        Δf = NoTangent()
-        Δd = NoTangent()
-        dI = zero(ΔI)
-
-        ((_, _, dρ), ) = autodiff(Reverse, sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
-
-        dI .= Δ.*dI
-        return Δf, Δd, prI(dI), Δ*dρ
-    end
-    return s, _sq_manoblis_pullback
-end
-
-
 @inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
     a = zero(eltype(d.λQ))
