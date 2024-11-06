@@ -198,7 +198,7 @@ function eigenvals(T, dims)
     m, n = dims
     ix = 1:m
     iy = 1:n
-    # Eigenvalues are the Σᵢⱼcos2π(ii'/m + jj'/n)
+    # Because G is a Kronecker product of two tri-diagonal matrices
     return @. 4 + 2*cos(convert(T, π)*ix/(m+1)) + 2*cos(convert(T, π)*iy'/(n+1))
     # return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))
 end
