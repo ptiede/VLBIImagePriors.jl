@@ -136,7 +136,8 @@ Computes the additive logit transform inplace. This converts from
 This function is mainly to transform the GaussMarkovRandomField to live on the simplex.
 """
 @inline @fastmath function clrinv!(x, y)
-    x .= exp.(y)
+    maxx = maximum(y)
+    x .= exp.(y .- maxx) # This is for numerical stability. Prevents overflow
     tot = _fastsum(x)
     x .= x./tot
     nothing
