@@ -91,30 +91,7 @@ end
 end
 
 """
-    to_real(t::LogRatioTransform, y)
-
-Transform the value `u` that lives on the simplex to a value in the real vector space.
-See `subtypes(LogRatioTransform)` for a list of possible
-transformations.
-
-The inverse of this transform is given by [`to_simplex(t, x)`](@ref).
-
-# Example
-```julia
-julia> y = randn(100)
-julia> y .= y./sum(y)
-julia> to_real(CenteredLR(), y)
-julia> to_real(AdditiveLR(), y)
-"""
-@inline function to_real(t::LogRatioTransform, y)
-    # @argcheck sum(y) ≈ 1
-    x = similar(y)
-    to_real!(t, x, y)
-    return x
-end
-
-"""
-    to_real!(t::LogRatioTransform, x, u)
+    to_real(t::LogRatioTransform, u)
 
 Transform the value `u` that lives on the simplex to a value `x` in the real vector space.
 See `subtypes(LogRatioTransform)` for a list of possible
@@ -128,6 +105,34 @@ julia> y = randn(100)
 julia> y .= y./sum(y)
 julia> to_real(CenteredLR(), y)
 julia> to_real(AdditiveLR(), y)
+```
+"""
+@inline function to_real(t::LogRatioTransform, y)
+    # @argcheck sum(y) ≈ 1
+    x = similar(y)
+    to_real!(t, x, y)
+    return x
+end
+
+
+"""
+    to_real(t::LogRatioTransform, y)
+
+Transform the value `u` that lives on the simplex to a value in the real vector space.
+See `subtypes(LogRatioTransform)` for a list of possible
+transformations.
+
+The inverse of this transform is given by [`to_simplex(t, x)`](@ref).
+
+# Example
+```julia
+julia> y = randn(100)
+julia> y .= y./sum(y)
+julia> x = similar(y)
+julia> to_real!(CenteredLR(), x, y)
+julia> xar = similar(y, 99)
+julia> to_real!(AdditiveLR(), xar, y)
+```
 """
 @inline function to_real!(::AdditiveLR, x, y)
     alr!(x, y)
