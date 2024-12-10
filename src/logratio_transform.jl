@@ -136,12 +136,17 @@ Computes the additive logit transform inplace. This converts from
 This function is mainly to transform the GaussMarkovRandomField to live on the simplex.
 """
 @inline @fastmath function clrinv!(x, y)
-    maxx = maximum(y)
+    maxx = _noadmaximum(y) # We don't need to AD since the gradient is independent of this
     x .= exp.(y .- maxx) # This is for numerical stability. Prevents overflow
     tot = _fastsum(x)
     x .= x./tot
     nothing
 end
+
+@noinline function _noadmaximum(x)
+    return maximum(x)
+end
+EnzymeRules.inactive(::typeof(_noadmaximum), args...) = nothing
 
 @inline function _fastsum(x)
     tot = zero(eltype(x))
