@@ -1,4 +1,4 @@
-export to_real, to_simplex, CenteredLR, AdditiveLR
+export to_real, to_simplex, to_real!, to_simplex!, CenteredLR, AdditiveLR
 
 abstract type LogRatioTransform end
 
@@ -113,6 +113,22 @@ julia> to_real(AdditiveLR(), y)
     return x
 end
 
+"""
+    to_real!(t::LogRatioTransform, x, u)
+
+Transform the value `u` that lives on the simplex to a value `x` in the real vector space.
+See `subtypes(LogRatioTransform)` for a list of possible
+transformations.
+
+The inverse of this transform is given by [`to_simplex!(t, y, x)`](@ref).
+
+# Example
+```julia
+julia> y = randn(100)
+julia> y .= y./sum(y)
+julia> to_real(CenteredLR(), y)
+julia> to_real(AdditiveLR(), y)
+"""
 @inline function to_real!(::AdditiveLR, x, y)
     alr!(x, y)
     return nothing
