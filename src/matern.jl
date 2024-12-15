@@ -8,7 +8,7 @@ struct StationaryMatern{TΛ, P}
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
         k2 = kx.*kx .+ ky'.*ky'
-        plan = plan_fft(zeros(T, dims))
+        plan = FFTW.plan_r2r!(zeros(T, dims), FFTW.DHT)
         return new{typeof(k2), typeof(plan)}(k2, plan)
     end
 end
@@ -32,17 +32,21 @@ end
 
 using FastBroadcast
 
-@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
+
+function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
     (;k2, p) = θ
-    T = eltype(x)
-    κ = sqrt(8*ν)/ρ
-    τ = κ^ν*sqrt(ν)*π
+    T = promote_type(eltype(x), ρ, ν)
+    κ = T(sqrt(8*ν)/ρ)
+    κ2 = T(κ*κ)
+    τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(k2)))
     rast = similar(x)
-    # for i in eachindex(x, rast, k2)
-    #     rast[i] = @inline τ*(κ^2 + k2[i])^(-(ν+1)/2)*x[i]
-    # end
-    rast = (@.. τ*(κ^2 + k2)^(-(ν+1)/2)*x)
-    return real.(p*rast.*complex(one(T), one(T)))./sqrt(prod(size(k2)))
+    expp = -(ν+1)/2
+    @inbounds for i in eachindex(x, k2, rast)
+        rast[i] = τ*x[i]*@inline((κ2 + k2[i])^expp)
+    end
+    # @.. rast =  τ*(κ^2 + k2)^(-(ν+1)/2)*x
+    p*rast
+    return rast
 end
 
 
