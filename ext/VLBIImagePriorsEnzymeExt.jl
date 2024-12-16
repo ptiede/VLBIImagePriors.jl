@@ -6,8 +6,6 @@ using ChainRulesCore
 import TransformVariables as TV
 using AbstractFFTs
 
-Enzyme.@import_rrule(typeof(*), AbstractFFTs.Plan, AbstractArray)
-
 function ChainRulesCore.rrule(::typeof(VLBIImagePriors.lcol), d::CenteredRegularizer, img)
     f = VLBIImagePriors.lcol(d, img)
     pimg = ProjectTo(img)
