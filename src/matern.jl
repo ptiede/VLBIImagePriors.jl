@@ -35,7 +35,7 @@ using FastBroadcast
 
 function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
     (;k2, p) = θ
-    T = promote_type(eltype(x), ρ, ν)
+    T = promote_type(eltype(x), typeof(ρ), typeof(ν))
     κ = T(sqrt(8*ν)/ρ)
     κ2 = T(κ*κ)
     τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(k2)))
