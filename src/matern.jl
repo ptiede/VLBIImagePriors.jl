@@ -45,8 +45,8 @@ using FastBroadcast
             @inbounds ns[i] = τ*x[i]*@inline((κ2 + k2[i])^expp)
     end
     # @.. rast =  τ*(κ^2 + k2)^(-(ν+1)/2)*x
-    crast = p*ns
-    rast = (real.(crast) .+ imag.(crast))
+    p*ns
+    rast = (real.(ns) .+ imag.(ns))
     return rast
 end
 
