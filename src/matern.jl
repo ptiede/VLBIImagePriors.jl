@@ -38,7 +38,7 @@ using FastBroadcast
     T = promote_type(eltype(x), typeof(ρ), typeof(ν))
     κ = T(sqrt(8*ν)/ρ)
     κ2 = T(κ*κ)
-    τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(k2)))/2
+    τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(k2)))
     ns = similar(x , Complex{eltype(x)})
     expp = -(ν+1)/2
     Threads.@threads for i in eachindex(x, k2, ns)
