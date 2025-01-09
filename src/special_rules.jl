@@ -12,13 +12,14 @@ function _transform_with_loop!(flag, t, xout, ysub)
 end
 
 EnzymeRules.inactive(::typeof(FFTW.assert_applicable), args...) = nothing
+EnzymeRules.inactive_type(::Type{<:FFTW.Plan}) = true
 
 function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig, 
                                       func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
                                       ::Type{RT},
-                                      plan::EnzymeRules.Annotation{<:FFTW.r2rFFTWPlan{<:FFTW.fftwReal, I, true}},
-                                      X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
-                                      Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}}) where {I, RT}
+                                      plan::EnzymeRules.Annotation{<:FFTW.cFFTWPlan{<:FFTW.fftwComplex, I, true}},
+                                      X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
+                                      Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}}) where {I, RT}
 
     if !(typeof(plan) <: EnzymeRules.Const)
         throw(ArgumentError("Plan in FFTW.unsafe_execute! is not Const"))
@@ -61,9 +62,9 @@ end
 function EnzymeRules.reverse(config::EnzymeRules.RevConfig, 
                              func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
                              ::Type{RT}, cache,
-                             plan::EnzymeRules.Annotation{<:FFTW.r2rFFTWPlan{<:FFTW.fftwReal, I, true}},
-                             X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
-                             Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
+                             plan::EnzymeRules.Annotation{<:FFTW.cFFTWPlan{<:FFTW.fftwComplex, I, true}},
+                             X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
+                             Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
                             ) where {I, RT}
 
     # Now FFTW may overwrite the input to we need to check and cache it if needed
@@ -77,7 +78,9 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfig,
         for b in 1:N
             dY = N==1 ? Yfwd.dval : Yfwd.dval[b]
             dX = N==1 ? Xfwd.dval : X.dval[b]
-            planfwd.val*dY # compute the adjoint plan and move forward
+            planfwd.val'*dY # compute the adjoint plan and move forward
+            dY .*= length(dY)
+            # dX .= tmp
             # dY .= zero(eltype(dX))
         end
     end
