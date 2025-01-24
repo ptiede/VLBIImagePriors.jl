@@ -19,7 +19,6 @@ import TransformVariables as TV
 import HypercubeTransform as HC
 using NamedTupleTools
 
-# Enzyme.API.runtimeActivity!(true)
 
 
 include("imagesimplex.jl")
