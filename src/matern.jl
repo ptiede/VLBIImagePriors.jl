@@ -2,57 +2,65 @@ export matern
 
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
 struct StationaryMatern{TΛ, P}
-    k2::TΛ
+    kx::TΛ
+    ky::TΛ
     p::P
     function StationaryMatern(T::Type{<:Number}, dims::Dims{2})
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
-        k2 = kx.*kx .+ ky'.*ky'
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims))
-        return new{typeof(k2), typeof(plan)}(k2, plan)
+        return new{typeof(kx), typeof(plan)}(kx, ky, plan)
     end
 end
 
 function Base.show(io::IO, x::StationaryMatern)
     println(io, "StationaryMatern")
-    println(io, "\tBase type: $(eltype(x.k2))")
-    println(io, "\tsize:      $(size(x.k2))")
+    println(io, "\tBase type: $(eltype(x.kx))")
+    println(io, "\tsize:      ($(size(x.kx,1)), $(size(x.ky,1)))")
 end
 
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::StationaryMatern)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
-    Serialization.serialize(s, cache.k2)
+    Serialization.serialize(s, cache.kx)
+    Serialization.serialize(s, cache.ky)
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMatern})
-    k2 = Serialization.deserialize(s)
-    return StationaryMatern(eltype(k2), size(k2))
+    kx = Serialization.deserialize(s)
+    ky = Serialization.deserialize(s)
+    return StationaryMatern(eltype(kx), (length(kx), length(ky)))
 end
 
-using FastBroadcast
 
-
-@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
-    (;k2, p) = θ
-    T = promote_type(eltype(x), typeof(ρ), typeof(ν))
-    κ = T(sqrt(8*ν)/ρ)
-    κ2 = T(κ*κ)
-    τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(k2)))
+@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::NTuple{2,Number}, ξ::Number, ν::Number)
+    (;kx, ky, p) = θ
+    ρx, ρy = ρ
+    @assert size(x) == (length(kx), length(ky))
+    T = promote_type(eltype(x), typeof(ρ[1]), typeof(ν))
+    κ = T(sqrt(8*ν))
+    κ2 = κ*κ
+    τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(x)))
     ns = similar(x , Complex{eltype(x)})
     expp = -(ν+1)/2
-    Threads.@threads for i in eachindex(x, k2, ns)
-            @inbounds ns[i] = τ*x[i]*@inline((κ2 + k2[i])^expp)
+    s, c = sincos(ξ)
+    @inbounds for i in eachindex(ky), j in eachindex(kx)
+        rx = c*kx[j] - s*ky[i]
+        ry = s*kx[j] + c*ky[i]    
+        ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
     end
-    # @.. rast =  τ*(κ^2 + k2)^(-(ν+1)/2)*x
     p*ns
     rast = (real.(ns) .+ imag.(ns))
     return rast
 end
 
+@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
+    return θ(x, (ρ, ρ), zero(ρ), ν)
+end
+
 
 function std_dist(d::StationaryMatern)
-    StdNormal{eltype(d.k2),2}(size(d.k2))
+    StdNormal{eltype(d.kx),2}((length(d.kx), length(d.ky)))
 end
 
 
@@ -74,6 +82,7 @@ two objects
 ```julia-repl
 julia> transform, dstd = matern((32, 32))
 julia> draw_matern = transform(rand(dstd), 10.0, 2.0)
+julia> draw_matern_aniso = transform(rand(dstd), (10.0, 5.0), π/4 2.0) # anisotropic Matern
 julia> ones(32, 32) .+ 5.* draw_matern # change the mean and variance of the field
 ```
 """

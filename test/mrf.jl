@@ -154,6 +154,7 @@ end
 
         x = rand(d)
         @test trf(x, 1.0, 0.1) == trf_2(x, 1.0, 0.1)
+        @test trf(x, (5.0, 5.0), 0.0, 1.0) == trf(x, 5.0, 1.0)
 
         p = trf(rand(d), 1.0, 0.1)
         trf(rand(d), 1.0, 0.1)
@@ -180,6 +181,20 @@ end
     # @testset "rrules" begin
     #     test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
     # end
+end
+
+@testset "matern" begin
+    trf_wide, dstd_w = matern((8, 10))
+    trf_tall, dstd_t = matern((10, 8))
+    trf_square, dstd_s = matern((10, 10))
+
+    zw = rand(dstd_w)
+    zt = rand(dstd_t)
+    zs = rand(dstd_s)
+
+    @test trf_wide(zw, (3.0, 3.0), 0.0, 1.0) ≈ trf_wide(zw, 3.0, 1.0)
+    @test trf_tall(zt, (3.0, 3.0), 0.0, 1.0) ≈ trf_tall(zt, 3.0, 1.0)
+    @test trf_square(zs, (3.0, 3.0), 0.0, 1.0) ≈ trf_square(zs, 3.0, 1.0)
 end
 
 
