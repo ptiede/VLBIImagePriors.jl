@@ -116,6 +116,20 @@ Base.eltype(::StdNormal{T}) where {T} = T
 Dists.insupport(::StdNormal, x::AbstractVector) = true
 
 HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
+HC.ascube(d::StdNormal) = HC.ArrayHC(d)
+
+function HC._step_transform(h::HC.ArrayHC{<:StdNormal}, p::AbstractVector, index)
+    d = Dists.Normal()
+    out = Dists.quantile.(Ref(d), p)
+    return out, index+HC.dimension(h)
+end
+
+function HC._step_inverse!(x::AbstractVector, index, h::HC.ArrayHC{<:StdNormal}, y::AbstractVector)
+    d = Dists.Normal()
+    x .= Dists.cdf.(Ref(d), y)
+    return index+HC.dimension(h)
+end
+
 Dists.mean(d::StdNormal) = zeros(size(d))
 Dists.cov(d::StdNormal)  = Diagonal(prod(size(d)))
 

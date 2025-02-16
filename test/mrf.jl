@@ -148,6 +148,17 @@ end
         d2 = GaussMarkovRandomField(3.0, c)
         trf, d = matern(size(d2))
 
+        cd = ascube(d)
+        x = rand(dimension(cd))
+        @test inverse(cd, transform(cd, x)) ≈ x
+        x100 = rand(dimension(cd), 10000)
+        p100 = transform.(Ref(cd), eachcol(x100))
+        ms = mean(p100)
+        ss = std(p100)
+        @test isapprox(ms, zeros(100), atol=10/sqrt(1000))
+        @test isapprox(ss, ones(100), atol=50/sqrt(1000))
+
+
         serialize("test.jls" ,trf)
         trf_2 = deserialize("test.jls")
         rm("test.jls")
