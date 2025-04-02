@@ -1,7 +1,5 @@
 export matern
 
-using OhMyThreads
-
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
 struct StationaryMatern{TΛ, E, P}
     kx::TΛ
