@@ -51,12 +51,22 @@ end
     ns = similar(x , Complex{eltype(x)})
     expp = -(ν+1)/2
     s, c = sincos(ξ)
-    @tasks for i in eachindex(ky)
-        @set scheduler = executor(θ)
-        for j in eachindex(kx)
-            @inbounds rx = c*kx[j] - s*ky[i]
-            @inbounds ry = s*kx[j] + c*ky[i]    
-            @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
+    e = executor(θ)
+    if e != :serial && Threads.nthreads() >1
+        Threads.@threads for i in eachindex(ky)
+            for j in eachindex(kx)
+                @inbounds rx = c*kx[j] - s*ky[i]
+                @inbounds ry = s*kx[j] + c*ky[i]    
+                @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
+            end
+        end
+    else
+        for i in eachindex(ky)
+            for j in eachindex(kx)
+                @inbounds rx = c*kx[j] - s*ky[i]
+                @inbounds ry = s*kx[j] + c*ky[i]    
+                @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
+            end
         end
     end
     p*ns
