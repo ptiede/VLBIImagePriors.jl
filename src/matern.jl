@@ -1,22 +1,28 @@
 export matern
 
+using OhMyThreads
+
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
-struct StationaryMatern{TΛ, P}
+struct StationaryMatern{TΛ, E, P}
     kx::TΛ
     ky::TΛ
+    executor::E
     p::P
-    function StationaryMatern(T::Type{<:Number}, dims::Dims{2})
+    function StationaryMatern(T::Type{<:Number}, dims::Dims{2}; executor=SerialScheduler())
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
-        plan = FFTW.plan_fft!(zeros(Complex{T}, dims))
-        return new{typeof(kx), typeof(plan)}(kx, ky, plan)
+        plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags=FFTW.MEASURE)
+        return new{typeof(kx), typeof(executor), typeof(plan)}(kx, ky, executor, plan)
     end
 end
+
+ComradeBase.executor(d::StationaryMatern) = getfield(d, :executor)
 
 function Base.show(io::IO, x::StationaryMatern)
     println(io, "StationaryMatern")
     println(io, "\tBase type: $(eltype(x.kx))")
     println(io, "\tsize:      ($(size(x.kx,1)), $(size(x.ky,1)))")
+    println(io, "\texec:      $(x.executor)")
 end
 
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::StationaryMatern)
@@ -24,14 +30,15 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::Sta
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.kx)
     Serialization.serialize(s, cache.ky)
+    Serialization.serialize(s, cache.executor)
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMatern})
     kx = Serialization.deserialize(s)
     ky = Serialization.deserialize(s)
-    return StationaryMatern(eltype(kx), (length(kx), length(ky)))
+    executor = Serialization.deserialize(s)
+    return StationaryMatern(eltype(kx), (length(kx), length(ky)); executor)
 end
-
 
 @fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::NTuple{2,Number}, ξ::Number, ν::Number)
     (;kx, ky, p) = θ
@@ -44,10 +51,13 @@ end
     ns = similar(x , Complex{eltype(x)})
     expp = -(ν+1)/2
     s, c = sincos(ξ)
-    @inbounds for i in eachindex(ky), j in eachindex(kx)
-        rx = c*kx[j] - s*ky[i]
-        ry = s*kx[j] + c*ky[i]    
-        ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
+    @tasks for i in eachindex(ky)
+        @set scheduler = executor(θ)
+        for j in eachindex(kx)
+            @inbounds rx = c*kx[j] - s*ky[i]
+            @inbounds ry = s*kx[j] + c*ky[i]    
+            @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
+        end
     end
     p*ns
     rast = (real.(ns) .+ imag.(ns))
@@ -86,14 +96,14 @@ julia> draw_matern_aniso = transform(rand(dstd), (10.0, 5.0), π/4 2.0) # anisot
 julia> ones(32, 32) .+ 5.* draw_matern # change the mean and variance of the field
 ```
 """
-function matern(T::Type{<:Number}, dims::Dims{2})
-    d = StationaryMatern(T, dims)
+function matern(T::Type{<:Number}, dims::Dims{2}; executor=SerialScheduler())
+    d = StationaryMatern(T, dims; executor=executor)
     return d, std_dist(d)
 end
 
-matern(dims::Dims{2}) = matern(Float64, dims)
-matern(T::Type{<:Number}, dims::Vararg{Int}) = matern(T, dims)
-matern(dims::Vararg{Int}) = matern(dims)
+matern(dims::Dims{2}; executor=SerialScheduler()) = matern(Float64, dims; executor=executor)
+matern(T::Type{<:Number}, dims::Vararg{Int}; executor=SerialScheduler()) = matern(T, dims; executor=executor)
+matern(dims::Vararg{Int}; executor=SerialScheduler()) = matern(dims; executor)
 
 """
     matern(img::AbstractMatrix)
@@ -140,7 +150,15 @@ end
 Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T<:Real} = __logpdf(d, x)
 
 
-__logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
+# __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
+
+function __logpdf(d::StdNormal, x)
+    s = zero(eltype(x))
+    for i in eachindex(x)
+        s += abs2(x[i])
+    end
+    return -s/2 - prod(d.dims)*Dists.log2π/2
+end
 
 
 function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<: Real, N}
