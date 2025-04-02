@@ -6,7 +6,7 @@ struct StationaryMatern{TΛ, E, P}
     ky::TΛ
     executor::E
     p::P
-    function StationaryMatern(T::Type{<:Number}, dims::Dims{2}; executor=SerialScheduler())
+    function StationaryMatern(T::Type{<:Number}, dims::Dims{2}; executor=:serial)
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags=FFTW.MEASURE)
@@ -104,14 +104,14 @@ julia> draw_matern_aniso = transform(rand(dstd), (10.0, 5.0), π/4 2.0) # anisot
 julia> ones(32, 32) .+ 5.* draw_matern # change the mean and variance of the field
 ```
 """
-function matern(T::Type{<:Number}, dims::Dims{2}; executor=SerialScheduler())
+function matern(T::Type{<:Number}, dims::Dims{2}; executor=:serial)
     d = StationaryMatern(T, dims; executor=executor)
     return d, std_dist(d)
 end
 
-matern(dims::Dims{2}; executor=SerialScheduler()) = matern(Float64, dims; executor=executor)
-matern(T::Type{<:Number}, dims::Vararg{Int}; executor=SerialScheduler()) = matern(T, dims; executor=executor)
-matern(dims::Vararg{Int}; executor=SerialScheduler()) = matern(dims; executor)
+matern(dims::Dims{2}; executor=:serial) = matern(Float64, dims; executor=executor)
+matern(T::Type{<:Number}, dims::Vararg{Int}; executor=:serial) = matern(T, dims; executor=executor)
+matern(dims::Vararg{Int}; executor=:serial) = matern(dims; executor)
 
 """
     matern(img::AbstractMatrix)
