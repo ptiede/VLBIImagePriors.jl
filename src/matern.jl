@@ -38,6 +38,17 @@ function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMat
     return StationaryMatern(eltype(kx), (length(kx), length(ky)); executor)
 end
 
+
+macro threaded(executor, expr)
+    esc(quote
+        if Threads.nthreads() > 1 && $(executor) != :serial
+            Threads.@threads $(expr)
+        else
+            $(expr)
+        end
+    end)
+end
+
 @fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::NTuple{2,Number}, ξ::Number, ν::Number)
     (;kx, ky, p) = θ
     ρx, ρy = ρ
@@ -50,23 +61,15 @@ end
     expp = -(ν+1)/2
     s, c = sincos(ξ)
     e = executor(θ)
-    if e != :serial && Threads.nthreads() >1
-        Threads.@threads for i in eachindex(ky)
-            for j in eachindex(kx)
-                @inbounds rx = c*kx[j] - s*ky[i]
-                @inbounds ry = s*kx[j] + c*ky[i]    
-                @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
-            end
-        end
-    else
-        for i in eachindex(ky)
-            for j in eachindex(kx)
-                @inbounds rx = c*kx[j] - s*ky[i]
-                @inbounds ry = s*kx[j] + c*ky[i]    
-                @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
-            end
+
+    @threaded e for i in eachindex(ky)
+        for j in eachindex(kx)
+            @inbounds rx = c*kx[j] - s*ky[i]
+            @inbounds ry = s*kx[j] + c*ky[i]
+            @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
         end
     end
+
     p*ns
     rast = (real.(ns) .+ imag.(ns))
     return rast
