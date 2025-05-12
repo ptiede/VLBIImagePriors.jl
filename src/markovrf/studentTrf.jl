@@ -54,7 +54,7 @@ end
 const TMRF = TDistMarkovRandomField
 
 
-(c::ConditionalMarkov{<:TMRF})(ρ, ν=1) = TDistMarkovRandomField(ρ, ν, c.cache)
+(c::ConditionalMarkov{<:TMRF})(ρ, ν=4) = TDistMarkovRandomField(ρ, ν, c.cache)
 
 Dists.mean(d::TDistMarkovRandomField{T}) where {T} = d.ν > 1 ? FillArrays.Zeros(T, size(d)) : FillArrays.Fill(convert(T, Inf), size(d))
 
