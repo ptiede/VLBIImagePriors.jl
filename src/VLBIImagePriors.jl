@@ -19,6 +19,7 @@ import TransformVariables as TV
 import HypercubeTransform as HC
 using NamedTupleTools
 
+using ComradeBase: @threaded
 
 
 include("imagesimplex.jl")

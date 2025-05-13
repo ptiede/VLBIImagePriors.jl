@@ -1,12 +1,12 @@
 export matern
 
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
-struct StationaryMatern{TΛ, E, P}
+struct StationaryMatern{TΛ, E<:Union{Serial, ThreadsEx}, P}
     kx::TΛ
     ky::TΛ
     executor::E
     p::P
-    function StationaryMatern(T::Type{<:Number}, dims::Dims{2}; executor=:serial)
+    function StationaryMatern(T::Type{<:Number}, dims::Dims{2}; executor=Serial())
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags=FFTW.MEASURE)
@@ -38,16 +38,6 @@ function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMat
     return StationaryMatern(eltype(kx), (length(kx), length(ky)); executor)
 end
 
-
-macro threaded(executor, expr)
-    esc(quote
-        if Threads.nthreads() > 1 && $(executor) != :serial
-            Threads.@threads $(expr)
-        else
-            $(expr)
-        end
-    end)
-end
 
 @fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::NTuple{2,Number}, ξ::Number, ν::Number)
     (;kx, ky, p) = θ
@@ -86,8 +76,8 @@ end
 
 
 """
-    matern([T=Float64], dims::Dims{2})
-    matern([T=Float64], dims::Int...)
+    matern([T=Float64], dims::Dims{2}; executor=Serial())
+    matern([T=Float64], dims::Int...; executor=Serial())
 
 Creates an approximate Matern Gaussian process that approximates the Matern process
 on a regular grid which cyclic boundary conditions. This function returns a tuple of
@@ -100,6 +90,19 @@ two objects
 
 # Example
 
+## Arguments
+
+- `[T::Float64]`: Optional element type of the matern process. Default is `Float64`.
+- `dims::Dims{2}`: The dimensions of the Matern process. This is a tuple of two integers.
+
+or 
+
+- `grid::AbstractRectiGrid`: A grid object that the Matern process is defined on. 
+
+## Keyword arguments
+
+
+
 ```julia-repl
 julia> transform, dstd = matern((32, 32))
 julia> draw_matern = transform(rand(dstd), 10.0, 2.0)
@@ -107,14 +110,18 @@ julia> draw_matern_aniso = transform(rand(dstd), (10.0, 5.0), π/4 2.0) # anisot
 julia> ones(32, 32) .+ 5.* draw_matern # change the mean and variance of the field
 ```
 """
-function matern(T::Type{<:Number}, dims::Dims{2}; executor=:serial)
+function matern(T::Type{<:Number}, dims::Dims{2}; executor=Serial())
     d = StationaryMatern(T, dims; executor=executor)
     return d, std_dist(d)
 end
 
-matern(dims::Dims{2}; executor=:serial) = matern(Float64, dims; executor=executor)
-matern(T::Type{<:Number}, dims::Vararg{Int}; executor=:serial) = matern(T, dims; executor=executor)
-matern(dims::Vararg{Int}; executor=:serial) = matern(dims; executor)
+function matern(grid::ComradeBase.AbstractRectiGrid)
+    return matern(eltype(grid), size(grid); executor=executor(grid))
+end
+
+matern(dims::Dims{2}; executor=Serial()) = matern(Float64, dims; executor=executor)
+matern(T::Type{<:Number}, dims::Vararg{Int}; executor=Serial()) = matern(T, dims; executor=executor)
+matern(dims::Vararg{Int}; executor=Serial()) = matern(dims; executor)
 
 """
     matern(img::AbstractMatrix)
@@ -122,7 +129,7 @@ matern(dims::Vararg{Int}; executor=:serial) = matern(dims; executor)
 Creates an approximate Matern Gaussian process with dimension `size(img)`
 
 """
-matern(img::AbstractMatrix{T}) where {T} = matern(T, size(img))
+matern(img::AbstractMatrix{T}; executor=Serial()) where {T} = matern(T, size(img); executor)
 
 
 struct StdNormal{T, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
