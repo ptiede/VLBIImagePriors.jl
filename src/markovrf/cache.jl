@@ -78,7 +78,7 @@ struct NonCenteredMarkovGraph{O, G<:MarkovRandomFieldGraph{O}, P}
 end
 
 function NonCenteredMarkovGraph(g::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
-    p = FFTW.plan_r2r!(g.λQ, FFTW.RODFT00; flags=flag)
+    p = FFTW.plan_r2r!(copy(g.λQ), FFTW.RODFT00; flags=flag)
     return NonCenteredMarkovGraph(g, p)
 end
 
@@ -86,7 +86,7 @@ standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE) = NonCenteredMarkovGra
 
 function centerdist!(out, c::NonCenteredMarkovGraph{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
     κ² = κ(ρ, Val(Order))^2
-    nm = sqrt(mrfnorm(κ², Val(Order)))
+    nm = sqrt(mrfnorm(κ², Val(Order))/(2*length(z)))
     g = graph(c)
     Λ = Iterators.Reverse(g.λQ)
     # c.trf*z
