@@ -10,6 +10,8 @@ using FiniteDifferences
         FFTW.unsafe_execute!(p, X, X)
         return sum(abs2, X)
     end
+
+    fdm = central_fdm(5, 1)
     
     @testset "Complex inplace transform" begin 
         X = rand(ComplexF64, 8, 8)
