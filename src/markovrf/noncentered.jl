@@ -66,6 +66,35 @@ function centerdist(c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<
     return out
 end
 
+function invcenterdist(c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real})
+    out = similar(z)
+    invcenterdist!(out, c, ρ, z)
+    return out
+end
+
+function invcenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
+    κ² = κ(ρ, Val(Order))^2
+    # numerator is the normaliztion of the MRF
+    # denominator is to make the DST orthonormal
+    sz = prod(ntuple(i -> size(c)[i] + 1, Val(ndims(z))))
+    nm = sqrt(mrfnorm(κ², Val(Order))*(4*sz))
+    g = graph(c)
+    Λ = g.λQ
+
+    out .= z
+    c.trf*out
+
+    if Order == 1
+        out .= sqrt.(Λ .+ κ²).*out./nm
+    elseif Order == 2
+        out .= (Λ .+ κ²).*out./nm
+    else
+        out .= ((Λ .+ κ²).^(Order/2)).*out./nm
+    end
+    
+    return nothing
+end
+
 function Base.size(c::NonCenteredMarkovTransform{G, P}) where {G, P}
     return size(c.graph)
 end
