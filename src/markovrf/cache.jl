@@ -72,54 +72,6 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
 
 end
 
-struct NonCenteredMarkovTransform{O, G<:MarkovRandomFieldGraph{O}, P}
-    graph::G
-    trf::P
-end
-
-function NonCenteredMarkovTransform(g::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
-    p = FFTW.plan_r2r!(copy(g.λQ), FFTW.RODFT00; flags=flag)
-    return NonCenteredMarkovTransform(g, p)
-end
-
-standardize(c::MarkovRandomField; flag=FFTW.MEASURE) = NonCenteredMarkovTransform(graph(c); flag), std_dist(c)
-
-
-
-function centerdist!(out, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
-    κ² = κ(ρ, Val(Order))^2
-    nm = sqrt(mrfnorm(κ², Val(Order))/(2*length(z)))
-    g = graph(c)
-    Λ = Iterators.Reverse(g.λQ)
-    # c.trf*z
-    if Order == 1
-        out .= inv.(sqrt.(Λ .+ κ²)).*z.*nm
-    elseif Order == 2
-        out .= inv.(Λ .+ κ²).*z.*nm
-    else
-        out .=  ((Λ .+ κ²).^(-Order/2)).*z.*nm
-    end
-    
-    c.trf*out
-
-    return nothing
-end
-
-function centerdist(c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
-    out = similar(z)
-    centerdist!(out, c, ρ, z)
-    return out
-end
-
-function Base.size(c::NonCenteredMarkovTransform{G, P}) where {G, P}
-    return size(c.graph)
-end
-
-function graph(c::NonCenteredMarkovTransform{G, P}) where {G, P}
-    return c.graph
-end
-
-
 
 Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
@@ -137,7 +89,7 @@ Create a `order` Markov random field using the `grid` or `image` as its dimensio
 The `order` keyword argument specifies the order of the Markov random process and is generally
 given by the precision matrix
 
-    Qₙ = τ(κI + G)ⁿ
+    Qₙ = τ(κ²I + G)ⁿ
 
 where `n = order`, I is the identity matrix, G is specified by the first order stencil
 
@@ -243,8 +195,8 @@ end
 
 function eigenvals(T, dims)
     m, n = dims
-    ix = 1:m
-    iy = 1:n
+    ix = m:-1:1 #Reverse the order to match the DST conventions
+    iy = n:-1:1 #Reverse the order to match the DST conventions
     # Because G is a Kronecker product of two tri-diagonal matrices
     return @. 4 + 2*cos(convert(T, π)*ix/(m+1)) + 2*cos(convert(T, π)*iy'/(n+1))
     # return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))

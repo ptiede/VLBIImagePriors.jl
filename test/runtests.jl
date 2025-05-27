@@ -21,4 +21,5 @@ using Enzyme
     include("imagepriors.jl")
     include("mrf.jl")
     include("simplex.jl")
+    include("rules.jl")
 end
