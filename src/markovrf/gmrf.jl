@@ -112,7 +112,7 @@ end
 
 function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMatrix{<:Real})
     Q = scalematrix(d)
-    cQ = cholesky(Q)
+    cQ = cholesky(Symmetric(Q))
     z = randn(rng, length(x))
     x .= reshape(cQ.PtL'\z, size(d))
 end

@@ -173,18 +173,22 @@ end
     return N*a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
 end
 
+# TODO
+# Figure out the actual narmalization from the lattice helmholtz decomposition
+# using the specific boundary conditions I am using.
+
 # This is the σ to ensure we have a unit variance GMRF
-function mrfnorm(::T, ::Val{1}) where {T<:Number}
-    return one(T)
+function mrfnorm(κ²::T, ::Val{1}) where {T<:Number}
+    return (π/2 + κ²) #Empirical rule
 end
 
 
-function mrfnorm(κ²::T, ::Val{2}) where {T<:Number}
-    return convert(T, 4π)*κ²
+function mrfnorm(k::T, ::Val{2}) where {T<:Number}
+    return (4π*k + 1/4) 
 end
 
-function mrfnorm(κ²::T, ::Val{N}) where {T<:Number, N}
-    return (N+1)*convert(T, 4π)*κ²^((N-1))
+function mrfnorm(k::T, ::Val{N}) where {T<:Number, N}
+    return (4π*k^(N-1)*(N-1) + 1/((2*N)^(((N-1))))) #Empirical rule
 end
 
 

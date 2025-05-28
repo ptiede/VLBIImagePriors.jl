@@ -10,6 +10,20 @@ function NonCenteredMarkovTransform(g::MarkovRandomFieldGraph; flag=FFTW.MEASURE
     return NonCenteredMarkovTransform(g, p)
 end
 
+function Serialization.serialize(s::Serialization.AbstractSerializer, cache::NonCenteredMarkovTransform)
+    Serialization.writetag(s.io, Serialization.OBJECT_TAG)
+    Serialization.serialize(s, typeof(cache))
+    Serialization.serialize(s, cache.graph)
+    Serialization.serialize(s, cache.trf.flags)
+end
+
+function Serialization.deserialize(s::AbstractSerializer, ::Type{<:NonCenteredMarkovTransform})
+    graph = Serialization.deserialize(s)
+    flag = Serialization.deserialize(s)
+    return NonCenteredMarkovTransform(graph; flag=flag)
+end
+
+
 """
     standardize(c::MarkovRandomField; flag=FFTW.MEASURE)
 
