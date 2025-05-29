@@ -17,7 +17,7 @@ using Enzyme
 
 @testset "VLBIImagePriors.jl" begin
     include("angular.jl")
-    include("centering.jl")
+    include("centereg.jl")
     include("imagepriors.jl")
     include("mrf.jl")
     include("simplex.jl")
