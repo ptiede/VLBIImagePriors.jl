@@ -48,7 +48,7 @@ function centerdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{O
     # numerator is the normaliztion of the MRF
     # denominator is to make the DST orthonormal
     sz = prod(ntuple(i -> size(c)[i] + 1, Val(N)))
-    nm = sqrt(mrfnorm(κ², Val(Order))/(4*sz))
+    nm = sqrt(mrfnorm(d, κ²)/(4*sz))
     g = graph(c)
     Λ = g.λQ
 
@@ -91,7 +91,7 @@ function invcenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransfor
     # numerator is the normaliztion of the MRF
     # denominator is to make the DST orthonormal
     sz = prod(ntuple(i -> size(c)[i] + 1, Val(ndims(z))))
-    nm = sqrt(mrfnorm(κ², Val(Order))*(4*sz))
+    nm = sqrt(mrfnorm(d, κ²)*(4*sz))
     g = graph(c)
     Λ = g.λQ
 

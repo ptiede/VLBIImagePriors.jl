@@ -149,19 +149,19 @@ end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
-function sq_manoblis(::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(d::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(1))^2
-    return igmrf_1n(ΔI, κ²)
+    return igmrf_1n(ΔI, κ²)/mrfnorm(d, κ²)
 end
 
-function sq_manoblis(::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(d::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(2))^2
-    return igmrf_2n(ΔI, κ²)/mrfnorm(κ², Val(2))
+    return igmrf_2n(ΔI, κ²)/mrfnorm(d, κ²)
 end
 
 function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
+    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(d, κ²)
 end
 
 @inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
@@ -170,7 +170,7 @@ end
     @fastmath @simd for i in eachindex(d.λQ)
         a += log(κ² + d.λQ[i])
     end
-    return N*a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
+    return N*a - length(d.λQ)*log(mrfnorm(d, κ²))
 end
 
 # TODO
@@ -178,23 +178,25 @@ end
 # using the specific boundary conditions I am using.
 
 # This is the σ to ensure we have a unit variance GMRF
-function mrfnorm(κ²::T, ::Val{1}) where {T<:Number}
-    return (π/2 + κ²) #Empirical rule
+function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T<:Number}
+    return (κ² + π/2) #Empirical rule
 end
 
 
-function mrfnorm(k::T, ::Val{2}) where {T<:Number}
-    return (4π*k + 1/4) 
+function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T<:Number}
+    λ0 = first(d.λQ)
+    return 4π*(k + 4*λ0)
 end
 
-function mrfnorm(k::T, ::Val{N}) where {T<:Number, N}
-    return (4π*k^(N-1)*(N-1) + 1/((2*N)^(((N-1))))) #Empirical rule
+function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T<:Number}
+    λ0 = first(d.λQ)
+    return T(4π)*(k + 4*λ0)^(N-1) #Empirical rule
 end
 
 
 function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return (d.G .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
+    return (d.G .+ d.D.*κ²)^N/mrfnorm(d, κ²)
 end
 
 function eigenvals(T, dims)
