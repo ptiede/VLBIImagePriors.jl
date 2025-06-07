@@ -179,18 +179,19 @@ end
 
 # This is the σ to ensure we have a unit variance GMRF
 function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T<:Number}
-    return (κ² + π/2) #Empirical rule
+    λ0 = first(d.λQ)
+    return (2π)*sqrt(κ² + λ0) #Empirical rule
 end
 
 
 function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T<:Number}
     λ0 = first(d.λQ)
-    return 4π*(k + 4*λ0)
+    return 2π*(k + λ0)
 end
 
 function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T<:Number}
     λ0 = first(d.λQ)
-    return T(4π)*(k + 4*λ0)^(N-1) #Empirical rule
+    return T(2π)*(k + λ0)^(N-1) #Empirical rule
 end
 
 

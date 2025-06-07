@@ -46,7 +46,7 @@ end
     T = promote_type(eltype(x), typeof(ρ[1]), typeof(ν))
     κ = T(sqrt(8*ν))
     κ2 = κ*κ
-    τ = 2*κ^ν*sqrt(ν*convert(T, π))/sqrt(prod(size(x)))
+    τ = κ^ν*sqrt(ν*convert(T, π))/sqrt(prod(size(x)))
     ns = similar(x , Complex{eltype(x)})
     expp = -(ν+1)/2
     s, c = sincos(ξ)
