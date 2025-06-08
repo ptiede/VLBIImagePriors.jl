@@ -333,6 +333,10 @@ end
         ρ = d.ρ
         t, ds = standardize(d)
 
+        serialize("test.jls", t)
+        t2 = deserialize("test.jls")
+        @test t == t2
+
         @test size(t) == size(d)
         @test size(ds) == size(d)
         @test d.ρ == ρ

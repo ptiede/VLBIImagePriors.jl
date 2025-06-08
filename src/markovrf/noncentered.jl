@@ -50,7 +50,7 @@ To transform the realization of the standarized Markov Random Field back to the 
 space use the [`centerdist`](@ref) function. To transform the realization of the original
 Markov Random Field to the standardized space use the [`noncenterdist`](@ref) function.
 """
-standardize(c::GaussMarkovRandomField; flag=FFTW.MEASURE) = NonCenteredMarkovTransform(graph(c); flag), std_dist(c)
+standardize(c::GaussMarkovRandomField; flag=FFTW.MEASURE) = standardize(graph(c); flag), std_dist(c)
 
 
 """
