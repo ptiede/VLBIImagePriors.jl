@@ -72,52 +72,6 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
 
 end
 
-struct NonCenteredMarkovGraph{O, G<:MarkovRandomFieldGraph{O}, P}
-    graph::G
-    trf::P
-end
-
-function NonCenteredMarkovGraph(g::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
-    p = FFTW.plan_r2r!(copy(g.λQ), FFTW.RODFT00; flags=flag)
-    return NonCenteredMarkovGraph(g, p)
-end
-
-standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE) = NonCenteredMarkovGraph(c; flag)
-
-function centerdist!(out, c::NonCenteredMarkovGraph{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
-    κ² = κ(ρ, Val(Order))^2
-    nm = sqrt(mrfnorm(κ², Val(Order))/(2*length(z)))
-    g = graph(c)
-    Λ = Iterators.Reverse(g.λQ)
-    # c.trf*z
-    if Order == 1
-        out .= inv.(sqrt.(Λ .+ κ²)).*z.*nm
-    elseif Order == 2
-        out .= inv.(Λ .+ κ²).*z.*nm
-    else
-        out .=  ((Λ .+ κ²).^(-Order/2)).*z.*nm
-    end
-    
-    c.trf*out
-
-    return nothing
-end
-
-function centerdist(c::NonCenteredMarkovGraph{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
-    out = similar(z)
-    centerdist!(out, c, ρ, z)
-    return out
-end
-
-function Base.size(c::NonCenteredMarkovGraph{G, P}) where {G, P}
-    return size(c.graph)
-end
-
-function graph(c::NonCenteredMarkovGraph{G, P}) where {G, P}
-    return c.graph
-end
-
-
 
 Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
@@ -135,7 +89,7 @@ Create a `order` Markov random field using the `grid` or `image` as its dimensio
 The `order` keyword argument specifies the order of the Markov random process and is generally
 given by the precision matrix
 
-    Qₙ = τ(κI + G)ⁿ
+    Qₙ = τ(κ²I + G)ⁿ
 
 where `n = order`, I is the identity matrix, G is specified by the first order stencil
 
@@ -195,19 +149,19 @@ end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
-function sq_manoblis(::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(d::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(1))^2
-    return igmrf_1n(ΔI, κ²)
+    return igmrf_1n(ΔI, κ²)/mrfnorm(d, κ²)
 end
 
-function sq_manoblis(::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
+function sq_manoblis(d::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(2))^2
-    return igmrf_2n(ΔI, κ²)/mrfnorm(κ², Val(2))
+    return igmrf_2n(ΔI, κ²)/mrfnorm(d, κ²)
 end
 
 function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(κ², Val(N))
+    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(d, κ²)
 end
 
 @inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
@@ -216,33 +170,40 @@ end
     @fastmath @simd for i in eachindex(d.λQ)
         a += log(κ² + d.λQ[i])
     end
-    return N*a - length(d.λQ)*log(mrfnorm(κ², Val(N)))
+    return N*a - length(d.λQ)*log(mrfnorm(d, κ²))
 end
+
+# TODO
+# Figure out the actual narmalization from the lattice helmholtz decomposition
+# using the specific boundary conditions I am using.
 
 # This is the σ to ensure we have a unit variance GMRF
-function mrfnorm(::T, ::Val{1}) where {T<:Number}
-    return one(T)
+function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T<:Number}
+    λ0 = first(d.λQ)
+    return (κ² + 1) #Empirical rule
 end
 
 
-function mrfnorm(κ²::T, ::Val{2}) where {T<:Number}
-    return convert(T, 4π)*κ²
+function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T<:Number}
+    λ0 = first(d.λQ)
+    return T(4π)*(k + λ0) #Empirical rule
 end
 
-function mrfnorm(κ²::T, ::Val{N}) where {T<:Number, N}
-    return (N+1)*convert(T, 4π)*κ²^((N-1))
+function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T<:Number}
+    λ0 = first(d.λQ)
+    return T(4π)*(k + λ0)^(N-1) #Empirical rule
 end
 
 
 function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return (d.G .+ d.D.*κ²)^N/mrfnorm(κ², Val(N))
+    return (d.G .+ d.D.*κ²)^N/mrfnorm(d, κ²)
 end
 
 function eigenvals(T, dims)
     m, n = dims
-    ix = 1:m
-    iy = 1:n
+    ix = m:-1:1 #Reverse the order to match the DST conventions
+    iy = n:-1:1 #Reverse the order to match the DST conventions
     # Because G is a Kronecker product of two tri-diagonal matrices
     return @. 4 + 2*cos(convert(T, π)*ix/(m+1)) + 2*cos(convert(T, π)*iy'/(n+1))
     # return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))

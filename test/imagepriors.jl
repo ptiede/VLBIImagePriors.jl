@@ -11,7 +11,7 @@
     p0 = inverse(t, x0)
 
     @test transform(t, p0) ≈ x0
-    test_rrule(Distributions._logpdf, d1⊢NoTangent(), x0, atol=1e-8)
+    test_rrule(Distributions._logpdf, d1⊢NoTangent(), fill(0.5, size(x0)), atol=1e-8)
 
     ℓ = logdensityof(d1)
     function ℓpt(x)

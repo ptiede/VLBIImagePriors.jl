@@ -46,7 +46,7 @@ end
     T = promote_type(eltype(x), typeof(ρ[1]), typeof(ν))
     κ = T(sqrt(8*ν))
     κ2 = κ*κ
-    τ = κ^ν*sqrt(ν)*convert(T, π)/sqrt(prod(size(x)))
+    τ = κ^ν*sqrt(ν*convert(T, π))/sqrt(prod(size(x)))
     ns = similar(x , Complex{eltype(x)})
     expp = -(ν+1)/2
     s, c = sincos(ξ)
@@ -56,7 +56,7 @@ end
         for j in eachindex(kx)
             @inbounds rx = c*kx[j] - s*ky[i]
             @inbounds ry = s*kx[j] + c*ky[i]
-            @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp/2
+            @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp
         end
     end
 

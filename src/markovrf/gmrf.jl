@@ -55,6 +55,9 @@ Dists.invcov(d::GaussMarkovRandomField) = scalematrix(d)
 
 (c::ConditionalMarkov{<:GMRF})(ρ)  = GaussMarkovRandomField(ρ, c.cache)
 
+std_dist(c::GMRF{T}) where {T} = StdNormal{T,2}(size(c))
+
+
 
 """
     GaussMarkovRandomField(ρ, img::AbstractArray; order::Integer=1)
@@ -109,7 +112,7 @@ end
 
 function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMatrix{<:Real})
     Q = scalematrix(d)
-    cQ = cholesky(Q)
+    cQ = cholesky(Symmetric(Q))
     z = randn(rng, length(x))
     x .= reshape(cQ.PtL'\z, size(d))
 end
