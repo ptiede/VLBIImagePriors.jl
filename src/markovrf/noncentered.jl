@@ -95,12 +95,25 @@ function centerdist(c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<
     return out
 end
 
+"""
+    noncenterdist(c::NonCenteredMarkovTransform, ρ, z)
+Transforms the Markov Random Field `z` back uncorrelated standardized space, i.e. whitened noise.
+
+Note this is substantially more efficient than the manual Cholesky decomposition
+approach, since we are able to use the fact that the MRF has a particularlly simple eigenspace 
+decomposition.
+"""
 function noncenterdist(c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real})
     out = similar(z)
     noncenterdist!(out, c, ρ, z)
     return out
 end
 
+"""
+    noncenterdist!(out, c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real}) where {Order}
+Transforms the Markov Random Field `z` back uncorrelated standardized space, i.e. whitened noise,
+inplace into `out`.
+"""
 function noncenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
     κ² = κ(ρ, Val(Order))^2
     # numerator is the normaliztion of the MRF
