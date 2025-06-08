@@ -323,3 +323,39 @@ end
     x0s = rand(dHp, (10,10))
     asflat(dHp)
 end
+
+
+
+
+@testset "Noncenter Markov Gaussian" begin
+
+    function testnoncenter(d)
+        ρ = d.ρ
+        t, ds = standardize(d)
+
+        @test size(t) == size(d)
+        @test size(ds) == size(d)
+        @test d.ρ == ρ
+
+        s = rand(d, 10000)
+        ss = centerdist.(Ref(t), ρ, rand(ds, 100000))
+
+
+        @test all(x->isapprox(x[1], x[2]; atol=1e-1), zip(mean(s), mean(ss)))
+        @test all(x->isapprox(x[1], x[2]; atol=1e-1), zip(std(s), std(ss)))
+
+        u = noncenterdist.(Ref(t), ρ, rand(d, 5000))
+        @test all(x->isapprox(x, 0; atol=1e-1), mean(u))
+        @test all(x->isapprox(x, 1; atol=1e-1), std(u))
+    end
+
+    ρ = 8.0
+    d = GMRF(ρ, (20, 20); order=1)
+    testnoncenter(d)
+
+    d = GMRF(ρ, (20, 20); order=2)
+    testnoncenter(d)
+
+    d = GMRF(ρ, (20, 20); order=3)
+    testnoncenter(d)
+end

@@ -1,4 +1,4 @@
-export standardize, centerdist, centerdist!
+export standardize, centerdist, centerdist!, noncenterdist, noncenterdist!
 
 struct NonCenteredMarkovTransform{O, G<:MarkovRandomFieldGraph{O}, P}
     graph::G
@@ -25,17 +25,32 @@ end
 
 
 """
-    standardize(c::MarkovRandomField; flag=FFTW.MEASURE)
+    standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
 
-Transforms a `MarkovRandomField` into its non-centered form. This returns a tuple where the 
-first element is a transform `t` that converts from the standardized space to the correlated 
-Markov Random Field space, and the second element is the standard distribution, e.g., for a 
-`GMRF` this is IID set of standard normals with the same size as the input Markov Random Field.
+Transforms a `MarkovRandomFieldGraph` into its non-centered form. This returns the 
+transform `t` that converts an array from the standardized Markov Random Field space, i.e.
+white noise, to the correlated sample. This is essentially precaching the whitening transform.
 
 To transform the realization of the standarized Markov Random Field back to the original
-space use the [`centerdist`](@ref) function.
+space use the [`centerdist`](@ref) function. To transform the realization of the original
+Markov Random Field to the standardized space use the [`noncenterdist`](@ref) function.
 """
-standardize(c::MarkovRandomField; flag=FFTW.MEASURE) = NonCenteredMarkovTransform(graph(c); flag), std_dist(c)
+standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE) = NonCenteredMarkovTransform(graph(c); flag)
+
+"""
+    standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
+
+Computes the transformation for the `MarkovRandomField` that converts it into its non-centered form. 
+This returns the transform and the standardized distribution of the Markov Random Field. Note that
+if the `MarkovRandomField` depends on a hyperparameter such as the correlation length `ρ`, the 
+parameter should be passed into the centerdist function. 
+
+
+To transform the realization of the standarized Markov Random Field back to the original
+space use the [`centerdist`](@ref) function. To transform the realization of the original
+Markov Random Field to the standardized space use the [`noncenterdist`](@ref) function.
+"""
+standardize(c::GaussMarkovRandomField; flag=FFTW.MEASURE) = NonCenteredMarkovTransform(graph(c); flag), std_dist(c)
 
 
 """
@@ -48,8 +63,8 @@ function centerdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{O
     # numerator is the normaliztion of the MRF
     # denominator is to make the DST orthonormal
     sz = prod(ntuple(i -> size(c)[i] + 1, Val(N)))
-    nm = sqrt(mrfnorm(d, κ²)/(4*sz))
     g = graph(c)
+    nm = sqrt(mrfnorm(g, κ²)/(4*sz))
     Λ = g.λQ
 
     if Order == 1
@@ -80,19 +95,19 @@ function centerdist(c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<
     return out
 end
 
-function invcenterdist(c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real})
+function noncenterdist(c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real})
     out = similar(z)
-    invcenterdist!(out, c, ρ, z)
+    noncenterdist!(out, c, ρ, z)
     return out
 end
 
-function invcenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
+function noncenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
     κ² = κ(ρ, Val(Order))^2
     # numerator is the normaliztion of the MRF
     # denominator is to make the DST orthonormal
     sz = prod(ntuple(i -> size(c)[i] + 1, Val(ndims(z))))
-    nm = sqrt(mrfnorm(d, κ²)*(4*sz))
     g = graph(c)
+    nm = sqrt(mrfnorm(g, κ²)*(4*sz))
     Λ = g.λQ
 
     out .= z
