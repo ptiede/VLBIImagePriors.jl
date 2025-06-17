@@ -18,6 +18,9 @@ using StatsFuns
 import TransformVariables as TV
 import HypercubeTransform as HC
 using NamedTupleTools
+using HypercubeTransform: DeltaDist
+
+export DeltaDist
 
 using ComradeBase: @threaded
 

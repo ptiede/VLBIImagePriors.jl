@@ -1,7 +1,7 @@
 name = "VLBIImagePriors"
 uuid = "b1ba175b-8447-452c-b961-7db2d6f7a029"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.10.0"
+version = "0.10.1"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -47,7 +47,7 @@ Enzyme = "0.13"
 EnzymeCore = "0.8"
 FFTW = "1"
 FillArrays = "0.13, 1"
-HypercubeTransform = "^0.4.3"
+HypercubeTransform = "^0.4.5"
 LinearAlgebra = "1.8"
 NamedTupleTools = "0.13, 0.14"
 Random = "1.8"
