@@ -1,12 +1,12 @@
 export matern
 
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
-struct StationaryMatern{TΛ, E<:Union{Serial, ThreadsEx}, P}
+struct StationaryRandomFieldPlan{TΛ, E<:Union{Serial, ThreadsEx}, P}
     kx::TΛ
     ky::TΛ
     executor::E
     p::P
-    function StationaryMatern(T::Type{<:Number}, dims::Dims{2}; executor=Serial())
+    function StationaryRandomFieldPlan(T::Type{<:Number}, dims::Dims{2}; executor=Serial())
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags=FFTW.MEASURE)
@@ -14,16 +14,16 @@ struct StationaryMatern{TΛ, E<:Union{Serial, ThreadsEx}, P}
     end
 end
 
-ComradeBase.executor(d::StationaryMatern) = getfield(d, :executor)
+ComradeBase.executor(d::StationaryRandomFieldPlan) = getfield(d, :executor)
 
-function Base.show(io::IO, x::StationaryMatern)
-    println(io, "StationaryMatern")
+function Base.show(io::IO, x::StationaryRandomFieldPlan)
+    println(io, "StationaryRandomFieldPlan")
     println(io, "\tBase type: $(eltype(x.kx))")
     println(io, "\tsize:      ($(size(x.kx,1)), $(size(x.ky,1)))")
     println(io, "\texec:      $(x.executor)")
 end
 
-function Serialization.serialize(s::Serialization.AbstractSerializer, cache::StationaryMatern)
+function Serialization.serialize(s::Serialization.AbstractSerializer, cache::StationaryRandomFieldPlan)
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.kx)
@@ -31,106 +31,85 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::Sta
     Serialization.serialize(s, cache.executor)
 end
 
-function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryMatern})
+function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryRandomFieldPlan})
     kx = Serialization.deserialize(s)
     ky = Serialization.deserialize(s)
     executor = Serialization.deserialize(s)
-    return StationaryMatern(eltype(kx), (length(kx), length(ky)); executor)
+    return StationaryRandomFieldPlan(eltype(kx), (length(kx), length(ky)); executor)
 end
 
 
-@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::NTuple{2,Number}, ξ::Number, ν::Number)
-    (;kx, ky, p) = θ
-    ρx, ρy = ρ
-    @assert size(x) == (length(kx), length(ky))
-    T = promote_type(eltype(x), typeof(ρ[1]), typeof(ν))
-    κ = T(sqrt(8*ν))
-    κ2 = κ*κ
-    τ = κ^ν*sqrt(ν*convert(T, π))/sqrt(prod(size(x)))
-    ns = similar(x , Complex{eltype(x)})
-    expp = -(ν+1)/2
-    s, c = sincos(ξ)
-    e = executor(θ)
+abstract type AbstractPowerSpectrum end
 
-    @threaded e for i in eachindex(ky)
-        for j in eachindex(kx)
-            @inbounds rx = c*kx[j] - s*ky[i]
-            @inbounds ry = s*kx[j] + c*ky[i]
-            @inbounds ns[j,i] = τ*sqrt(ρx*ρy)*x[j,i]*(κ2 + (ρx*rx)^2 + (ρy*ry)^2)^expp
+struct MaternPS{T} <: AbstractPowerSpectrum
+    τ::T
+    κ2::T
+    ν::T
+    function MaternPS(ρ, ν)
+        @assert ρ > zero(ρ) "Correlation length ρ must be positive"
+        @assert ν > zero(ν) "Smoothness parameter ν must be positive"
+        T = promote_type(typeof(ρ), typeof(ν))
+        κ = T(sqrt(8*ν)/ρ)
+        κ2 = κ*κ
+        τ = κ^ν*sqrt(ν*convert(T, π))
+        return new{T}(τ, κ2, ν)
+    end
+end
+
+@inline function ampspectrum(ps::MaternPS, kx, ky)
+    (; τ, κ2, ν) = ps
+    expp = -(ν+1)/2
+    return τ*(κ2 + kx^2 + ky^2)^expp
+end
+
+
+struct SqExpPS{T} <: AbstractPowerSpectrum
+    ρ::T
+end
+
+@inline function ampspectrum(ps::SqExpPS, kx, ky)
+    (; ρ) = ps
+    return exp(-(kx^2 + ky^2)*inv(4*ρ^2))
+end
+
+"""
+    StationaryRandomField(ps::AbstractPowerSpectrum, plan::StationaryRandomFieldPlan)
+
+Creates a stationary random field defined by the power spectrum `ps` and the evaluation plan, which
+is typically an FFT.
+"""
+struct StationaryRandomField{PS<:AbstractPowerSpectrum, P}
+    ps::PS
+    plan::C
+end
+
+
+function randomfield(rf::StationaryRandomField, z::AbstractArray)
+    ps = rf.ps
+    (;kx, ky, p) = rf.plan
+    e = executor(rf.plan)
+
+    ns = similar(x , Complex{eltype(x)})
+    @threaded e for i in eachindex(rf.ky)
+        for j in eachindex(rf.kx)
+            @inbounds kx = plan.kx[j]
+            @inbounds ky = plan.ky[i]
+            @inbounds ns = ampspectrum(ps, kx, ky)*z[j,i]
         end
     end
 
     p*ns
-    rast = (real.(ns) .+ imag.(ns))
+    rast = (real.(ns) .+ imag.(ns))./sqrt(prod(size(z)))
     return rast
 end
 
-@fastmath function (θ::StationaryMatern)(x::AbstractArray, ρ::Number, ν::Number)
-    return θ(x, (ρ, ρ), zero(ρ), ν)
+function std_dist(d::StationaryRandomField)
+    return std_dist(d.plan)
 end
 
-
-function std_dist(d::StationaryMatern)
+function std_dist(d::StationaryRandomFieldPlan)
     StdNormal{eltype(d.kx),2}((length(d.kx), length(d.ky)))
 end
-
-
-"""
-    matern([T=Float64], dims::Dims{2}; executor=Serial())
-    matern([T=Float64], dims::Int...; executor=Serial())
-
-Creates an approximate Matern Gaussian process that approximates the Matern process
-on a regular grid which cyclic boundary conditions. This function returns a tuple of
-two objects
- - A functor `f` of type `StationaryMatern` that iid-Normal noise to a draw from the Matern process.
-   The functor call arguments are `f(s, ρ, ν)` where `s` is the random white Gaussian noise with
-   dimension `dims`, `ρ` is the correlation length, and `ν` is Matern smoothness parameter
- - The a set of `prod(dims)` standard Normal distributions that can serve as the noise generator
-   for the process.
-
-# Example
-
-## Arguments
-
-- `[T::Float64]`: Optional element type of the matern process. Default is `Float64`.
-- `dims::Dims{2}`: The dimensions of the Matern process. This is a tuple of two integers.
-
-or 
-
-- `grid::AbstractRectiGrid`: A grid object that the Matern process is defined on. 
-
-## Keyword arguments
-
-
-
-```julia-repl
-julia> transform, dstd = matern((32, 32))
-julia> draw_matern = transform(rand(dstd), 10.0, 2.0)
-julia> draw_matern_aniso = transform(rand(dstd), (10.0, 5.0), π/4 2.0) # anisotropic Matern
-julia> ones(32, 32) .+ 5.* draw_matern # change the mean and variance of the field
-```
-"""
-function matern(T::Type{<:Number}, dims::Dims{2}; executor=Serial())
-    d = StationaryMatern(T, dims; executor=executor)
-    return d, std_dist(d)
-end
-
-function matern(grid::ComradeBase.AbstractRectiGrid)
-    return matern(eltype(grid), size(grid); executor=executor(grid))
-end
-
-matern(dims::Dims{2}; executor=Serial()) = matern(Float64, dims; executor=executor)
-matern(T::Type{<:Number}, dims::Vararg{Int}; executor=Serial()) = matern(T, dims; executor=executor)
-matern(dims::Vararg{Int}; executor=Serial()) = matern(dims; executor)
-
-"""
-    matern(img::AbstractMatrix)
-
-Creates an approximate Matern Gaussian process with dimension `size(img)`
-
-"""
-matern(img::AbstractMatrix{T}; executor=Serial()) where {T} = matern(T, size(img); executor)
-
 
 struct StdNormal{T, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
     dims::Dims{N}
