@@ -1,4 +1,4 @@
-export matern
+export MaternPS, SqExpPS, RationalQuadPS, StationaryRandomField, StationaryRandomFieldPlan, genfield, std_dist
 
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
 struct StationaryRandomFieldPlan{TΛ, E<:Union{Serial, ThreadsEx}, P}
@@ -67,9 +67,20 @@ struct SqExpPS{T} <: AbstractPowerSpectrum
     ρ::T
 end
 
-@inline function ampspectrum(ps::SqExpPS, kx, ky)
+@inline function ampspectrum(ps::SqExpPS{T}, kx, ky) where {T}
     (; ρ) = ps
-    return exp(-(kx^2 + ky^2)*inv(4*ρ^2))
+    return exp(-(kx^2 + ky^2)*inv(4)*ρ^2)*ρ
+end
+
+struct RationalQuadPS{T} <: AbstractPowerSpectrum
+    ρ::T
+    α::T
+end
+
+@inline function ampspectrum(ps::RationalQuadPS{T}, kx, ky) where {T}
+    (; ρ, α) = ps
+    αρ = α*ρ
+    return (αρ)*(1 + αρ*ρ/2*(kx^2 + ky^2))^(-(α + 1)/2)
 end
 
 """
@@ -80,21 +91,19 @@ is typically an FFT.
 """
 struct StationaryRandomField{PS<:AbstractPowerSpectrum, P}
     ps::PS
-    plan::C
+    plan::P
 end
 
 
-function randomfield(rf::StationaryRandomField, z::AbstractArray)
+function genfield(rf::StationaryRandomField, z::AbstractArray)
     ps = rf.ps
     (;kx, ky, p) = rf.plan
     e = executor(rf.plan)
 
-    ns = similar(x , Complex{eltype(x)})
-    @threaded e for i in eachindex(rf.ky)
-        for j in eachindex(rf.kx)
-            @inbounds kx = plan.kx[j]
-            @inbounds ky = plan.ky[i]
-            @inbounds ns = ampspectrum(ps, kx, ky)*z[j,i]
+    ns = similar(z , Complex{eltype(z)})
+    @threaded e for i in eachindex(ky)
+        for j in eachindex(kx)
+            @inbounds ns[j, i] = ampspectrum(ps, kx[j], ky[i])*z[j,i]
         end
     end
 
