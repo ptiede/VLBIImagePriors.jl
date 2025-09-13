@@ -1,4 +1,4 @@
-export MaternPS, SqExpPS, RationalQuadPS, StationaryRandomField, StationaryRandomFieldPlan, genfield, std_dist
+export MaternPS, SqExpPS, RationalQuadPS, StationaryRandomField, StationaryRandomFieldPlan, genfield, std_dist, MarkovPS
 
 # TODO Fix FFT's to work with Enzyme rather than using the rrule from ChainRules
 struct StationaryRandomFieldPlan{TΛ, E<:Union{Serial, ThreadsEx}, P}
@@ -81,6 +81,22 @@ end
     (; ρ, α) = ps
     αρ = α*ρ
     return (αρ)*(1 + αρ*ρ/2*(kx^2 + ky^2))^(-(α + 1)/2)
+end
+
+struct MarkovPS{T, N} <: AbstractPowerSpectrum
+    ρs::NTuple{N,T}
+end
+
+@inline function ampspectrum(ps::MarkovPS{T, N}, kx, ky) where {T, N}
+    (; ρs) = ps
+    k2 = kx^2 + ky^2
+    terms = ntuple(Val(N)) do n
+        (ρs[n]*k2)^n
+    end
+    norm = ntuple(Val(N)) do n 
+        ρs[n]
+    end
+    return sqrt(sum(norm))/sqrt(1 + reduce(+, terms))
 end
 
 """
