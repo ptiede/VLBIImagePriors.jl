@@ -293,18 +293,18 @@ end
         d1 = TDistMarkovRandomField(3.0, 1.0, mimg; order = 1)
         @test all(==(Inf), mean(d1))
         @test all(==(Inf), cov(d1))
-        @test all(x->x===NaN, invcov(d1))
-        
+        @test all(x -> x === NaN, invcov(d1))
+
         d2 = TDistMarkovRandomField(3.0, 2.0, mimg; order = 1)
         @test all(==(0), mean(d2))
         @test all(==(Inf), cov(d2))
-        @test all(x->x===NaN, invcov(d2))
+        @test all(x -> x === NaN, invcov(d2))
 
 
         d3 = TDistMarkovRandomField(3.0, 3.0, mimg; order = 1)
         @test all(==(0), mean(d3))
-        @test all(x->x!=(Inf), cov(d3))
-        @test all(x->!(x===NaN), invcov(d3))
+        @test all(x -> x != (Inf), cov(d3))
+        @test all(x -> !(x === NaN), invcov(d3))
 
     end
 
@@ -319,9 +319,9 @@ end
         @test logpdf(d1, x) ≈ logpdf(d3, x)
 
 
-        d1 = CauchyMarkovRandomField(3.0, img; order=2)
+        d1 = CauchyMarkovRandomField(3.0, img; order = 2)
         d2 = CauchyMarkovRandomField(3.0, VLBIImagePriors.graph(d1))
-        d3 = CauchyMarkovRandomField(3.0, size(img); order=2)
+        d3 = CauchyMarkovRandomField(3.0, size(img); order = 2)
 
         x = rand(d1)
         @test logpdf(d1, x) ≈ logpdf(d2, x)
