@@ -81,7 +81,7 @@ Computes the square root of the power spectrum at the wavenumbers `ks`.
 Note we typically want to assume that the power spectrum is normalized such that its integral is
 2π when integrated over the entire frequency space.
 """
-function amplitudespectrum end
+function ampspectrum end
 
 """
     ScaledPS(ps::AbstractPowerSpectrum, τ, ξ=0)
