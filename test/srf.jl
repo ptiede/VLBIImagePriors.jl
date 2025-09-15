@@ -114,6 +114,8 @@ using VLBIImagePriors: StdNormal
     @test cov(d) ≈ cov(d2)
     asflat(d)
 
+    @test Distributions.insupport(d, rand(d))
+
     z = rand(d)
     dd = Distributions.MvNormal(ones(length(d)))
     @test logpdf(d, z) ≈ logpdf(d2, z)

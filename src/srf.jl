@@ -345,7 +345,7 @@ StdNormal(d::Dims{N}) where {N} = StdNormal{Float64, N}(d)
 Base.size(d::StdNormal) = d.dims
 Base.length(d::StdNormal) = prod(d.dims)
 Base.eltype(::StdNormal{T}) where {T} = T
-Dists.insupport(::StdNormal, x::AbstractVector) = true
+Dists.insupport(::StdNormal, x::AbstractArray) = true
 
 HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
 HC.ascube(d::StdNormal) = HC.ArrayHC(d)
