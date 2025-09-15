@@ -194,19 +194,6 @@ end
     # end
 end
 
-@testset "matern" begin
-    trf_wide, dstd_w = matern((8, 10))
-    trf_tall, dstd_t = matern((10, 8))
-    trf_square, dstd_s = matern((10, 10))
-
-    zw = rand(dstd_w)
-    zt = rand(dstd_t)
-    zs = rand(dstd_s)
-
-    @test trf_wide(zw, (3.0, 3.0), 0.0, 1.0) ≈ trf_wide(zw, 3.0, 1.0)
-    @test trf_tall(zt, (3.0, 3.0), 0.0, 1.0) ≈ trf_tall(zt, 3.0, 1.0)
-    @test trf_square(zs, (3.0, 3.0), 0.0, 1.0) ≈ trf_square(zs, 3.0, 1.0)
-end
 
 
 @testset "ExpMRF" begin

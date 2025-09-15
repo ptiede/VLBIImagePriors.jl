@@ -33,7 +33,7 @@ include("angular_transforms.jl")
 include("angular_dists.jl")
 include("special_rules.jl")
 include("markovrf/markovrf.jl")
-include("matern.jl")
+include("srf.jl")
 include("heirarchical.jl")
 include("logratio_transform.jl")
 
