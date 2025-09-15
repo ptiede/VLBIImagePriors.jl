@@ -288,7 +288,7 @@ end
         @test logpdf(d1, x) ≈ logpdf(d2, x)
     end
 
-    @test "TDist order" begin
+    @testset "TDist order" begin
         mimg = rand(10, 10)
         d1 = TDistMarkovRandomField(3.0, 1.0, mimg; order = 1)
         @test all(==(Inf), mean(d1))
