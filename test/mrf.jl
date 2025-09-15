@@ -298,6 +298,7 @@ end
     f(x) = Normal(x[1], exp(x[2]))
     dhyper = product_distribution([Normal(0.0, 1.0), Normal(-1.0, 1.0)])
     dHp = HierarchicalPrior(f, dhyper)
+    @test length(dHp) == 3
     x0 = rand(dHp)
     fd = f(x0.hyperparams)
     @test logpdf(dHp, x0) ≈ logpdf(fd, x0.params) + logpdf(dhyper, x0.hyperparams)
@@ -305,6 +306,7 @@ end
     x0s = rand(dHp, 1_00)
     x0s = rand(dHp, (10, 10))
     asflat(dHp)
+    show(dHp)
 end
 
 
