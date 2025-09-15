@@ -12,6 +12,11 @@ struct StationaryRandomFieldPlan{TΛ, E, P}
         kx = fftfreq(dims[1], one(T))*π
         ky = fftfreq(dims[2], one(T))*π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags=FFTW.MEASURE)
+        if !(executor isa Serial || executor isa ThreadsEx)
+            @warn "Executor type $((executor)) not supported, defaulting to Serial()"
+            executor = Serial()
+        end
+
         return new{typeof(kx), typeof(executor), typeof(plan)}(kx, ky, executor, plan)
     end
 end
@@ -32,10 +37,6 @@ function StationaryRandomFieldPlan(g::RectiGrid{<:ComradeBase.SpatialDims})
     T = eltype(g)
     ex = executor(g)
     ng = size(g)
-    if !(ex isa Serial || ex isa ThreadsEx)
-        ex = Serial()
-        @warn "Executor type $(typeof(ex)) not supported, defaulting to Serial()"
-    end
     return StationaryRandomFieldPlan(T, ng; executor=ex)
 end
 
