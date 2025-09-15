@@ -1,19 +1,19 @@
 using VLBIImagePriors
 using Documenter
 
-DocMeta.setdocmeta!(VLBIImagePriors, :DocTestSetup, :(using VLBIImagePriors); recursive=true)
+DocMeta.setdocmeta!(VLBIImagePriors, :DocTestSetup, :(using VLBIImagePriors); recursive = true)
 
 makedocs(;
-    modules=[VLBIImagePriors],
-    authors="Paul Tiede <ptiede91@gmail.com> and contributors",
-    repo="https://github.com/ptiede/VLBIImagePriors.jl/blob/{commit}{path}#{line}",
-    sitename="VLBIImagePriors.jl",
-    format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://ptiede.github.io/VLBIImagePriors.jl",
-        assets=String[],
+    modules = [VLBIImagePriors],
+    authors = "Paul Tiede <ptiede91@gmail.com> and contributors",
+    repo = "https://github.com/ptiede/VLBIImagePriors.jl/blob/{commit}{path}#{line}",
+    sitename = "VLBIImagePriors.jl",
+    format = Documenter.HTML(;
+        prettyurls = get(ENV, "CI", "false") == "true",
+        canonical = "https://ptiede.github.io/VLBIImagePriors.jl",
+        assets = String[],
     ),
-    pages=[
+    pages = [
         "Home" => "index.md",
         #"mrf.md",
         #"polarization.md"
@@ -21,6 +21,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/ptiede/VLBIImagePriors.jl",
-    devbranch="main",
+    repo = "github.com/ptiede/VLBIImagePriors.jl",
+    devbranch = "main",
 )

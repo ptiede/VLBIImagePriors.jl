@@ -1,10 +1,10 @@
-function moment_test(d, nsamples=200_000, atol=5e-2)
+function moment_test(d, nsamples = 200_000, atol = 5.0e-2)
     # c = cov(d)
     s = reduce(hcat, reshape.(rand(d, nsamples), :))
     # cs = cov(s; dims=2)
-    ms = reshape(mean(s; dims=2), size(d))
+    ms = reshape(mean(s; dims = 2), size(d))
     # @test isapprox(c, cs; atol)
-    @test isapprox(mean(d), ms; atol)
+    return @test isapprox(mean(d), ms; atol)
 end
 
 function test_interface(d::VLBIImagePriors.MarkovRandomField)
@@ -17,15 +17,15 @@ function test_interface(d::VLBIImagePriors.MarkovRandomField)
     c = ConditionalMarkov(typeof(d), Float64, size(d))
     show(c)
     asflat(d)
-    @inferred logdet(d)
+    return @inferred logdet(d)
 end
 
 @testset "GMRF" begin
 
     @testset "MarkovRandomFieldGraph" begin
-        g1 = MarkovRandomFieldGraph((4,5); order=1)
-        g2 = MarkovRandomFieldGraph(Float64, (4,5); order=1)
-        g3 = MarkovRandomFieldGraph(zeros(4, 5); order=1)
+        g1 = MarkovRandomFieldGraph((4, 5); order = 1)
+        g2 = MarkovRandomFieldGraph(Float64, (4, 5); order = 1)
+        g3 = MarkovRandomFieldGraph(zeros(4, 5); order = 1)
         @test g1.G ≈ g2.G
         @test g1.D ≈ g2.D
         @test g1.λQ ≈ g2.λQ
@@ -34,9 +34,9 @@ end
         @test g1.λQ ≈ g3.λQ
 
 
-        g1 = MarkovRandomFieldGraph((4,5); order=2)
-        g2 = MarkovRandomFieldGraph(Float64, (4,5); order=2)
-        g3 = MarkovRandomFieldGraph(zeros(4, 5); order=2)
+        g1 = MarkovRandomFieldGraph((4, 5); order = 2)
+        g2 = MarkovRandomFieldGraph(Float64, (4, 5); order = 2)
+        g3 = MarkovRandomFieldGraph(zeros(4, 5); order = 2)
         @test g1.G ≈ g2.G
         @test g1.D ≈ g2.D
         @test g1.λQ ≈ g2.λQ
@@ -72,8 +72,8 @@ end
 
         @testset "Order 2" begin
             mimg = rand(10, 8)
-            d1 = GaussMarkovRandomField(3.0, mimg; order=2)
-            c = MarkovRandomFieldGraph(mimg; order=2)
+            d1 = GaussMarkovRandomField(3.0, mimg; order = 2)
+            c = MarkovRandomFieldGraph(mimg; order = 2)
             d2 = GaussMarkovRandomField(3.0, c)
 
             moment_test(d1)
@@ -119,8 +119,8 @@ end
 
         @testset "Order 2" begin
             mimg = rand(8, 10)
-            d1 = GaussMarkovRandomField(3.0, mimg; order=2)
-            c = MarkovRandomFieldGraph(mimg; order=2)
+            d1 = GaussMarkovRandomField(3.0, mimg; order = 2)
+            c = MarkovRandomFieldGraph(mimg; order = 2)
             d2 = GaussMarkovRandomField(3.0, c)
 
             moment_test(d1)
@@ -155,11 +155,11 @@ end
         p100 = transform.(Ref(cd), eachcol(x100))
         ms = mean(p100)
         ss = std(p100)
-        @test isapprox(ms, zeros(100), atol=10/sqrt(1000))
-        @test isapprox(ss, ones(100), atol=50/sqrt(1000))
+        @test isapprox(ms, zeros(100), atol = 10 / sqrt(1000))
+        @test isapprox(ss, ones(100), atol = 50 / sqrt(1000))
 
 
-        serialize("test.jls" ,trf)
+        serialize("test.jls", trf)
         trf_2 = deserialize("test.jls")
         rm("test.jls")
 
@@ -169,8 +169,8 @@ end
 
         p = trf(rand(d), 1.0, 0.1)
         trf(rand(d), 1.0, 0.1)
-        dimg = mean(map(_->trf(rand(d), 1.0, 1.0), 1:1_000_000))
-        isapprox(dimg, mimg, atol=1e-2)
+        dimg = mean(map(_ -> trf(rand(d), 1.0, 1.0), 1:1_000_000))
+        isapprox(dimg, mimg, atol = 1.0e-2)
         @test size(p) == size(rand(d2))
         logdensityof(d, rand(d))
 
@@ -193,7 +193,6 @@ end
     #     test_rrule(VLBIImagePriors.igrmf_1n, rand(64,64))
     # end
 end
-
 
 
 @testset "ExpMRF" begin
@@ -233,9 +232,6 @@ end
     end
 
 end
-
-
-
 
 
 @testset "TDistMRF" begin
@@ -307,11 +303,9 @@ end
     @test logpdf(dHp, x0) ≈ logpdf(fd, x0.params) + logpdf(dhyper, x0.hyperparams)
 
     x0s = rand(dHp, 1_00)
-    x0s = rand(dHp, (10,10))
+    x0s = rand(dHp, (10, 10))
     asflat(dHp)
 end
-
-
 
 
 @testset "Noncenter Markov Gaussian" begin
@@ -323,7 +317,7 @@ end
         serialize("test.jls", t)
         t2 = deserialize("test.jls")
 
-        
+
         @test size(t) == size(d)
         @test size(ds) == size(d)
         @test d.ρ == ρ
@@ -332,21 +326,21 @@ end
         ss = centerdist.(Ref(t), ρ, rand(ds, 100000))
 
 
-        @test all(x->isapprox(x[1], x[2]; atol=1e-1), zip(mean(s), mean(ss)))
-        @test all(x->isapprox(x[1], x[2]; atol=1e-1), zip(std(s), std(ss)))
+        @test all(x -> isapprox(x[1], x[2]; atol = 1.0e-1), zip(mean(s), mean(ss)))
+        @test all(x -> isapprox(x[1], x[2]; atol = 1.0e-1), zip(std(s), std(ss)))
 
         u = noncenterdist.(Ref(t), ρ, rand(d, 5000))
-        @test all(x->isapprox(x, 0; atol=1e-1), mean(u))
-        @test all(x->isapprox(x, 1; atol=1e-1), std(u))
+        @test all(x -> isapprox(x, 0; atol = 1.0e-1), mean(u))
+        @test all(x -> isapprox(x, 1; atol = 1.0e-1), std(u))
     end
 
     ρ = 8.0
-    d = GMRF(ρ, (20, 20); order=1)
+    d = GMRF(ρ, (20, 20); order = 1)
     testnoncenter(d)
 
-    d = GMRF(ρ, (20, 20); order=2)
+    d = GMRF(ρ, (20, 20); order = 2)
     testnoncenter(d)
 
-    d = GMRF(ρ, (20, 20); order=3)
+    d = GMRF(ρ, (20, 20); order = 3)
     testnoncenter(d)
 end

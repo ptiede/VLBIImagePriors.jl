@@ -14,7 +14,7 @@ struct ImageUniform{T} <: Dists.ContinuousMatrixDistribution
     nx::Int
     ny::Int
     function ImageUniform(a::Real, b::Real, nx::Integer, ny::Integer)
-        aT,bT = promote(a,b)
+        aT, bT = promote(a, b)
         T = typeof(aT)
         return new{T}(aT, bT, nx, ny)
     end
@@ -24,30 +24,30 @@ function ImageUniform(nx, ny)
     return ImageUniform(0.0, 1.0, nx, ny)
 end
 
-Base.size(d::ImageUniform) = (d.nx,d.ny)
+Base.size(d::ImageUniform) = (d.nx, d.ny)
 
-Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b-d.a)/2, size(d)...)
+Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b - d.a) / 2, size(d)...)
 
 HC.asflat(d::ImageUniform) = TV.as(Matrix, TV.as(Real, d.a, d.b), d.nx, d.ny)
 # HC.ascube(d::ImageUniform) = HC.ArrayHC(Dists.product_distribution(fill(Dists.Uniform(), size(d))), size(d))
 
 function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
-    return (size(d) == size(x)) && !any(x-> (d.a >x)||(x> d.b), x)
+    return (size(d) == size(x)) && !any(x -> (d.a > x)||(x > d.b), x)
 end
 
 function Dists._logpdf(d::ImageUniform, x::AbstractMatrix{<:Real})
     !Dists.insupport(d, x) && return -Inf
-    return -log(d.b-d.a)*(d.nx*d.ny)
+    return -log(d.b - d.a) * (d.nx * d.ny)
 end
 
 function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Real})
-    return Dists._logpdf(d, x), Δ->(NoTangent(), NoTangent(), ZeroTangent())
+    return Dists._logpdf(d, x), Δ -> (NoTangent(), NoTangent(), ZeroTangent())
 end
 
 function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
     @assert size(d) == size(x) "Size of input matrix and distribution are not the same"
     d = Dists.Uniform(d.a, d.b)
-    rand!(rng, d, x)
+    return rand!(rng, d, x)
 end
 
 """
@@ -72,19 +72,19 @@ HC.asflat(d::VLBIImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUni
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)
 
-function Dists.logpdf(::ImageSphericalUniform, X::NTuple{3, T}) where {T<:AbstractMatrix}
-    return -length(X[1])*log(4π)
+function Dists.logpdf(::ImageSphericalUniform, X::NTuple{3, T}) where {T <: AbstractMatrix}
+    return -length(X[1]) * log(4π)
 end
 
-function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, X::NTuple{3, T}) where {T<:AbstractMatrix}
+function Dists.rand!(rng::Random.AbstractRNG, ::ImageSphericalUniform, X::NTuple{3, T}) where {T <: AbstractMatrix}
     for i in eachindex(X...)
         x = randn(rng)
         y = randn(rng)
         z = randn(rng)
         r = hypot(x, y, z)
-        X[1][i] = x/r
-        X[2][i] = y/r
-        X[3][i] = z/r
+        X[1][i] = x / r
+        X[2][i] = y / r
+        X[3][i] = z / r
     end
     return X
 end
@@ -157,8 +157,8 @@ end
 # #     return R
 # # end
 # #
-function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::NTuple{3,<:AbstractMatrix{S}}) where {S<:Number}
-    lp =  Dists.logpdf(d, x)
+function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::NTuple{3, <:AbstractMatrix{S}}) where {S <: Number}
+    lp = Dists.logpdf(d, x)
     function _spherical_uniform_pullback(Δ)
         return (NoTangent(), NoTangent(), ZeroTangent())
     end

@@ -56,7 +56,7 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
     RML imaging.
 
     """
-    function MarkovRandomFieldGraph(T::Type{<:Number}, dims::Dims{2}; order::Integer=1)
+    function MarkovRandomFieldGraph(T::Type{<:Number}, dims::Dims{2}; order::Integer = 1)
         order < 1 && ArgumentError("`order` parameter must be greater than or equal to 1, not $order")
 
         # build the 1D correlation matrices
@@ -65,7 +65,7 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
 
         # We do this ordering because Julia like column major
         G = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
-        D = Diagonal(ones(eltype(G), size(G,1)))
+        D = Diagonal(ones(eltype(G), size(G, 1)))
         λQ = eigenvals(T, dims)
         return new{order, typeof(G), typeof(D), typeof(λQ)}(G, D, λQ)
     end
@@ -76,8 +76,8 @@ end
 Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
 
-MarkovRandomFieldGraph(dims::Dims{2}; order::Integer=1) = MarkovRandomFieldGraph(Float64, dims; order)
-MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer=1) where {T} = MarkovRandomFieldGraph(T, size(img); order)
+MarkovRandomFieldGraph(dims::Dims{2}; order::Integer = 1) = MarkovRandomFieldGraph(Float64, dims; order)
+MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer = 1) where {T} = MarkovRandomFieldGraph(T, size(img); order)
 
 
 """
@@ -129,14 +129,14 @@ julia> ρ = 10 # correlation length
 julia> d = GaussMarkovRandomField(ρ, m) # build the Gaussian Markov random field
 ```
 """
-function MarkovRandomFieldGraph(grid::ComradeBase.AbstractRectiGrid; order::Integer=1)
+function MarkovRandomFieldGraph(grid::ComradeBase.AbstractRectiGrid; order::Integer = 1)
     return MarkovRandomFieldGraph(eltype(grid.X), size(grid); order)
 end
 
 function Base.show(io::IO, d::MarkovRandomFieldGraph{O}) where {O}
     println(io, "MarkovRandomFieldGraph{$O}(")
     println(io, "dims: ", size(d))
-    print(io, ")")
+    return print(io, ")")
 end
 
 function κ(ρ, ::Val{1})
@@ -144,24 +144,24 @@ function κ(ρ, ::Val{1})
 end
 
 function κ(ρ, ::Val{N}) where {N}
-    return sqrt(oftype(ρ, 8*(N-1)))*inv(ρ)
+    return sqrt(oftype(ρ, 8 * (N - 1))) * inv(ρ)
 end
 
 
 # Compute the square manoblis distance or the <x,Qx> inner product.
 function sq_manoblis(d::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(1))^2
-    return igmrf_1n(ΔI, κ²)/mrfnorm(d, κ²)
+    return igmrf_1n(ΔI, κ²) / mrfnorm(d, κ²)
 end
 
 function sq_manoblis(d::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(2))^2
-    return igmrf_2n(ΔI, κ²)/mrfnorm(d, κ²)
+    return igmrf_2n(ΔI, κ²) / mrfnorm(d, κ²)
 end
 
 function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return dot(ΔI, (κ²*d.D + d.G)^(N), vec(ΔI))/mrfnorm(d, κ²)
+    return dot(ΔI, (κ² * d.D + d.G)^(N), vec(ΔI)) / mrfnorm(d, κ²)
 end
 
 @inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
@@ -170,7 +170,7 @@ end
     @fastmath @simd for i in eachindex(d.λQ)
         a += log(κ² + d.λQ[i])
     end
-    return N*a - length(d.λQ)*log(mrfnorm(d, κ²))
+    return N * a - length(d.λQ) * log(mrfnorm(d, κ²))
 end
 
 # TODO
@@ -178,26 +178,26 @@ end
 # using the specific boundary conditions I am using.
 
 # This is the σ to ensure we have a unit variance GMRF
-function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T<:Number}
+function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T <: Number}
     λ0 = first(d.λQ)
     return (κ² + 1) #Empirical rule
 end
 
 
-function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T<:Number}
+function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T <: Number}
     λ0 = first(d.λQ)
-    return T(4π)*(k + λ0) #Empirical rule
+    return T(4π) * (k + λ0) #Empirical rule
 end
 
-function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T<:Number}
+function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T <: Number}
     λ0 = first(d.λQ)
-    return T(4π)*(k + λ0)^(N-1) #Empirical rule
+    return T(4π) * (k + λ0)^(N - 1) #Empirical rule
 end
 
 
 function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    return (d.G .+ d.D.*κ²)^N/mrfnorm(d, κ²)
+    return (d.G .+ d.D .* κ²)^N / mrfnorm(d, κ²)
 end
 
 function eigenvals(T, dims)
@@ -205,7 +205,7 @@ function eigenvals(T, dims)
     ix = m:-1:1 #Reverse the order to match the DST conventions
     iy = n:-1:1 #Reverse the order to match the DST conventions
     # Because G is a Kronecker product of two tri-diagonal matrices
-    return @. 4 + 2*cos(convert(T, π)*ix/(m+1)) + 2*cos(convert(T, π)*iy'/(n+1))
+    return @. 4 + 2 * cos(convert(T, π) * ix / (m + 1)) + 2 * cos(convert(T, π) * iy' / (n + 1))
     # return @. (4 - 2*cos(2π*ix/m) - 2*cos(2π*iy'/n))
 end
 
@@ -219,66 +219,64 @@ end
 # end
 
 
-
 function build_q1d(T, n)
     d1 = Vector{T}(undef, n)
     fill!(d1, 2)
     d1[begin] = d1[end] = 2
-    Q = spdiagm(-1=>fill(-oneunit(eltype(d1)), n-1), 0=>d1, 1=>fill(-oneunit(eltype(d1)), n-1))#, (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
+    Q = spdiagm(-1 => fill(-oneunit(eltype(d1)), n - 1), 0 => d1, 1 => fill(-oneunit(eltype(d1)), n - 1)) #, (n-1)=>[-oneunit(eltype(d1))], -(n-1)=>[-oneunit(eltype(d1))])
     return Q
 end
 
 
 function igmrf_2n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
-    for iy in axes(I, 2), ix in axes(I,1)
+    for iy in axes(I, 2), ix in axes(I, 1)
         value = value + igmrf_qv(I, κ², ix, iy)^2
     end
     return value
 end
 
 @inline function igmrf_2n_pixel(I::AbstractArray, κ², ix::Integer, iy::Integer)
-    value = (4 + κ²)*I[ix, iy]
-    ΔIx  = ix < lastindex(I, 1)  ? I[ix+1, iy] : zero(eltype(I))
-    ΔIx += ix > firstindex(I, 1) ? I[ix-1, iy] :
+    value = (4 + κ²) * I[ix, iy]
+    ΔIx = ix < lastindex(I, 1) ? I[ix + 1, iy] : zero(eltype(I))
+    ΔIx += ix > firstindex(I, 1) ? I[ix - 1, iy] :
 
-    ΔIy  = iy < lastindex(I, 2)  ? I[ix, iy+1] : I[ix, begin]
-    ΔIy += iy > firstindex(I, 2) ? I[ix, iy-1] : I[ix, end]
+        ΔIy = iy < lastindex(I, 2) ? I[ix, iy + 1] : I[ix, begin]
+    ΔIy += iy > firstindex(I, 2) ? I[ix, iy - 1] : I[ix, end]
 
     value = value - ΔIx - ΔIy
-    return value*value
+    return value * value
 end
-
 
 
 # computes the intrinsic gaussian process of a 1-neighbor method
 # this is equivalent to TSV regularizer
 function igmrf_1n(I::AbstractMatrix, κ²)
     value = zero(eltype(I))
-    for iy in axes(I,2), ix in axes(I,1)
-        value = value + igmrf_qv(I, κ², ix, iy)*I[ix, iy]
+    for iy in axes(I, 2), ix in axes(I, 1)
+        value = value + igmrf_qv(I, κ², ix, iy) * I[ix, iy]
     end
     return value
 end
 
 
 @inline @inbounds function igmrf_qv(I::AbstractMatrix, κ², ix::Integer, iy::Integer)
-    value = (4 + κ²)*I[ix, iy]
+    value = (4 + κ²) * I[ix, iy]
     if ix < lastindex(I, 1)
-         value -= I[ix+1, iy]
+        value -= I[ix + 1, iy]
     end
 
     if iy < lastindex(I, 2)
-         value -= I[ix, iy+1]
+        value -= I[ix, iy + 1]
     end
 
     if ix > firstindex(I, 1)
-        value -= I[ix-1, iy]
+        value -= I[ix - 1, iy]
     end
 
-   if iy > firstindex(I, 2)
-        value -= I[ix, iy-1]
-   end
+    if iy > firstindex(I, 2)
+        value -= I[ix, iy - 1]
+    end
 
     return value
 end
@@ -328,9 +326,6 @@ end
 
 #     return grad
 # end
-
-
-
 
 
 # function ChainRulesCore.rrule(::typeof(igmrf_1n), x::AbstractArray)

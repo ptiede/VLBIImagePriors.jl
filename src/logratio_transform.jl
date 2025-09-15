@@ -160,7 +160,7 @@ This function is mainly to transform the GaussMarkovRandomField to live on the s
     maxx = _noadmaximum(y) # We don't need to AD since the gradient is independent of this
     x .= exp.(y .- maxx) # This is for numerical stability. Prevents overflow
     tot = _fastsum(x)
-    x .= x./tot
+    x .= x ./ tot
     nothing
 end
 
@@ -195,13 +195,12 @@ and the Gaussian prior should ensure it is easy to sample from.
 function alrinv!(x, y)
     x[end] = 1
     # Skip the last element
-    x[begin:end-1] .= exp.(@view y[begin:end-1])
+    x[begin:(end - 1)] .= exp.(@view y[begin:(end - 1)])
     tot = sum(x)
     itot = inv(tot)
     x .*= itot
-    nothing
+    return nothing
 end
-
 
 
 checkx(x) = @argcheck sum(x) ≈ 1
@@ -215,7 +214,7 @@ Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in
 function clr!(x, y)
     checkx(y)
     x .= log.(y)
-    x .= x .- sum(x)/length(x)
+    x .= x .- sum(x) / length(x)
     return nothing
 end
 
@@ -226,7 +225,7 @@ Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in
 """
 function alr!(x, y)
     checkx(y)
-    x[begin:end-1] .= log.(@view y[begin:end-1]) .- log(y[end])
+    x[begin:(end - 1)] .= log.(@view y[begin:(end - 1)]) .- log(y[end])
     x[end] = 0
     return nothing
 end

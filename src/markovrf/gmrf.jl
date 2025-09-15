@@ -33,7 +33,7 @@ julia> invcov(d) ≈ invcov(d2)
 true
 ```
 =#
-struct GaussMarkovRandomField{T<:Number,C<:MarkovRandomFieldGraph} <: MarkovRandomField
+struct GaussMarkovRandomField{T <: Number, C <: MarkovRandomFieldGraph} <: MarkovRandomField
     """
     The correlation length of the random field.
     """
@@ -50,13 +50,12 @@ end
 const GMRF = GaussMarkovRandomField
 
 Dists.mean(d::GaussMarkovRandomField{T}) where {T} = FillArrays.Zeros(T, size(d))
-Dists.cov(d::GaussMarkovRandomField)  = inv(Array(Dists.invcov(d)))
+Dists.cov(d::GaussMarkovRandomField) = inv(Array(Dists.invcov(d)))
 Dists.invcov(d::GaussMarkovRandomField) = scalematrix(d)
 
-(c::ConditionalMarkov{<:GMRF})(ρ)  = GaussMarkovRandomField(ρ, c.cache)
+(c::ConditionalMarkov{<:GMRF})(ρ) = GaussMarkovRandomField(ρ, c.cache)
 
-std_dist(c::GMRF{T}) where {T} = StdNormal{T,2}(size(c))
-
+std_dist(c::GMRF{T}) where {T} = StdNormal{T, 2}(size(c))
 
 
 """
@@ -70,7 +69,7 @@ We recommend sticking with either `order=1,2`. Noting that `order=1` is equivale
 usual TSV and L₂ regularization from RML imaging. For more information about the
 impact of the order see [`MarkovRandomFieldGraph`](@ref).
 """
-function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order::Integer=1)
+function GaussMarkovRandomField(ρ::Number, img::AbstractMatrix; order::Integer = 1)
     cache = MarkovRandomFieldGraph(eltype(img), size(img); order)
     return GaussMarkovRandomField(ρ, cache)
 end
@@ -88,31 +87,30 @@ usual TSV and L₂ regularization from RML imaging. For more information about t
 impact of the order see [`MarkovRandomFieldGraph`](@ref).
 
 """
-function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order::Integer=1)
+function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order::Integer = 1)
     cache = MarkovRandomFieldGraph(typeof(ρ), dims; order)
     return GaussMarkovRandomField(ρ, cache)
 end
 
-function GaussMarkovRandomField(ρ::Number, g::ComradeBase.AbstractRectiGrid{<:Tuple{ComradeBase.X, ComradeBase.Y}}; order::Integer=1)
+function GaussMarkovRandomField(ρ::Number, g::ComradeBase.AbstractRectiGrid{<:Tuple{ComradeBase.X, ComradeBase.Y}}; order::Integer = 1)
     return GaussMarkovRandomField(ρ, size(g); order)
 end
-
 
 
 @inline function lognorm(d::GaussMarkovRandomField)
     N = length(d)
 
-    return (logdet(d) - Dists.log2π*N)/2
+    return (logdet(d) - Dists.log2π * N) / 2
 end
 
 function unnormed_logpdf(d::GaussMarkovRandomField, I::AbstractMatrix)
     ρ = corrparam(d)
-    return -sq_manoblis(graph(d), I, ρ)/2
+    return -sq_manoblis(graph(d), I, ρ) / 2
 end
 
 function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMatrix{<:Real})
     Q = scalematrix(d)
     cQ = cholesky(Symmetric(Q))
     z = randn(rng, length(x))
-    x .= reshape(cQ.PtL'\z, size(d))
+    return x .= reshape(cQ.PtL' \ z, size(d))
 end

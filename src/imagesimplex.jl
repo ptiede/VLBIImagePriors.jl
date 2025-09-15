@@ -17,7 +17,7 @@ struct ImageSimplex <: TV.VectorTransform
     function ImageSimplex(dims::Dims{2})
         n = prod(dims)
         @argcheck n ≥ 1 "Dimension of simplex should be positive"
-        new(prod(dims), dims)
+        return new(prod(dims), dims)
     end
 end
 
@@ -28,16 +28,16 @@ end
 HC.dimension(t::ImageSimplex) = t.n - 1
 
 function simplex_fwd(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractArray)
-    x = similar(y, t.n+1)
+    x = similar(y, t.n + 1)
     flagbool = flag isa TV.NoLogJac ? true : false
     simplex_fwd!(x, y, flagbool)
     return x
 end
 
 function simplex_fwd(t::ImageSimplex, y::AbstractArray)
-    x = similar(y, t.n+1)
+    x = similar(y, t.n + 1)
     simplex_fwd!(x, y, true)
-    return reshape(@view(x[begin:end-1]), t.dims[1], t.dims[2])
+    return reshape(@view(x[begin:(end - 1)]), t.dims[1], t.dims[2])
 end
 
 
@@ -46,36 +46,36 @@ end
 
 function simplex_fwd!(x::AbstractArray, y::AbstractArray, flag::Bool)
     #@argcheck length(x) == length(y) + 2
-    n = length(x)-1
+    n = length(x) - 1
     x[end] = zero(eltype(x))
     stick = one(eltype(x))
     for i in eachindex(y)
-        z = logistic(y[i] - log(n-i))
-        x[i] = stick*z
+        z = logistic(y[i] - log(n - i))
+        x[i] = stick * z
 
         if !(flag)
-            x[end] += log(stick) + log(z*(1-z))
+            x[end] += log(stick) + log(z * (1 - z))
         end
-        stick *= 1-z
+        stick *= 1 - z
     end
-    x[end-1] = stick
+    x[end - 1] = stick
 
     return nothing
 end
 
 function TV.transform_with(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractVector, index)
     n = t.n
-    x = simplex_fwd(flag, t, @view y[index:index+t.n-2])
+    x = simplex_fwd(flag, t, @view y[index:(index + t.n - 2)])
     ℓ = TV.logjac_zero(flag, eltype(y))
     if !(flag isa TV.NoLogJac)
         ℓ = x[end]
     end
-    return (reshape(@view(x[begin:end-1]), t.dims[1], t.dims[2]), ℓ, index+n-1)
+    return (reshape(@view(x[begin:(end - 1)]), t.dims[1], t.dims[2]), ℓ, index + n - 1)
 end
 
 TV.inverse_eltype(::ImageSimplex, y::AbstractMatrix) = TV.robust_eltype(y)
 
 
 function TV.inverse_at!(x::AbstractVector, index, t::ImageSimplex, y::AbstractMatrix)
-    return TV.inverse_at!(x, index, TV.UnitSimplex(t.n), reshape(y,:))
+    return TV.inverse_at!(x, index, TV.UnitSimplex(t.n), reshape(y, :))
 end

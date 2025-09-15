@@ -38,6 +38,4 @@ include("heirarchical.jl")
 include("logratio_transform.jl")
 
 
-
-
 end

@@ -12,7 +12,7 @@ using Statistics
     @test d2.kx == d.kx
     @test d2.ky == d.ky
 
-    StationaryRandomFieldPlan(Float64, size(g), executor=:dummy)
+    StationaryRandomFieldPlan(Float64, size(g), executor = :dummy)
 
     show(d)
     serialize("temp_srf.jls", d)
@@ -24,7 +24,7 @@ using Statistics
 end
 
 
-function testps(ps, plan; nsamples=10_000)
+function testps(ps, plan; nsamples = 10_000)
     d = std_dist(plan)
 
     @inferred genfield(StationaryRandomField(ps, plan), rand(d))
@@ -34,15 +34,15 @@ function testps(ps, plan; nsamples=10_000)
         return genfield(StationaryRandomField(ps, plan), z)
     end
     m = mean(x)
-    @test all(x->isapprox(x, 0.0, atol=5e-2), m)
+    @test all(x -> isapprox(x, 0.0, atol = 5.0e-2), m)
     s = var(x)
-    @test all(x-> 0.5 < x < 2.0, s)
+    return @test all(x -> 0.5 < x < 2.0, s)
 end
 
 @testset "Power Spectra" begin
     g = imagepixels(10.0, 10.0, 64, 64)
     pl = StationaryRandomFieldPlan(g)
-    gth = imagepixels(10.0, 10.0, 64, 64; executor=ThreadsEx())
+    gth = imagepixels(10.0, 10.0, 64, 64; executor = ThreadsEx())
     plth = StationaryRandomFieldPlan(gth)
     @testset "MaternPS" begin
         ps = MaternPS(10.0, 1.0)
@@ -62,22 +62,22 @@ end
 
     @testset "MarkovPS" begin
         @testset "Order 1" begin
-            ps = MarkovPS((10.0, ))
+            ps = MarkovPS((10.0,))
             testps(ps, pl)
         end
 
         @testset "Order 2" begin
-            ps = MarkovPS((0.0, 10.0, ))
+            ps = MarkovPS((0.0, 10.0))
             testps(ps, pl)
         end
 
         @testset "Order 2" begin
-            ps = MarkovPS((0.0, 10.0, ))
+            ps = MarkovPS((0.0, 10.0))
             testps(ps, pl)
         end
 
         @testset "Order 3" begin
-            ps = MarkovPS((0.0, 00.0, 10.0))
+            ps = MarkovPS((0.0, 0.0, 10.0))
             testps(ps, pl)
         end
 
@@ -123,14 +123,13 @@ using VLBIImagePriors: StdNormal
 
 
     x = rand(d, 10_000)
-    @test isapprox(mean(x), zeros(size(g)), atol=5e-2, norm=maximum)
-    @test isapprox(var(x), ones(size(g)), atol=0.1, norm=maximum)
+    @test isapprox(mean(x), zeros(size(g)), atol = 5.0e-2, norm = maximum)
+    @test isapprox(var(x), ones(size(g)), atol = 0.1, norm = maximum)
 
     dN = StdNormal((64, 64, 10, 3))
     z = rand(dN)
     @test logpdf(dN, z) ≈ logpdf(Distributions.MvNormal(zeros(length(dN)), I), reshape(z, :))
 end
-
 
 
 @testset "matern" begin
@@ -151,4 +150,3 @@ end
     @test trf_tall(zt, (3.0, 3.0), 0.0, 1.0) ≈ trf_tall(zt, 3.0, 1.0)
     @test trf_square(zs, (3.0, 3.0), 0.0, 1.0) ≈ trf_square(zs, 3.0, 1.0)
 end
-

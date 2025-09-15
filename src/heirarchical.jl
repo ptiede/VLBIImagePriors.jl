@@ -1,6 +1,6 @@
 export HierarchicalPrior
 
-struct HierarchicalPrior{M,P} <: Dists.ContinuousMultivariateDistribution
+struct HierarchicalPrior{M, P} <: Dists.ContinuousMultivariateDistribution
     priormap::M
     hyperprior::P
 end
@@ -11,13 +11,13 @@ function Base.show(io::IO, d::HierarchicalPrior)
     println(io, "HierarchicalPrior(")
     print(io, "\tmap: \n\t", d.priormap)
     println(io, "\thyper prior: \n\t", d.hyperprior)
-    println(io, ")")
+    return println(io, ")")
 end
 
 
 function Dists.logpdf(d::HierarchicalPrior, x::NamedTuple)
     hp = x.hyperparams
-    p  = x.params
+    p = x.params
     pr = d.priormap(hp)
     return Dists.logpdf(pr, p) + Dists.logpdf(d.hyperprior, hp)
 end
@@ -26,17 +26,17 @@ function Dists.rand(rng::AbstractRNG, d::HierarchicalPrior)
     hp = rand(rng, d.hyperprior)
     dp = d.priormap(hp)
     p = rand(rng, dp)
-    return (params = p, hyperparams=hp)
+    return (params = p, hyperparams = hp)
 end
 
 function Dists.rand(rng::AbstractRNG, d::HierarchicalPrior, n::Dims)
-    map(CartesianIndices(n)) do I
+    return map(CartesianIndices(n)) do I
         rand(rng, d)
     end
 end
 
 function Dists.rand(rng::AbstractRNG, d::HierarchicalPrior, n::Int)
-    map(1:n) do I
+    return map(1:n) do I
         rand(rng, d)
     end
 end

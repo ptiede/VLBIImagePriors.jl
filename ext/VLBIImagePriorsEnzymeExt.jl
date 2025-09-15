@@ -2,7 +2,7 @@ module VLBIImagePriorsEnzymeExt
 
 using Enzyme
 using VLBIImagePriors
-using ChainRulesCore 
+using ChainRulesCore
 import TransformVariables as TV
 using AbstractFFTs
 
@@ -12,7 +12,7 @@ function ChainRulesCore.rrule(::typeof(VLBIImagePriors.lcol), d::CenteredRegular
     function _lcol_pullback(Δ)
         dimg = zero(img)
         autodiff(Reverse, VLBIImagePriors.lcol, Active, Const(d), Duplicated(copy(img), dimg))
-        return (NoTangent(), NoTangent(), pimg(Δ*dimg))
+        return (NoTangent(), NoTangent(), pimg(Δ * dimg))
     end
     return (f, _lcol_pullback)
 end
@@ -20,22 +20,22 @@ end
 function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:TV.ScalarTransform}, y::AbstractVector, index)
     out = TV.transform_with(flag, t, y, index)
     function _transform_with_array(Δ)
-        ysub = y[index:index+TV.dimension(t)-1]
+        ysub = y[index:(index + TV.dimension(t) - 1)]
         Δx = unthunk(Δ[1])
         Δlj = unthunk(Δ[2])
         dy = zero(ysub)
-        x = similar(ysub, length(ysub)+1)
-        dx = similar(ysub, length(ysub)+1)
+        x = similar(ysub, length(ysub) + 1)
+        dx = similar(ysub, length(ysub) + 1)
         if Δx isa ZeroTangent
-            dx[begin:end-1] .= 0.0
+            dx[begin:(end - 1)] .= 0.0
         else
-            dx[begin:end-1] .= reshape(Δx, :)
+            dx[begin:(end - 1)] .= reshape(Δx, :)
         end
 
         dx[end] = Δlj
         Enzyme.autodiff(Reverse, VLBIImagePriors._transform_with_loop!, Const, Const(flag), Const(t.inner_transformation), Duplicated(x, dx), Duplicated(ysub, dy))
         Δy = zero(y)
-        Δy[index:index+TV.dimension(t)-1] .= dy
+        Δy[index:(index + TV.dimension(t) - 1)] .= dy
         return NoTangent(), NoTangent(), NoTangent(), Δy, NoTangent()
     end
     return out, _transform_with_array
@@ -49,10 +49,10 @@ function ChainRulesCore.rrule(::typeof(VLBIImagePriors.sq_manoblis), d::MarkovRa
         Δd = NoTangent()
         dI = zero(ΔI)
 
-        ((_, _, dρ), ) = autodiff(Reverse, VLBIImagePriors.sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
+        ((_, _, dρ),) = autodiff(Reverse, VLBIImagePriors.sq_manoblis, Active, Const(d), Duplicated(ΔI, dI), Active(ρ))
 
-        dI .= Δ.*dI
-        return Δf, Δd, prI(dI), Δ*dρ
+        dI .= Δ .* dI
+        return Δf, Δd, prI(dI), Δ * dρ
     end
     return s, _sq_manoblis_pullback
 end
@@ -104,8 +104,6 @@ function ChainRulesCore.rrule(::typeof(VLBIImagePriors.to_real), t::VLBIImagePri
     end
     return x, _to_simplex_pullback
 end
-
-
 
 
 end

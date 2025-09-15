@@ -1,6 +1,6 @@
 export ConditionalMarkov
 
-struct ConditionalMarkov{B,C}
+struct ConditionalMarkov{B, C}
     cache::C
 end
 
@@ -33,5 +33,5 @@ function Base.show(io::IO, x::ConditionalMarkov{B}) where {B}
     println(io, "ConditionalMarkov(")
     println(io, "Random Field: $(B)")
     println(io, "Graph: ", x.cache)
-    print(io, ")")
+    return print(io, ")")
 end
