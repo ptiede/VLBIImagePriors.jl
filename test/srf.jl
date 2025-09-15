@@ -49,12 +49,12 @@ end
     end
 
     @testset "SqExp" begin
-        ps = MaternPS(10.0, 1.0)
+        ps = SqExpPS(10.0)
         testps(ps, pl)
     end
 
     @testset "RationalQuadPS" begin
-        ps = MaternPS(10.0, 1.0)
+        ps = RationalQuadPS(10.0, 1.0)
         testps(ps, pl)
     end
 
@@ -89,6 +89,11 @@ end
         base = MaternPS(10.0, 1.0)
         ps = ScaledPS(base, 10.0, 1.0)
         testps(ps, pl)
+
+        z = rand(std_dist(pl))
+        f1 = genfield(StationaryRandomField(base, pl), z)
+        f2 = genfield(StationaryRandomField(ScaledPS(base, 1.0), pl), z)
+        @test f1 ≈ f2
     end
 end
 
@@ -98,6 +103,11 @@ end
     trf_wide, dstd_w = matern((8, 10))
     trf_tall, dstd_t = matern((10, 8))
     trf_square, dstd_s = matern((10, 10))
+
+    g = imagepixels(10.0, 10.0, 8, 10)
+    t, d = matern(g)
+    @test t.plan.kx == trf_wide.plan.kx
+    @test t.plan.ky == trf_wide.plan.ky
 
     zw = rand(dstd_w)
     zt = rand(dstd_t)
