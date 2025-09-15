@@ -280,7 +280,7 @@ end
 
     @testset "Equal" begin
         mimg = rand(10, 10)
-        d1 = TDistMarkovRandomField(3.0, 1.0, mimg)
+        d1 = TDistMarkovRandomField(3.0, 2.0, mimg)
         c = MarkovRandomFieldGraph(mimg)
         d2 = TDistMarkovRandomField(3.0, 2.0, c)
 
