@@ -57,6 +57,8 @@ end
     t2 = asflat(d2)
     t3 = asflat(d3)
 
+    @test all(x->x[1]≈x[2], zip(mean(d1), mean(d2)))
+
 
     @test t2 === t3
 
