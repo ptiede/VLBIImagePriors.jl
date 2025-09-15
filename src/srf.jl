@@ -3,7 +3,7 @@ export MaternPS, SqExpPS, RationalQuadPS, ScaledPS, MarkovPS,
        StationaryRandomField, genfield, std_dist, 
        matern
 
-struct StationaryRandomFieldPlan{TΛ, E<:Union{Serial, ThreadsEx}, P}
+struct StationaryRandomFieldPlan{TΛ, E, P}
     kx::TΛ
     ky::TΛ
     executor::E
@@ -363,7 +363,7 @@ function HC._step_inverse!(x::AbstractVector, index, h::HC.ArrayHC{<:StdNormal},
 end
 
 Dists.mean(d::StdNormal) = zeros(size(d))
-Dists.cov(d::StdNormal)  = Diagonal(prod(size(d)))
+Dists.cov(d::StdNormal)  = I(length(d))
 
 
 function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<:Real, N}

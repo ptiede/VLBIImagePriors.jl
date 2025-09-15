@@ -12,6 +12,8 @@ using Statistics
     @test d2.kx == d.kx
     @test d2.ky == d.ky
 
+    StationaryRandomFieldPlan(Float64, size(g), executor=:dummy)
+
     show(d)
     serialize("temp_srf.jls", d)
     d3 = deserialize("temp_srf.jls")
@@ -95,6 +97,32 @@ end
         f2 = genfield(StationaryRandomField(ScaledPS(base, 1.0), pl), z)
         @test f1 ≈ f2
     end
+end
+
+
+using VLBIImagePriors: StdNormal
+@testset "StdNormal" begin
+    g = imagepixels(10.0, 10.0, 64, 64)
+    pl = StationaryRandomFieldPlan(g)
+    rf = StationaryRandomField(MaternPS(10.0, 1.0), pl)
+    d = std_dist(rf)
+
+    d2 = StdNormal(size(g))
+    @test length(d) == length(d2)
+    @test eltype(d) == eltype(d2)
+    @test mean(d) ≈ mean(d2)
+    @test cov(d) ≈ cov(d2)
+    asflat(d)
+
+    z = rand(d)
+    dd = Distributions.MvNormal(ones(length(d)))
+    @test logpdf(d, z) ≈ logpdf(d2, z)
+    @test logpdf(d, z) ≈ logpdf(dd, reshape(z, :))
+
+
+    x = rand(d, 10_000)
+    @test isapprox(mean(x), zeros(size(g)), atol=5e-2, norm=maximum)
+    @test isapprox(var(x), ones(size(g)), atol=0.1, norm=maximum)
 end
 
 
