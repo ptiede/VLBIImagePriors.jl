@@ -125,6 +125,10 @@ using VLBIImagePriors: StdNormal
     x = rand(d, 10_000)
     @test isapprox(mean(x), zeros(size(g)), atol=5e-2, norm=maximum)
     @test isapprox(var(x), ones(size(g)), atol=0.1, norm=maximum)
+
+    dN = StdNormal((64, 64, 10, 3))
+    z = rand(dN)
+    @test logpdf(dN, z) ≈ logpdf(Distributions.MvNormal(zeros(length(dN)), I), reshape(z, :))
 end
 
 
