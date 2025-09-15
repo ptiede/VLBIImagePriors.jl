@@ -13,7 +13,7 @@ of the imag. After regularization the log density of the prior is modified to
 where `N_x` and `N_y` are the number of pixels in the `x` and `y` direction of the image,
 and ``x_C, y_C`` are the center of light of the image `I`.
 """
-struct CenteredRegularizer{I,S,D} <: Dists.ContinuousMatrixDistribution
+struct CenteredRegularizer{I, S, D} <: Dists.ContinuousMatrixDistribution
     x::I
     y::I
     σ::S
@@ -36,11 +36,11 @@ Dists.insupport(d::CenteredRegularizer, x::AbstractMatrix) = Dists.insupport(d.d
 function lcol(d::CenteredRegularizer, img)
     dx = zero(eltype(img))
     dy = zero(eltype(img))
-    for i in axes(img, 2), j in axes(img,1)
-        dx += d.x[j]*img[j,i]
-        dy += d.y[i]*img[j,i]
+    for i in axes(img, 2), j in axes(img, 1)
+        dx += d.x[j] * img[j, i]
+        dy += d.y[i] * img[j, i]
     end
-    return -(dx^2 + dy^2)/(2*d.σ^2)*prod(size(img))
+    return -(dx^2 + dy^2) / (2 * d.σ^2) * prod(size(img))
 end
 
 
@@ -48,19 +48,19 @@ function Dists._logpdf(d::CenteredRegularizer, x::AbstractMatrix{<:Real})
     return Dists.logpdf(d.distI, x) + lcol(d, x)
 end
 
-struct CenterImage{K,D}
+struct CenterImage{K, D}
     kernel::K
     dims::D
     function CenterImage(X, Y)
         # normalize by the step to make sure the numerics are alright
-        x = X.*ones(length(Y))'./step(X)
-        y = ones(length(X)).*Y'./step(Y)
+        x = X .* ones(length(Y))' ./ step(X)
+        y = ones(length(X)) .* Y' ./ step(Y)
         XY = zeros(2, length(x))
-        XY[1,:] .= reshape(x, :)
-        XY[2,:] .= reshape(y, :)
+        XY[1, :] .= reshape(x, :)
+        XY[2, :] .= reshape(y, :)
         C = nullspace(XY)
         dims = (length(X), length(Y))
-        return new{typeof(C), typeof(dims)}(C*C', dims)
+        return new{typeof(C), typeof(dims)}(C * C', dims)
     end
 end
 
@@ -124,7 +124,7 @@ function (c::CenterImage)(img::AbstractMatrix)
     return center_kernel(c.kernel, img)
 end
 
-center_kernel(K, img) = reshape(K*vec(img), size(img))
+center_kernel(K, img) = reshape(K * vec(img), size(img))
 
 using ChainRulesCore
 function ChainRulesCore.rrule(::typeof(center_kernel), K::AbstractMatrix, img::AbstractMatrix)
@@ -132,8 +132,8 @@ function ChainRulesCore.rrule(::typeof(center_kernel), K::AbstractMatrix, img::A
     pimg = ProjectTo(img)
     function _center_pullback(Δ)
         Δc = NoTangent()
-        ΔK  = NoTangent()
-        Δimg = pimg(reshape(K'*vec(Δ), size(img)))
+        ΔK = NoTangent()
+        Δimg = pimg(reshape(K' * vec(Δ), size(img)))
         return Δc, ΔK, Δimg
     end
     return out, _center_pullback

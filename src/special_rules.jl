@@ -14,12 +14,14 @@ end
 EnzymeRules.inactive(::typeof(FFTW.assert_applicable), args...) = nothing
 EnzymeRules.inactive_type(::Type{<:FFTW.Plan}) = true
 
-function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig, 
-                                      func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
-                                      ::Type{RT},
-                                      plan::EnzymeRules.Annotation{<:FFTW.cFFTWPlan{<:FFTW.fftwComplex, I, true}},
-                                      X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
-                                      Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}}) where {I, RT}
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfig,
+        func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
+        ::Type{RT},
+        plan::EnzymeRules.Annotation{<:FFTW.cFFTWPlan{<:FFTW.fftwComplex, I, true}},
+        X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
+        Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}}
+    ) where {I, RT}
 
     if !(typeof(plan) <: EnzymeRules.Const)
         throw(ArgumentError("Plan in FFTW.unsafe_execute! is not Const"))
@@ -32,7 +34,7 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig,
         X
     else
         nothing
-    end 
+    end
 
     cache_Y = if EnzymeRules.overwritten(config)[4]
         Y
@@ -59,26 +61,27 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig,
     return EnzymeRules.AugmentedReturn(primal, shadow, cache)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.RevConfig, 
-                             func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
-                             ::Type{RT}, cache,
-                             plan::EnzymeRules.Annotation{<:FFTW.cFFTWPlan{<:FFTW.fftwComplex, I, true}},
-                             X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
-                             Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
-                            ) where {I, RT}
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfig,
+        func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
+        ::Type{RT}, cache,
+        plan::EnzymeRules.Annotation{<:FFTW.cFFTWPlan{<:FFTW.fftwComplex, I, true}},
+        X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
+        Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwComplex}},
+    ) where {I, RT}
 
     # Now FFTW may overwrite the input to we need to check and cache it if needed
     N = EnzymeRules.width(config)
-    Xfwd = EnzymeRules.overwritten(config)[3] ? cache[2] : X 
+    Xfwd = EnzymeRules.overwritten(config)[3] ? cache[2] : X
     Yfwd = EnzymeRules.overwritten(config)[4] ? cache[3] : Y
     planfwd = cache[1]
     if !isa(Y, EnzymeRules.Const)
         cache_plan, cache_X, cache_Y = cache
         # I need something to hold the cache
         for b in 1:N
-            dY = N==1 ? Yfwd.dval : Yfwd.dval[b]
-            dX = N==1 ? Xfwd.dval : X.dval[b]
-            planfwd.val'*dY # compute the adjoint plan and move forward
+            dY = N == 1 ? Yfwd.dval : Yfwd.dval[b]
+            dX = N == 1 ? Xfwd.dval : X.dval[b]
+            planfwd.val' * dY # compute the adjoint plan and move forward
             dY .*= length(dY)
             # dX .= tmp
             # dY .= zero(eltype(dX))
@@ -88,18 +91,20 @@ function EnzymeRules.reverse(config::EnzymeRules.RevConfig,
 end
 
 
-function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig, 
-                                      func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
-                                      ::Type{RT},
-                                      plan::EnzymeRules.Annotation{<:FFTW.r2rFFTWPlan{<:FFTW.fftwReal, I, true}},
-                                      X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
-                                      Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}}) where {I, RT}
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfig,
+        func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
+        ::Type{RT},
+        plan::EnzymeRules.Annotation{<:FFTW.r2rFFTWPlan{<:FFTW.fftwReal, I, true}},
+        X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
+        Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}}
+    ) where {I, RT}
 
     if !(typeof(plan) <: EnzymeRules.Const)
         throw(ArgumentError("Plan in FFTW.unsafe_execute! is not Const"))
     end
 
-    # Base.mightalias(X.val, Y.val) && 
+    # Base.mightalias(X.val, Y.val) &&
     #     throw(ArgumentError("EnzymeRule does not support aliasing of X and Y in FFTW.r2r"))
 
 
@@ -110,10 +115,10 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig,
         X
     else
         nothing
-    end 
+    end
 
     cache_Y = if EnzymeRules.overwritten(config)[4]
-            Y
+        Y
     else
         nothing
     end
@@ -137,32 +142,32 @@ function EnzymeRules.augmented_primal(config::EnzymeRules.RevConfig,
     return EnzymeRules.AugmentedReturn(primal, shadow, cache)
 end
 
-function EnzymeRules.reverse(config::EnzymeRules.RevConfig, 
-                             func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
-                             ::Type{RT}, cache,
-                             plan::EnzymeRules.Annotation{<:FFTW.r2rFFTWPlan{<:FFTW.fftwReal, I, true}},
-                             X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
-                             Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
-                            ) where {I, RT}
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfig,
+        func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
+        ::Type{RT}, cache,
+        plan::EnzymeRules.Annotation{<:FFTW.r2rFFTWPlan{<:FFTW.fftwReal, I, true}},
+        X::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
+        Y::EnzymeRules.Annotation{<:StridedArray{<:FFTW.fftwReal}},
+    ) where {I, RT}
 
     # Now FFTW may overwrite the input to we need to check and cache it if needed
     N = EnzymeRules.width(config)
-    Xfwd = EnzymeRules.overwritten(config)[3] ? cache[2] : X 
+    Xfwd = EnzymeRules.overwritten(config)[3] ? cache[2] : X
     Yfwd = EnzymeRules.overwritten(config)[4] ? cache[3] : Y
     planfwd = cache[1]
     if !isa(Y, EnzymeRules.Const)
         cache_plan, cache_X, cache_Y = cache
         # I need something to hold the cache
         for b in 1:N
-            dY = N==1 ? Yfwd.dval : Yfwd.dval[b]
-            dX = N==1 ? Xfwd.dval : X.dval[b]
-            planfwd.val*dY # the DST is self-adjoint and orthogonal
+            dY = N == 1 ? Yfwd.dval : Yfwd.dval[b]
+            dX = N == 1 ? Xfwd.dval : X.dval[b]
+            planfwd.val * dY # the DST is self-adjoint and orthogonal
             # We do not zero out the input since the rule is in-place so X and Y alias
         end
     end
     return (nothing, nothing, nothing)
 end
-
 
 
 # This doesn't work for some reason and drops gradients

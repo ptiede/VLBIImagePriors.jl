@@ -1,17 +1,17 @@
-export MaternPS, SqExpPS, RationalQuadPS, ScaledPS, MarkovPS, 
-       StationaryRandomFieldPlan, 
-       StationaryRandomField, genfield, std_dist, 
-       matern
+export MaternPS, SqExpPS, RationalQuadPS, ScaledPS, MarkovPS,
+    StationaryRandomFieldPlan,
+    StationaryRandomField, genfield, std_dist,
+    matern
 
 struct StationaryRandomFieldPlan{TΛ, E, P}
     kx::TΛ
     ky::TΛ
     executor::E
     p::P
-    function StationaryRandomFieldPlan(T::Type{<:Number}, dims::Dims{2}; executor=Serial())
-        kx = fftfreq(dims[1], one(T))*π
-        ky = fftfreq(dims[2], one(T))*π
-        plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags=FFTW.MEASURE)
+    function StationaryRandomFieldPlan(T::Type{<:Number}, dims::Dims{2}; executor = Serial())
+        kx = fftfreq(dims[1], one(T)) * π
+        ky = fftfreq(dims[2], one(T)) * π
+        plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags = FFTW.MEASURE)
         if !(executor isa Serial || executor isa ThreadsEx)
             @warn "Executor type $((executor)) not supported, defaulting to Serial()"
             executor = Serial()
@@ -37,15 +37,15 @@ function StationaryRandomFieldPlan(g::RectiGrid{<:ComradeBase.SpatialDims})
     T = eltype(g)
     ex = executor(g)
     ng = size(g)
-    return StationaryRandomFieldPlan(T, ng; executor=ex)
+    return StationaryRandomFieldPlan(T, ng; executor = ex)
 end
 
 
 function Base.show(io::IO, x::StationaryRandomFieldPlan)
     println(io, "StationaryRandomFieldPlan")
     println(io, "\tBase type: $(eltype(x.kx))")
-    println(io, "\tsize:      ($(size(x.kx,1)), $(size(x.ky,1)))")
-    println(io, "\texec:      $(x.executor)")
+    println(io, "\tsize:      ($(size(x.kx, 1)), $(size(x.ky, 1)))")
+    return println(io, "\texec:      $(x.executor)")
 end
 
 function Serialization.serialize(s::Serialization.AbstractSerializer, cache::StationaryRandomFieldPlan)
@@ -53,7 +53,7 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::Sta
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.kx)
     Serialization.serialize(s, cache.ky)
-    Serialization.serialize(s, cache.executor)
+    return Serialization.serialize(s, cache.executor)
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:StationaryRandomFieldPlan})
@@ -90,9 +90,9 @@ Defines a power spectrum that is a scaled and rotated version of another power s
 The scaling is defined by `τ` stretches the PS in the y-direction by `τ` and the rotation is defined
 by the angle `ξ` in radians CCW.
 """
-struct ScaledPS{P<:AbstractPowerSpectrum, T} <: AbstractPowerSpectrum
+struct ScaledPS{P <: AbstractPowerSpectrum, T} <: AbstractPowerSpectrum
     ps::P
-    τ::T 
+    τ::T
     s::T
     c::T
     function ScaledPS(ps::A, τ, ξ) where {A}
@@ -109,12 +109,10 @@ end
 function ampspectrum(p::ScaledPS, ks)
     (; ps, τ, s, c) = p
     kx, ky = ks
-    kx2 = c*kx - s*ky
-    ky2 = (s*kx + c*ky)/τ
-    return ampspectrum(ps, (kx2, ky2))/sqrt(τ)
+    kx2 = c * kx - s * ky
+    ky2 = (s * kx + c * ky) / τ
+    return ampspectrum(ps, (kx2, ky2)) / sqrt(τ)
 end
-
-
 
 
 """
@@ -133,9 +131,9 @@ struct MaternPS{T} <: AbstractPowerSpectrum
         @assert ρ > zero(ρ) "Correlation length ρ must be positive"
         @assert ν > zero(ν) "Smoothness parameter ν must be positive"
         T = promote_type(typeof(ρ), typeof(ν))
-        κ = T(sqrt(8*ν)/ρ)
-        κ2 = κ*κ
-        τ = κ^ν*sqrt(ν*convert(T, π))
+        κ = T(sqrt(8 * ν) / ρ)
+        κ2 = κ * κ
+        τ = κ^ν * sqrt(ν * convert(T, π))
         return new{T}(τ, κ2, ν)
     end
 end
@@ -143,8 +141,8 @@ end
 @inline function ampspectrum(ps::MaternPS, ks)
     (; τ, κ2, ν) = ps
     kx, ky = ks
-    expp = -(ν+1)/2
-    return τ*(κ2 + kx^2 + ky^2)^expp
+    expp = -(ν + 1) / 2
+    return τ * (κ2 + kx^2 + ky^2)^expp
 end
 
 """
@@ -162,7 +160,7 @@ end
 @inline function ampspectrum(ps::SqExpPS{T}, ks) where {T}
     (; ρ) = ps
     kx, ky = ks
-    return exp(-(kx^2 + ky^2)*inv(4)*ρ^2)*ρ
+    return exp(-(kx^2 + ky^2) * inv(4) * ρ^2) * ρ
 end
 
 
@@ -182,8 +180,8 @@ end
 @inline function ampspectrum(ps::RationalQuadPS{T}, ks) where {T}
     (; ρ, α) = ps
     kx, ky = ks
-    αρ = α*ρ
-    return (αρ)*(1 + αρ*ρ/2*(kx^2 + ky^2))^(-(α + 1)/2)
+    αρ = α * ρ
+    return (αρ) * (1 + αρ * ρ / 2 * (kx^2 + ky^2))^(-(α + 1) / 2)
 end
 
 """
@@ -195,7 +193,7 @@ The power spectrum is given by
 where norm is given by sqrt(Σₙ ρₙ) to roughly ensure the same marginal variance.
 """
 struct MarkovPS{T, N} <: AbstractPowerSpectrum
-    ρs::NTuple{N,T}
+    ρs::NTuple{N, T}
 end
 
 @inline function ampspectrum(ps::MarkovPS{T, N}, ks) where {T, N}
@@ -203,13 +201,13 @@ end
     kx, ky = ks
     k2 = kx^2 + ky^2
     terms = ntuple(Val(N)) do n
-        (ρs[n]*k2)^n
+        (ρs[n] * k2)^n
     end
     norm = ntuple(Val(N)) do n
-        m = (n == 1 ? 2 : n) 
-        ρs[n]*n*sin(T(π)/m)
+        m = (n == 1 ? 2 : n)
+        ρs[n] * n * sin(T(π) / m)
     end
-    return sqrt(sum(norm))/sqrt(1 + reduce(+, terms))
+    return sqrt(sum(norm)) / sqrt(1 + reduce(+, terms))
 end
 
 """
@@ -218,7 +216,7 @@ end
 Creates a stationary random field defined by the power spectrum `ps` and the evaluation `plan`.
 Note that by default the plan assumes periodic boundary conditions.
 """
-struct StationaryRandomField{PS<:AbstractPowerSpectrum, P}
+struct StationaryRandomField{PS <: AbstractPowerSpectrum, P}
     ps::PS
     plan::P
 end
@@ -232,18 +230,18 @@ a draw from `std_dist(rf)`.
 """
 function genfield(rf::StationaryRandomField, z::AbstractArray)
     ps = rf.ps
-    (;kx, ky, p) = rf.plan
+    (; kx, ky, p) = rf.plan
     e = executor(rf.plan)
 
-    ns = similar(z , Complex{eltype(z)})
+    ns = similar(z, Complex{eltype(z)})
     @threaded e for i in eachindex(ky)
         for j in eachindex(kx)
-            @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))*z[j,i]
+            @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i])) * z[j, i]
         end
     end
 
-    p*ns
-    rast = (real.(ns) .+ imag.(ns))./sqrt(prod(size(z)))
+    p * ns
+    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
     return rast
 end
 
@@ -288,18 +286,18 @@ julia> draw_matern_aniso = transform(rand(dstd), (10.0, 5.0), π/4 2.0) # anisot
 julia> ones(32, 32) .+ 5.* draw_matern # change the mean and variance of the field
 ```
 """
-function matern(T::Type{<:Number}, dim::Dims{2}; executor=Serial())
-    plan = StationaryRandomFieldPlan(T, dim; executor=executor)
+function matern(T::Type{<:Number}, dim::Dims{2}; executor = Serial())
+    plan = StationaryRandomFieldPlan(T, dim; executor = executor)
     f = StationaryMatern(plan)
     return f, std_dist(plan)
 end
-matern(dims::Dims{2}; executor=Serial()) = matern(Float64, dims; executor=executor)
+matern(dims::Dims{2}; executor = Serial()) = matern(Float64, dims; executor = executor)
 
 function matern(g::ComradeBase.RectiGrid{<:ComradeBase.SpatialDims})
     T = eltype(g)
     ex = executor(g)
     ng = size(g)
-    return matern(T, ng; executor=ex)
+    return matern(T, ng; executor = ex)
 end
 
 
@@ -308,7 +306,7 @@ struct StationaryMatern{P}
 end
 
 function (m::StationaryMatern)(z, ρ::NTuple{2}, ξ, ν)
-    τ = ρ[1]/ρ[2]
+    τ = ρ[1] / ρ[2]
     ps = ScaledPS(MaternPS(ρ[1], ν), τ, ξ)
     rf = StationaryRandomField(ps, m.plan)
     return genfield(rf, z)
@@ -319,8 +317,6 @@ function (m::StationaryMatern)(z, ρ, ν)
     rf = StationaryRandomField(ps, m.plan)
     return genfield(rf, z)
 end
-
-
 
 
 """
@@ -334,7 +330,7 @@ function std_dist(d::StationaryRandomField)
 end
 
 function std_dist(d::StationaryRandomFieldPlan)
-    StdNormal{eltype(d.kx),2}((length(d.kx), length(d.ky)))
+    return StdNormal{eltype(d.kx), 2}((length(d.kx), length(d.ky)))
 end
 
 struct StdNormal{T, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
@@ -354,23 +350,23 @@ HC.ascube(d::StdNormal) = HC.ArrayHC(d)
 function HC._step_transform(h::HC.ArrayHC{<:StdNormal}, p::AbstractVector, index)
     d = Dists.Normal()
     out = Dists.quantile.(Ref(d), p)
-    return out, index+HC.dimension(h)
+    return out, index + HC.dimension(h)
 end
 
 function HC._step_inverse!(x::AbstractVector, index, h::HC.ArrayHC{<:StdNormal}, y::AbstractVector)
     d = Dists.Normal()
     x .= Dists.cdf.(Ref(d), y)
-    return index+HC.dimension(h)
+    return index + HC.dimension(h)
 end
 
 Dists.mean(d::StdNormal) = zeros(size(d))
-Dists.cov(d::StdNormal)  = I(length(d))
+Dists.cov(d::StdNormal) = I(length(d))
 
 
-function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<:Real, N}
+function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T <: Real, N}
     return __logpdf(d, x)
 end
-Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T<:Real} = __logpdf(d, x)
+Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T <: Real} = __logpdf(d, x)
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
@@ -380,10 +376,10 @@ function __logpdf(d::StdNormal, x)
     for i in eachindex(x)
         s += abs2(x[i])
     end
-    return -s/2 - prod(d.dims)*Dists.log2π/2
+    return -s / 2 - prod(d.dims) * Dists.log2π / 2
 end
 
 
-function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<: Real, N}
+function Dists._rand!(rng::AbstractRNG, ::StdNormal{T, N}, x::AbstractArray{T, N}) where {T <: Real, N}
     return randn!(rng, x)
 end

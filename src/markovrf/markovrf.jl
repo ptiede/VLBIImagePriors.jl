@@ -49,13 +49,13 @@ For an example implementation see e.g., [GaussMarkovRandomField](@ref)
 """
 abstract type MarkovRandomField <: Dists.ContinuousMatrixDistribution end
 
-function Base.show(io::IO, d::T) where {T<:MarkovRandomField}
+function Base.show(io::IO, d::T) where {T <: MarkovRandomField}
     s = "$T"
     t = split(s, "{")[1]
     println(io, "$t(")
     println(io, "Graph: ", d.graph)
     println(io, "Correlation Parameter: ", d.ρ)
-    print(io, ")")
+    return print(io, ")")
 end
 
 """
@@ -99,12 +99,9 @@ HC.asflat(d::MarkovRandomField) = TV.as(Matrix, size(d)...)
 Dists.insupport(::MarkovRandomField, x::AbstractMatrix) = true
 
 
-
-
 function Dists._logpdf(d::MarkovRandomField, x::AbstractMatrix{<:Real})
     return unnormed_logpdf(d, x) + lognorm(d)
 end
-
 
 
 include("cache.jl")

@@ -1,12 +1,12 @@
 export standardize, centerdist, centerdist!, noncenterdist, noncenterdist!
 
-struct NonCenteredMarkovTransform{O, G<:MarkovRandomFieldGraph{O}, P}
+struct NonCenteredMarkovTransform{O, G <: MarkovRandomFieldGraph{O}, P}
     graph::G
     trf::P
 end
 
-function NonCenteredMarkovTransform(g::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
-    p = FFTW.plan_r2r!(copy(g.λQ), FFTW.RODFT00; flags=flag)
+function NonCenteredMarkovTransform(g::MarkovRandomFieldGraph; flag = FFTW.MEASURE)
+    p = FFTW.plan_r2r!(copy(g.λQ), FFTW.RODFT00; flags = flag)
     return NonCenteredMarkovTransform(g, p)
 end
 
@@ -14,13 +14,13 @@ function Serialization.serialize(s::Serialization.AbstractSerializer, cache::Non
     Serialization.writetag(s.io, Serialization.OBJECT_TAG)
     Serialization.serialize(s, typeof(cache))
     Serialization.serialize(s, cache.graph)
-    Serialization.serialize(s, cache.trf.flags)
+    return Serialization.serialize(s, cache.trf.flags)
 end
 
 function Serialization.deserialize(s::AbstractSerializer, ::Type{<:NonCenteredMarkovTransform})
     graph = Serialization.deserialize(s)
     flag = Serialization.deserialize(s)
-    return NonCenteredMarkovTransform(graph; flag=flag)
+    return NonCenteredMarkovTransform(graph; flag = flag)
 end
 
 
@@ -35,7 +35,7 @@ To transform the realization of the standarized Markov Random Field back to the 
 space use the [`centerdist`](@ref) function. To transform the realization of the original
 Markov Random Field to the standardized space use the [`noncenterdist`](@ref) function.
 """
-standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE) = NonCenteredMarkovTransform(c; flag)
+standardize(c::MarkovRandomFieldGraph; flag = FFTW.MEASURE) = NonCenteredMarkovTransform(c; flag)
 
 """
     standardize(c::MarkovRandomFieldGraph; flag=FFTW.MEASURE)
@@ -50,7 +50,7 @@ To transform the realization of the standarized Markov Random Field back to the 
 space use the [`centerdist`](@ref) function. To transform the realization of the original
 Markov Random Field to the standardized space use the [`noncenterdist`](@ref) function.
 """
-standardize(c::GaussMarkovRandomField; flag=FFTW.MEASURE) = standardize(graph(c); flag), std_dist(c)
+standardize(c::GaussMarkovRandomField; flag = FFTW.MEASURE) = standardize(graph(c); flag), std_dist(c)
 
 
 """
@@ -64,18 +64,18 @@ function centerdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{O
     # denominator is to make the DST orthonormal
     sz = prod(ntuple(i -> size(c)[i] + 1, Val(N)))
     g = graph(c)
-    nm = sqrt(mrfnorm(g, κ²)/(4*sz))
+    nm = sqrt(mrfnorm(g, κ²) / (4 * sz))
     Λ = g.λQ
 
     if Order == 1
-        out .= inv.(sqrt.(Λ .+ κ²)).*z.*nm
+        out .= inv.(sqrt.(Λ .+ κ²)) .* z .* nm
     elseif Order == 2
-        out .= inv.(Λ .+ κ²).*z.*nm
+        out .= inv.(Λ .+ κ²) .* z .* nm
     else
-        out .=  ((Λ .+ κ²).^(-Order/2)).*z.*nm
+        out .= ((Λ .+ κ²) .^ (-Order / 2)) .* z .* nm
     end
-    
-    c.trf*out
+
+    c.trf * out
     return nothing
 end
 
@@ -120,20 +120,20 @@ function noncenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransfor
     # denominator is to make the DST orthonormal
     sz = prod(ntuple(i -> size(c)[i] + 1, Val(ndims(z))))
     g = graph(c)
-    nm = sqrt(mrfnorm(g, κ²)*(4*sz))
+    nm = sqrt(mrfnorm(g, κ²) * (4 * sz))
     Λ = g.λQ
 
     out .= z
-    c.trf*out
+    c.trf * out
 
     if Order == 1
-        out .= sqrt.(Λ .+ κ²).*out./nm
+        out .= sqrt.(Λ .+ κ²) .* out ./ nm
     elseif Order == 2
-        out .= (Λ .+ κ²).*out./nm
+        out .= (Λ .+ κ²) .* out ./ nm
     else
-        out .= ((Λ .+ κ²).^(Order/2)).*out./nm
+        out .= ((Λ .+ κ²) .^ (Order / 2)) .* out ./ nm
     end
-    
+
     return nothing
 end
 

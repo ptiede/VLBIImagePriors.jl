@@ -20,7 +20,7 @@ julia> scalematrix(d) ≈ scalematrix(d2)
 true
 ```
 """
-struct ExpMarkovRandomField{T<:Number,C} <: MarkovRandomField
+struct ExpMarkovRandomField{T <: Number, C} <: MarkovRandomField
     """
     The correlation length of the random field.
     """
@@ -53,7 +53,7 @@ The `order` parameter controls the smoothness of the field with higher orders be
 We recommend sticking with either `order=1,2`. For more information about the
 impact of the order see [`MarkovRandomFieldGraph`](@ref).
 """
-function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix; order=1)
+function ExpMarkovRandomField(ρ::Number, img::AbstractMatrix; order = 1)
     cache = MarkovRandomFieldGraph(eltype(img), size(img); order)
     return ExpMarkovRandomField(ρ, cache)
 end
@@ -68,7 +68,7 @@ The `order` parameter controls the smoothness of the field with higher orders be
 We recommend sticking with either `order=1,2`. For more information about the
 impact of the order see [`MarkovRandomFieldGraph`](@ref).
 """
-function ExpMarkovRandomField(ρ::Number, dims::Dims{2}; order=1)
+function ExpMarkovRandomField(ρ::Number, dims::Dims{2}; order = 1)
     cache = MarkovRandomFieldGraph(typeof(ρ), dims; order)
     return ExpMarkovRandomField(ρ, cache)
 end
@@ -81,23 +81,23 @@ Constructs a first order zero-mean and unit variance Exponential Markov random f
 precomputed cache `cache`.
 """
 function ExpMarkovRandomField(ρ::Number, cache::MarkovRandomFieldGraph)
-    ExpMarkovRandomField{typeof(ρ), typeof(cache)}(ρ, cache)
+    return ExpMarkovRandomField{typeof(ρ), typeof(cache)}(ρ, cache)
 end
 
 function lognorm(d::ExpMarkovRandomField)
     N = length(d)
-    return (logdet(d)- Dists.log2π*N)/2
+    return (logdet(d) - Dists.log2π * N) / 2
 end
 
 function unnormed_logpdf(d::ExpMarkovRandomField, I::AbstractMatrix)
     ρ = corrparam(d)
-    return -sqrt(sq_manoblis(graph(d), I, ρ)*length(d))
+    return -sqrt(sq_manoblis(graph(d), I, ρ) * length(d))
 end
 
 function Dists._rand!(rng::AbstractRNG, d::ExpMarkovRandomField, x::AbstractMatrix{<:Real})
     Q = scalematrix(d)
     cQ = cholesky(Q)
     z = randn(rng, length(x))
-    R = rand(rng, Dists.Chisq(2*length(d)))
-    x .= R.*reshape(cQ.PtL'\z, size(d))./norm(z)/sqrt(length(d))
+    R = rand(rng, Dists.Chisq(2 * length(d)))
+    return x .= R .* reshape(cQ.PtL' \ z, size(d)) ./ norm(z) / sqrt(length(d))
 end

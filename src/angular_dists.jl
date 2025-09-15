@@ -36,7 +36,7 @@ end
 
 function Dists._rand!(rng::AbstractRNG, d::DiagonalVonMises, x::AbstractVector)
     dv = Dists.product_distribution(Dists.VonMises.(d.μ, d.κ))
-    rand!(rng, dv, x)
+    return rand!(rng, dv, x)
 end
 
 Dists.rand(rng::AbstractRNG, d::DiagonalVonMises{<:Real, <:Real}) = rand(rng, Dists.VonMises.(d.μ, d.κ))
@@ -48,7 +48,7 @@ HC.asflat(d::DiagonalVonMises{<:Real, <:Real, <:Real}) = AngleTransform()
 function _vonmisesnorm(μ, κ)
     @assert length(μ) == length(κ) "Mean and std. dev. vector are not the same length"
     n = length(μ)
-    return -n*log2π - sum(x->log(besseli0x(x)), κ)
+    return -n * log2π - sum(x -> log(besseli0x(x)), κ)
 end
 
 Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Real) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
@@ -62,7 +62,7 @@ end
 function _vonlogpdf(μ, κ, x)
     s = zero(eltype(μ))
     @simd for i in eachindex(μ, κ)
-        s += (cos(x[i] - μ[i]) - 1)*κ[i]
+        s += (cos(x[i] - μ[i]) - 1) * κ[i]
     end
     return s
     # Enzyme bugs out on this
@@ -71,7 +71,7 @@ function _vonlogpdf(μ, κ, x)
     # end
 
 end
-_vonlogpdf(μ::Real, κ::Real, x::Real) = (cos(x - μ) - 1)*κ
+_vonlogpdf(μ::Real, κ::Real, x::Real) = (cos(x - μ) - 1) * κ
 
 function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVector}, κ::Union{Real, AbstractVector}, x::Union{Real, AbstractVector})
     s = _vonlogpdf(μ, κ, x)
@@ -81,24 +81,24 @@ function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVect
 
     function _vonlogpdf_pullback(Δ)
         ss = sin.(x .- μ)
-        dμ = @thunk(pμ(Δ.*ss.*κ))
-        dx = @thunk(px(-Δ.*ss.*κ))
-        dκ = @thunk(pκ(Δ.*(cos.(x .- μ) .- 1)))
+        dμ = @thunk(pμ(Δ .* ss .* κ))
+        dx = @thunk(px(-Δ .* ss .* κ))
+        dκ = @thunk(pκ(Δ .* (cos.(x .- μ) .- 1)))
         return NoTangent(), dμ, dκ, dx
     end
     return s, _vonlogpdf_pullback
 end
 
 function Dists.product_distribution(dists::AbstractVector{<:DiagonalVonMises})
-    μ = mapreduce(x->getproperty(x, :μ), vcat, dists)
-    κ = mapreduce(x->getproperty(x, :κ), vcat, dists)
-    lnorm = mapreduce(x->getproperty(x, :lnorm), +, dists)
+    μ = mapreduce(x -> getproperty(x, :μ), vcat, dists)
+    κ = mapreduce(x -> getproperty(x, :κ), vcat, dists)
+    lnorm = mapreduce(x -> getproperty(x, :lnorm), +, dists)
     return DiagonalVonMises(μ, κ, lnorm)
 end
 
 
 function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::Union{Real, AbstractVector})
-    v =zero(eltype(κ))
+    v = zero(eltype(κ))
     n = length(κ)
     dκ = zero(κ)
     pκ = ProjectTo(κ)
@@ -107,13 +107,13 @@ function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::Union{Real, Abstr
         i0 = besseli0x(κi)
         i1 = besseli1x(κi)
         v += log(i0)
-        dκ[i] = (1 - i1/i0)
+        dκ[i] = (1 - i1 / i0)
     end
     function _vonmisesnorm_pullback(Δ)
-       Δκ = @thunk(pκ(Δ.*dκ))
+        Δκ = @thunk(pκ(Δ .* dκ))
         return NoTangent(), ZeroTangent(), Δκ
     end
-    return -n*log2π - v, _vonmisesnorm_pullback
+    return -n * log2π - v, _vonmisesnorm_pullback
 end
 
 
@@ -130,7 +130,7 @@ for any `x`.
 
 If `period` is a vector this creates a multivariate independent wrapped uniform distribution.
 """
-struct WrappedUniform{T,L} <: Dists.ContinuousMultivariateDistribution
+struct WrappedUniform{T, L} <: Dists.ContinuousMultivariateDistribution
     periods::T
     lnorm::L
 end
@@ -138,7 +138,7 @@ end
 function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::WrappedUniform, x::AbstractVector)
     l = Dists.logpdf(d, x)
     function _logpdf_pullback_wrappeduniform(Δ)
-        Δd = @thunk(Tangent{typeof(d)}(periods = ZeroTangent(), lnorm=-unthunk(Δ)))
+        Δd = @thunk(Tangent{typeof(d)}(periods = ZeroTangent(), lnorm = -unthunk(Δ)))
         return NoTangent(), Δd, ZeroTangent()
     end
     return l, _logpdf_pullback_wrappeduniform
@@ -157,7 +157,7 @@ end
 function WrappedUniform(p::Real, n::Int)
     p > 0 && ArgumentError("Period `p` must be positive")
     pvec = Fill(p, n)
-    return WrappedUniform(pvec, n*log(p))
+    return WrappedUniform(pvec, n * log(p))
 end
 
 function WrappedUniform(p::Real)
@@ -166,18 +166,18 @@ function WrappedUniform(p::Real)
 end
 
 Dists.logpdf(d::WrappedUniform{<:Real}, ::Real) = -d.lnorm
-Dists.rand(rng::AbstractRNG, d::WrappedUniform{<:Real}) = rand(rng)*d.periods
+Dists.rand(rng::AbstractRNG, d::WrappedUniform{<:Real}) = rand(rng) * d.periods
 
 Dists._logpdf(d::WrappedUniform, ::AbstractVector) = -d.lnorm
 
-function Dists._rand!(rng::AbstractRNG, d::WrappedUniform, x::AbstractVector{T}) where {T<:Real}
+function Dists._rand!(rng::AbstractRNG, d::WrappedUniform, x::AbstractVector{T}) where {T <: Real}
     rand!(rng, x)
-    x .= x.*d.periods
+    x .= x .* d.periods
     return x
 end
 
 function Dists.product_distribution(dists::AbstractVector{<:WrappedUniform})
-    periods = mapreduce(x->getproperty(x, :periods), vcat, dists)
+    periods = mapreduce(x -> getproperty(x, :periods), vcat, dists)
     return WrappedUniform(periods)
 
 end

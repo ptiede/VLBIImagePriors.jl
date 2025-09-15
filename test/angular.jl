@@ -3,7 +3,7 @@
         d0 = DiagonalVonMises(0.0, 0.5)
 
         t0 = asflat(d0)
-        @test transform(t0, inverse(t0, π/4)) ≈ π/4
+        @test transform(t0, inverse(t0, π / 4)) ≈ π / 4
 
         x = rand(d0)
         @test x isa Float64
@@ -12,7 +12,13 @@
         d1 = DiagonalVonMises([0.5, 0.1], [inv(0.1), inv(π^2)])
         d2 = product_distribution(VonMises.(d1.μ, d1.κ))
 
-        @test product_distribution([d0,d0]) isa DiagonalVonMises
+        ds = DiagonalVonMises(0.5, 0.1)
+        dv = DiagonalVonMises([0.5], [0.1])
+        x = rand(ds)
+        @test logpdf(ds, x) ≈ logpdf(dv, [x])
+        @test insupport(ds, x)
+
+        @test product_distribution([d0, d0]) isa DiagonalVonMises
 
         x = rand(d1)
         @test x isa Vector{Float64}
@@ -45,7 +51,7 @@
     @testset "WrappedUniform" begin
         periods = rand(5)
         d1 = WrappedUniform(periods)
-        x = 2. * rand(5)
+        x = 2.0 * rand(5)
         @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ periods)
         du = WrappedUniform(2π, 5)
         xx = rand(d1)
@@ -53,32 +59,33 @@
         @test length(rand(d1)) == length(rand(du))
         d2 = product_distribution([d1, d1])
         @test d2 isa WrappedUniform
-        @test length(d2) == length(periods)*2
+        @test length(d2) == length(periods) * 2
 
         t = asflat(d1)
         px = inverse(t, xx)
         @test sin.(transform(t, px)) ≈ sin.(xx)
         @test cos.(transform(t, px)) ≈ cos.(xx)
 
-        test_rrule(Distributions.logpdf, d1, xx, atol=1e-8)
+        test_rrule(Distributions.logpdf, d1, xx, atol = 1.0e-8)
 
         d0 = WrappedUniform(2π)
         @test 0 ≤ rand(d0) ≤ 2π
         @test logpdf(d0, 0.0) == logpdf(d0, 1.0)
         @test asflat(d0) isa VLBIImagePriors.AngleTransform
+        @test insupport(d0, 0.0)
     end
 
     @testset "SphericalUniform" begin
         t = SphericalUnitVector{3}()
         @inferred TV.transform(t, randn(dimension(t)))
         f = let t = t
-            x->sum(abs2, TV.transform(t, x))
+            x -> sum(abs2, TV.transform(t, x))
         end
         px = randn(dimension(t))
         gz = Zygote.gradient(f, px)
         m = central_fdm(5, 1)
         gfd = FiniteDifferences.grad(m, f, px)
-        @test isapprox(first(gz), first(gfd), atol=1e-6)
+        @test isapprox(first(gz), first(gfd), atol = 1.0e-6)
     end
 
 end
