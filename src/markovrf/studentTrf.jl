@@ -60,12 +60,12 @@ Dists.mean(d::TDistMarkovRandomField{T}) where {T} = d.ν > 1 ? FillArrays.Zeros
 
 function Dists.cov(d::TDistMarkovRandomField)
     d.ν > 2 && return d.ν * inv(d.ν - 2) * inv(Array(scalematrix(d)))
-    return FillArrays.Fill(convert(typeof(ρ), Inf), size(scalematrix(d)))
+    return FillArrays.Fill(convert(typeof(d.ν), Inf), size(scalematrix(d)))
 end
 
 function Dists.invcov(d::TDistMarkovRandomField)
     d.ν > 2 && return (d.ν - 2) / d.ν * (scalematrix(d))
-    return FillArrays.Fill(convert(typeof(ρ), NaN), size(scalematrix(d)))
+    return FillArrays.Fill(convert(typeof(d.ν), NaN), size(scalematrix(d)))
 end
 
 

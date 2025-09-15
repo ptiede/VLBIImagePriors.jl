@@ -236,19 +236,6 @@ function igmrf_2n(I::AbstractMatrix, κ²)
     return value
 end
 
-@inline function igmrf_2n_pixel(I::AbstractArray, κ², ix::Integer, iy::Integer)
-    value = (4 + κ²) * I[ix, iy]
-    ΔIx = ix < lastindex(I, 1) ? I[ix + 1, iy] : zero(eltype(I))
-    ΔIx += ix > firstindex(I, 1) ? I[ix - 1, iy] :
-
-        ΔIy = iy < lastindex(I, 2) ? I[ix, iy + 1] : I[ix, begin]
-    ΔIy += iy > firstindex(I, 2) ? I[ix, iy - 1] : I[ix, end]
-
-    value = value - ΔIx - ΔIy
-    return value * value
-end
-
-
 # computes the intrinsic gaussian process of a 1-neighbor method
 # this is equivalent to TSV regularizer
 function igmrf_1n(I::AbstractMatrix, κ²)

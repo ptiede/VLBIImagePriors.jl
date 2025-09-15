@@ -12,6 +12,12 @@
         d1 = DiagonalVonMises([0.5, 0.1], [inv(0.1), inv(π^2)])
         d2 = product_distribution(VonMises.(d1.μ, d1.κ))
 
+        ds = DiagonalVonMises(0.5, 0.1)
+        dv = DiagonalVonMises([0.5], [0.1])
+        x = rand(ds)
+        @test logpdf(ds, x) ≈ logpdf(dv, [x])
+        @test insupport(ds, x)
+
         @test product_distribution([d0, d0]) isa DiagonalVonMises
 
         x = rand(d1)
@@ -66,6 +72,7 @@
         @test 0 ≤ rand(d0) ≤ 2π
         @test logpdf(d0, 0.0) == logpdf(d0, 1.0)
         @test asflat(d0) isa VLBIImagePriors.AngleTransform
+        @test insupport(d0, 0.0)
     end
 
     @testset "SphericalUniform" begin
