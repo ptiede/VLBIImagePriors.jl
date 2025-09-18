@@ -321,7 +321,6 @@ end
 std_dist(m::StationaryMatern) = std_dist(m.plan)
 
 
-
 """
     std_dist(d::StationaryRandomField)
     std_dist(d::StationaryRandomFieldPlan)
