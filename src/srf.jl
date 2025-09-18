@@ -318,6 +318,9 @@ function (m::StationaryMatern)(z, ρ, ν)
     return genfield(rf, z)
 end
 
+std_dist(m::StationaryMatern) = std_dist(m.plan)
+
+
 
 """
     std_dist(d::StationaryRandomField)
@@ -332,6 +335,7 @@ end
 function std_dist(d::StationaryRandomFieldPlan)
     return StdNormal{eltype(d.kx), 2}((length(d.kx), length(d.ky)))
 end
+
 
 struct StdNormal{T, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
     dims::Dims{N}

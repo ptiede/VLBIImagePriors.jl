@@ -137,6 +137,8 @@ end
     trf_tall, dstd_t = matern((10, 8))
     trf_square, dstd_s = matern((10, 10))
 
+    @test std_dist(trf_square) == dstd_s
+
     g = imagepixels(10.0, 10.0, 8, 10)
     t, d = matern(g)
     @test t.plan.kx == trf_wide.plan.kx
