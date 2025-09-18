@@ -59,7 +59,7 @@ const TMRF = TDistMarkovRandomField
 Dists.mean(d::TDistMarkovRandomField{T}) where {T} = d.ν > 1 ? FillArrays.Zeros(T, size(d)) : FillArrays.Fill(convert(T, Inf), size(d))
 
 function Dists.cov(d::TDistMarkovRandomField)
-    d.ν > 2 && return d.ν * inv(d.ν - 2) * inv(Array(scalematrix(d)))
+    d.ν > 2 && return inv(Array(Dists.invcov(d)))
     return FillArrays.Fill(convert(typeof(d.ν), Inf), size(scalematrix(d)))
 end
 
