@@ -189,8 +189,8 @@ end
 
 Defines a power spectrum corresponding to a Nth order Markov Random Field with coefficents `ρs`.
 The power spectrum is given by
-    S(k) = Norm / (1 + Σₙ (ρₙ * k^2)^n)
-where norm is given by sqrt(Σₙ ρₙ) to roughly ensure the same marginal variance.
+    S(k) = Norm / (1 + Σₙ (ρₙk)^2n)
+where norm is given by sqrt(Σₙ ρₙ²) to roughly ensure the same marginal variance.
 """
 struct MarkovPS{T, N} <: AbstractPowerSpectrum
     ρs::NTuple{N, T}
@@ -201,7 +201,7 @@ end
     kx, ky = ks
     k2 = kx^2 + ky^2
     terms = ntuple(Val(N)) do n
-        (ρs[n] * k2)^n
+        (ρs[n]^2 * k2)^n
     end
     norm = ntuple(Val(N)) do n
         m = (n == 1 ? 2 : n)
