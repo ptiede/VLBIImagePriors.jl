@@ -205,7 +205,7 @@ end
     end
     norm = ntuple(Val(N)) do n
         m = (n == 1 ? 2 : n)
-        ρs[n] * n * sin(T(π) / m)
+        ρs[n]^2 * n * sin(T(π) / m)
     end
     return sqrt(sum(norm)) / sqrt(1 + reduce(+, terms))
 end
