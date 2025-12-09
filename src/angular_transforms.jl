@@ -12,7 +12,7 @@ struct AngleTransform <: TV.VectorTransform end
 TV.dimension(t::AngleTransform) = 2
 
 function TV.transform_with(flag::TV.LogJacFlag, ::AngleTransform, y::AbstractVector, index)
-    T = TV.robust_eltype(y)
+    T = eltype(y)
     ℓi = TV.logjac_zero(flag, T)
     x1 = y[index]
     x2 = y[index + 1]
@@ -29,7 +29,7 @@ end
 
 function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:AngleTransform}, y::AbstractVector, index)
     (; inner_transformation, dims) = t
-    T = TV.robust_eltype(y)
+    T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = similar(y, dims)
     for i in eachindex(out)
@@ -73,7 +73,7 @@ function TV.inverse_at!(x, index, ::AngleTransform, y::Number)
     return index + 2
 end
 
-TV.inverse_eltype(::AngleTransform, x) = float(eltype(x))
+TV.inverse_eltype(::AngleTransform, x::Type{T}) where {T} = T
 
 
 """
@@ -97,11 +97,11 @@ end
 TV.dimension(::SphericalUnitVector{N}) where {N} = N + 1
 
 TV.inverse_eltype(::SphericalUnitVector{N}, x::Type) where {N} = eltype(x)
-TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::NTuple{N, T}) where {N, T} = eltype(T)
+TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::Type{NTuple{N, T}}) where {N, T} = eltype(T)
 
 
 function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}
-    T = TV.robust_eltype(y)
+    T = eltype(y)
     index2 = index + N + 1
     # normalized vector
     vy = NTuple{N + 1, T}(@view(y[index:(index2 - 1)]))
@@ -120,7 +120,7 @@ end
 
 function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
     (; inner_transformation, dims) = t
-    T = TV.robust_eltype(y)
+    T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = ntuple(_ -> similar(y, dims), Val(N + 1))
     for i in eachindex(out...)
