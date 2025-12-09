@@ -96,8 +96,8 @@ end
 
 TV.dimension(::SphericalUnitVector{N}) where {N} = N + 1
 
-TV.inverse_eltype(::SphericalUnitVector{N}, x) where {N} = TV.inverse_eltype(x)
-TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::NTuple{N, T}) where {N, T} = float(eltype(first(x)))
+TV.inverse_eltype(::SphericalUnitVector{N}, x::Type) where {N} = eltype(x)
+TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::NTuple{N, T}) where {N, T} = eltype(T)
 
 
 function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}

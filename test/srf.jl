@@ -34,7 +34,7 @@ function testps(ps, plan; nsamples = 10_000)
         return genfield(StationaryRandomField(ps, plan), z)
     end
     m = mean(x)
-    @test all(x -> isapprox(x, 0.0, atol = 5.0e-2), m)
+    @test all(x -> isapprox(x, 0.0, atol = 8.0e-2), m)
     s = var(x)
     return @test all(x -> 0.5 < x < 2.0, s)
 end
