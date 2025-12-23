@@ -203,11 +203,17 @@ end
     terms = ntuple(Val(N)) do n
         (ρs[n]^2 * k2)^n
     end
+
+    # κ = T(sqrt(8 * ν) / ρ)
+    # κ2 = κ * κ
+    # τ = κ^ν * sqrt(ν * convert(T, π))
+
+
     norm = ntuple(Val(N)) do n
         m = (n == 1 ? 2 : n)
-        ρs[n]^2 * n * sin(T(π) / m)
+        ρs[n]^(2) * n * sin(T(π) / m)
     end
-    return sqrt(sum(norm)) / sqrt(1 + reduce(+, terms))
+    return inv(sqrt(1 + reduce(+, terms)))
 end
 
 """
@@ -233,16 +239,29 @@ function genfield(rf::StationaryRandomField, z::AbstractArray)
     (; kx, ky, p) = rf.plan
     e = executor(rf.plan)
 
-    ns = similar(z, Complex{eltype(z)})
-    @threaded e for i in eachindex(ky)
-        for j in eachindex(kx)
-            @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i])) * z[j, i]
-        end
-    end
+    ns = similar(z, complex(eltype(z)))
+    ampspectrum!(e, ns, ps, (kx, ky))
+
+    # Here we ensure that the power spectrum is normalized
+    # inv 2π because of FFTW conventions
+    nrm = sum(abs2, ns) * step(kx) * step(ky) * inv(2 * π)
+
+    ns .= ns .* z
 
     p * ns
-    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
+
+    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(nrm * prod(size(z)))
     return rast
+end
+
+function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks)
+    (kx, ky) = ks
+    @threaded executor for i in eachindex(ky)
+        for j in eachindex(kx)
+            @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
+        end
+    end
+    return nothing
 end
 
 
