@@ -244,7 +244,7 @@ function genfield(rf::StationaryRandomField, z::AbstractArray)
 
     # Here we ensure that the power spectrum is normalized
     # inv 2π because of FFTW conventions
-    nrm = sum(abs2, ns)*step(kx)*step(ky)*inv(2 * π)
+    nrm = sum(abs2, ns) * step(kx) * step(ky) * inv(2 * π)
 
     ns .= ns .* z
 
