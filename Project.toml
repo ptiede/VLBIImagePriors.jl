@@ -1,7 +1,7 @@
 name = "VLBIImagePriors"
 uuid = "b1ba175b-8447-452c-b961-7db2d6f7a029"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.10.4"
+version = "0.10.5"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
