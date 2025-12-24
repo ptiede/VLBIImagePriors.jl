@@ -240,27 +240,36 @@ function genfield(rf::StationaryRandomField, z::AbstractArray)
     e = executor(rf.plan)
 
     ns = similar(z, complex(eltype(z)))
-    ampspectrum!(e, ns, ps, (kx, ky))
-
-    # Here we ensure that the power spectrum is normalized
-    # inv 2π because of FFTW conventions
-    nrm = sum(abs2, ns) * step(kx) * step(ky) * inv(2 * π)
-
-    ns .= ns .* z
+    ampspectrum!(e, ns, ps, (kx, ky), z)
 
     p * ns
 
-    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(nrm * prod(size(z)))
+    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
     return rast
 end
 
-function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks)
+function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
     (kx, ky) = ks
     @threaded executor for i in eachindex(ky)
         for j in eachindex(kx)
             @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
         end
     end
+
+    # Here we ensure that the power spectrum is normalized
+    # inv 2π because of FFTW conventions
+    nrm = zero(eltype(z))
+    for i in eachindex(ns)
+        nrm += abs2(ns[i])
+    end
+    nrm *= step(kx) * step(ky) * inv(2 * π)
+    rtnrm = sqrt(nrm)
+
+    for i in eachindex(ns, z)
+        @inbounds ns[i] *= z[i] / rtnrm
+    end
+
+
     return nothing
 end
 
