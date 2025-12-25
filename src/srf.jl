@@ -204,15 +204,6 @@ end
         (ρs[n]^2 * k2)^n
     end
 
-    # κ = T(sqrt(8 * ν) / ρ)
-    # κ2 = κ * κ
-    # τ = κ^ν * sqrt(ν * convert(T, π))
-
-
-    norm = ntuple(Val(N)) do n
-        m = (n == 1 ? 2 : n)
-        ρs[n]^(2) * n * sin(T(π) / m)
-    end
     return inv(sqrt(1 + reduce(+, terms)))
 end
 
@@ -263,10 +254,10 @@ function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
         nrm += abs2(ns[i])
     end
     nrm *= step(kx) * step(ky) * inv(2 * π)
-    rtnrm = sqrt(nrm)
+    rtnrm = inv(sqrt(nrm))
 
     for i in eachindex(ns, z)
-        @inbounds ns[i] *= z[i] / rtnrm
+        @inbounds ns[i] *= z[i] * rtnrm
     end
 
 
