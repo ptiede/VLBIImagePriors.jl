@@ -1,0 +1,28 @@
+module VLBIImagePriorsReactantExt 
+
+using VLBIImagePriors
+using Reactant 
+using KernelAbstractions
+using ComradeBase
+using LinearAlgebra
+
+using Reactant: RArray, RNumber
+
+function VLBIImagePriors.igmrf_1n(I::RArray, κ², ::Serial)
+    VLBIImagePriors.igmrf_1n(I, κ², KernelAbstractions.get_backend(I))
+end
+
+function VLBIImagePriors.igmrf_2n(I::RArray, κ², ::Serial)
+    VLBIImagePriors.igmrf_2n(I, κ², KernelAbstractions.get_backend(I))
+end
+
+function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {N}
+    κ² = VLBIImagePriors.κ(ρ, Val(N))^2
+    tmp = log.(κ² .+ d.λQ)
+    a = sum(tmp)
+    return N * a - length(d.λQ) * log(VLBIImagePriors.mrfnorm(d, κ²))
+end
+
+
+
+end

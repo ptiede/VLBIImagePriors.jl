@@ -196,7 +196,7 @@ struct MarkovPS{T, N} <: AbstractPowerSpectrum
     ρs::NTuple{N, T}
 end
 
-@inline function ampspectrum(ps::MarkovPS{T, N}, ks) where {T, N}
+@inline @fastmath function ampspectrum(ps::MarkovPS{T, N}, ks) where {T, N}
     (; ρs) = ps
     kx, ky = ks
     k2 = kx^2 + ky^2

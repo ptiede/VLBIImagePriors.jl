@@ -6,17 +6,6 @@ using ChainRulesCore
 import TransformVariables as TV
 using AbstractFFTs
 
-function ChainRulesCore.rrule(::typeof(VLBIImagePriors.lcol), d::CenteredRegularizer, img)
-    f = VLBIImagePriors.lcol(d, img)
-    pimg = ProjectTo(img)
-    function _lcol_pullback(Δ)
-        dimg = zero(img)
-        autodiff(Reverse, VLBIImagePriors.lcol, Active, Const(d), Duplicated(copy(img), dimg))
-        return (NoTangent(), NoTangent(), pimg(Δ * dimg))
-    end
-    return (f, _lcol_pullback)
-end
-
 function ChainRulesCore.rrule(::typeof(TV.transform_with), flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:TV.ScalarTransform}, y::AbstractVector, index)
     out = TV.transform_with(flag, t, y, index)
     function _transform_with_array(Δ)

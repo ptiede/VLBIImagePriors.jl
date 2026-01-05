@@ -99,7 +99,7 @@ HC.asflat(d::MarkovRandomField) = TV.as(Matrix, size(d)...)
 Dists.insupport(::MarkovRandomField, x::AbstractMatrix) = true
 
 
-function Dists._logpdf(d::MarkovRandomField, x::AbstractMatrix{<:Real})
+function Dists.logpdf(d::MarkovRandomField, x::AbstractMatrix)
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
