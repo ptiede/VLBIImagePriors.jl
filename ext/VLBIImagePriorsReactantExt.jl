@@ -17,6 +17,9 @@ function VLBIImagePriors.igmrf_2n(I::RArray, κ², ::Serial)
     VLBIImagePriors.igmrf_2n(I, κ², KernelAbstractions.get_backend(I))
 end
 
+
+# This is currently required because Reactant has a performance issue with mapreduce
+# on non-traced arrays
 function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {N}
     κ² = VLBIImagePriors.κ(ρ, Val(N))^2
     tmp = log.(κ² .+ d.λQ)
@@ -24,7 +27,7 @@ function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {
     return N * a - length(d.λQ) * log(VLBIImagePriors.mrfnorm(d, κ²))
 end
 
-# TODO upsteam to Reactant (need something more flexible here)
+# TODO upsteam to Reactant (need to be able to compute fft in place and when using a plan)
 function VLBIImagePriors.myfft!(p, x::RArray)
     y = fft(x)
     copyto!(x, y)

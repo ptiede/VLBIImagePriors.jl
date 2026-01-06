@@ -11,10 +11,19 @@ function testmap_reduce(a, A)
     return sum(log.(a .+ A))
 end
 
+function test_trace(a, A)
+    s = zero(a)
+    @trace for i in 1:length(A)
+        s .+= log(a + A[i])
+    end
+    return s[1]
+end
+
+
 ρr = ConcreteRNumber(2.0)
 x = rand(16, 16)
 
-f1 = @compile sync=true testmapreduce(ρr, x)
+f1 = @compile sync=true raise=true testmapreduce(ρr, x)
 f2 = @compile sync=true testmap_reduce(ρr, x)
 
 

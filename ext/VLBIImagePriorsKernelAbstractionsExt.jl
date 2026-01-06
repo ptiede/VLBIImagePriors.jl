@@ -5,34 +5,40 @@ using KernelAbstractions
 using ComradeBase
 
 @kernel function igmrf_kernel!(tmp, x, p)
-    i,j = @index(Global, NTuple)
+    i0,j0 = @index(Global, NTuple)
+    i = i0 + 1
+    j = j0 + 1
     value = (4 + p) * x[i,j]
 
-    if i < lastindex(x, 1)
-        value -= x[i + 1, j]
-    end
-
-    if j < lastindex(x, 2)
-        value -= x[i, j + 1]
-    end
-
-    if i > firstindex(x, 1)
-        value -= x[i - 1, j]
-    end
-
-    if j > firstindex(x, 2)
-        value -= x[i, j - 1]
-    end
+    value -= x[i + 1, j]
+    value -= x[i, j + 1]
+    value -= x[i - 1, j]
+    value -= x[i, j - 1]
 
     tmp[i,j] = value
 end
 
+
+
+
 function igmrf_ka(I::AbstractMatrix, p, order)
     bk = KernelAbstractions.get_backend(I)
-    tmp = similar(I)
+    sz = size(I)
+    # We split this into edges because Reactant raising 
+    # requires pure kernels so no conditional loads
+
+    # The simplest thing to do is to allocate a slightly larger array
+    # and fill the edges with zeros
+    padI = similar(I, ntuple(n->sz[1]+2, 2))
+    fill!(padI, 0)
+    tmp = zero(padI)
+
+    padI[2:end-1, 2:end-1] .= I
+
     kernel! = igmrf_kernel!(bk)
-    kernel!(tmp, I, p; ndrange=size(I))
-    return igmrf_ka_reduce(tmp, I, order)
+    kernel!(tmp, padI, p; ndrange=size(I))
+
+    return igmrf_ka_reduce(tmp, padI, order)
 end
 
 function igmrf_ka_reduce(tmp, I, ::Val{1})
