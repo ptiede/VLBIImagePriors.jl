@@ -44,7 +44,7 @@ EnzymeRules.inactive(::typeof(Dists.insupport), args...) = nothing
 
 function Dists.logpdf(d::ImageDirichlet, x::AbstractMatrix)
     l = dirichlet_lpdf(d.α, d.lmnB, x)
-    return ifelse(Dists.insupport(d, x), l, oftype(typeof(l), -Inf))
+    return ifelse(Dists.insupport(d, x), l, oftype(l, -Inf))
 end
 
 function myxlogym1(x::Number, y::Number)

@@ -178,14 +178,6 @@ __f(κ², x) = log(κ² + x)
     return N * a - length(d.λQ) * log(mrfnorm(d, κ²))
 end
 
-function _logdet(Λ, ρ, ::Val{N}) where {N}
-    κ² = κ(ρ, Val(N))^2
-    f2 = Base.Fix1(__f, κ²)
-    a = sum(f2, Λ)
-    return N * a
-end
-
-
 
 # TODO
 # Figure out the actual narmalization from the lattice helmholtz decomposition
@@ -193,18 +185,21 @@ end
 
 # This is the σ to ensure we have a unit variance GMRF
 function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T <: Number}
-    λ0 = 4 + 4 * cos(π / (max(size(d)...) + 1))
     return (κ² + 1) #Empirical rule
 end
 
 
 function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T <: Number}
-    λ0 = 4 + 4 * cos(π / (max(size(d)...) + 1))
+    Tπ = T(π)
+    n,m = size(d)
+    λ0 = 4 + 2 * cos(Tπ * n / (n + 1)) + 2 * cos(Tπ * m / (m + 1))
     return T(4π) * (k + λ0) #Empirical rule
 end
 
 function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T <: Number}
-    λ0 = 4 + 4 * cos(π / (max(size(d)...) + 1))
+    Tπ = T(π)
+    n,m = size(d)
+    λ0 = 4 + 2 * cos(Tπ * n / (n + 1)) + 2 * cos(Tπ * m / (m + 1))
     return T(4π) * (k + λ0)^(N - 1) #Empirical rule
 end
 
