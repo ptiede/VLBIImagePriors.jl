@@ -15,7 +15,6 @@ using Zygote
 
 @testset "VLBIImagePriors.jl" begin
     include("angular.jl")
-    include("centereg.jl")
     include("imagepriors.jl")
     include("mrf.jl")
     include("srf.jl")

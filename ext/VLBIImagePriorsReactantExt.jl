@@ -5,6 +5,7 @@ using Reactant
 using KernelAbstractions
 using ComradeBase
 using LinearAlgebra
+using FFTW
 
 using Reactant: RArray, RNumber
 
@@ -21,6 +22,13 @@ function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {
     tmp = log.(κ² .+ d.λQ)
     a = sum(tmp)
     return N * a - length(d.λQ) * log(VLBIImagePriors.mrfnorm(d, κ²))
+end
+
+# TODO upsteam to Reactant (need something more flexible here)
+function VLBIImagePriors.myfft!(p, x::RArray)
+    y = fft(x)
+    copyto!(x, y)
+    return x
 end
 
 

@@ -218,14 +218,7 @@ struct StationaryRandomField{PS <: AbstractPowerSpectrum, P}
     plan::P
 end
 
-"""
-    genfield(rf::StationaryRandomField, z::AbstractArray)
-
-Generates a stationary random field from the standardized normal random field `z`
-using the power spectrum and plan defined in `rf`. Typically the input `z` should be 
-a draw from `std_dist(rf)`.
-"""
-function genfield(rf::StationaryRandomField, z::AbstractArray)
+function genfield!(rast, rf::StationaryRandomField, z::AbstractArray)
     ps = rf.ps
     (; kx, ky, p) = rf.plan
     e = executor(rf.plan)
@@ -233,32 +226,57 @@ function genfield(rf::StationaryRandomField, z::AbstractArray)
     ns = similar(z, complex(eltype(z)))
     ampspectrum!(e, ns, ps, (kx, ky), z)
 
-    p * ns
+    myfft!(p, ns)
 
-    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
+    rast .= (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
     return rast
+end
+
+"""
+    genfield(rast::AbstractArray,rf::StationaryRandomField, z::AbstractArray)
+
+Generates a stationary random field from the standardized normal random field `z`
+using the power spectrum and plan defined in `rf`. Typically the input `z` should be 
+a draw from `std_dist(rf)`.
+"""
+function genfield(rf::StationaryRandomField, z::AbstractArray)
+    rast = similar(z)
+    genfield!(rast, rf, z)
+    return rast
+end
+
+function myfft!(plan, x)
+    plan * x
+    return x
 end
 
 function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
     (kx, ky) = ks
-    @threaded executor for i in eachindex(ky)
-        for j in eachindex(kx)
-            @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
-        end
-    end
+    # @threaded executor for i in eachindex(ky)
+    #     for j in eachindex(kx)
+    #         @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
+    #     end
+    # end
+
+    # @trace for i in eachindex(ky)
+    #     for j in eachindex(kx)
+    #         ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
+    #     end
+    # end
+
+    f(kx, ky) = ampspectrum(ps, (kx, ky))
+
+    # dg = ComradeBase.StructArrays.StructArray(ComradeBase._build_slices(ks, map(length, ks)))
+    ns .= f.(kx, ky')
+    # ns .= ampspectrum.(Ref(ps), dg)
 
     # Here we ensure that the power spectrum is normalized
     # inv 2π because of FFTW conventions
-    nrm = zero(eltype(z))
-    for i in eachindex(ns)
-        nrm += abs2(ns[i])
-    end
+    nrm = sum(abs2, ns)
     nrm *= step(kx) * step(ky) * inv(2 * π)
     rtnrm = inv(sqrt(nrm))
 
-    for i in eachindex(ns, z)
-        @inbounds ns[i] *= z[i] * rtnrm
-    end
+    ns .*= z .* rtnrm
 
 
     return nothing
