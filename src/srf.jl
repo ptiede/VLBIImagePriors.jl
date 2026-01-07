@@ -9,8 +9,8 @@ struct StationaryRandomFieldPlan{TΛ, E, P}
     executor::E
     p::P
     function StationaryRandomFieldPlan(T::Type{<:Number}, dims::Dims{2}; executor = Serial())
-        kx = fftfreq(dims[1], one(T)) * π
-        ky = fftfreq(dims[2], one(T)) * π
+        kx = fftshift(fftfreq(dims[1], one(T))) * π
+        ky = fftshift(fftfreq(dims[2], one(T))) * π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags = FFTW.MEASURE)
         if !(executor isa Serial || executor isa ThreadsEx)
             @warn "Executor type $((executor)) not supported, defaulting to Serial()"
@@ -252,26 +252,9 @@ end
 
 function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
     (kx, ky) = ks
-    # @threaded executor for i in eachindex(ky)
-    #     for j in eachindex(kx)
-    #         @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
-    #     end
-    # end
 
-    # @trace for i in eachindex(ky)
-    #     for j in eachindex(kx)
-    #         ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
-    #     end
-    # end
+    _spectrum!(executor, ns, ps, kx, ky)
 
-    f(kx, ky) = ampspectrum(ps, (kx, ky))
-
-    # dg = ComradeBase.StructArrays.StructArray(ComradeBase._build_slices(ks, map(length, ks)))
-    ns .= f.(kx, ky')
-    # ns .= ampspectrum.(Ref(ps), dg)
-
-    # Here we ensure that the power spectrum is normalized
-    # inv 2π because of FFTW conventions
     nrm = sum(abs2, ns)
     nrm *= step(kx) * step(ky) * inv(2 * π)
     rtnrm = inv(sqrt(nrm))
@@ -280,6 +263,14 @@ function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
 
 
     return nothing
+end
+
+function _spectrum!(executor, ns, ps::AbstractPowerSpectrum, kx, ky)
+    @threaded executor for i in eachindex(ky)
+        for j in eachindex(kx)
+            @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
+        end
+    end
 end
 
 

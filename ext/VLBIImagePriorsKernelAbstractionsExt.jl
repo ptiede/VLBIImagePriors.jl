@@ -63,6 +63,17 @@ function VLBIImagePriors.eigenvals(T, dims, bkend::KernelAbstractions.Backend)
     return buf
 end
 
+@kernel function spectrum_kernel!(ns, ps, kx, ky)
+    i,j = @index(Global, NTuple)
+    ns[i,j] = VLBIImagePriors.ampspectrum(ps, (kx[i], ky[j]))
+end
+
+function VLBIImagePriors._spectrum!(bk::KernelAbstractions.Backend, ns, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
+    bk = KernelAbstractions.get_backend(ns)
+    kernel! = spectrum_kernel!(bk)
+    kernel!(ns, ps, kx, ky; ndrange=size(ns))
+end
+
 
 
 

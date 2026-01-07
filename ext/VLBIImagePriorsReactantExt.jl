@@ -34,6 +34,8 @@ function VLBIImagePriors.myfft!(p, x::RArray)
     return x
 end
 
-
+function VLBIImagePriors._spectrum!(bk::Union{Serial, ThreadsEx}, ns::RArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
+    VLBIImagePriors._spectrum!(KernelAbstractions.get_backend(ns), ns, ps, kx, ky)
+end
 
 end
