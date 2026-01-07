@@ -1,47 +1,47 @@
-using Reactant 
-using BenchmarkTools
+using TestEnv; TestEnv.activate()
 
-function testmapreduce(a, A)
-    return sum(A) do Ax
-        log(a + Ax)
+ENV["JULIA_DEBUG"] = "Reactant_jll,Reactant" 
+
+using KernelAbstractions, Reactant, CUDA
+
+Reactant.MLIR.IR.DUMP_MLIR_ALWAYS[] = true
+
+
+@kernel function igmrf_kernel!(tmp, x, p)
+    i,j = @index(Global, NTuple)
+    value = (4 + p) * x[i,j]
+
+    if i < lastindex(x, 1)
+        value -= x[i + 1, j]
     end
-end
 
-function testmap_reduce(a, A)
-    return sum(log.(a .+ A))
-end
-
-function test_trace(a, A)
-    s = zero(a)
-    @trace for i in 1:length(A)
-        s .+= log(a + A[i])
+    if j < lastindex(x, 2)
+        value -= x[i, j + 1]
     end
-    return s[1]
+
+    if i > firstindex(x, 1)
+        value -= x[i - 1, j]
+    end
+
+    if j > firstindex(x, 2)
+        value -= x[i, j - 1]
+    end
+
+    tmp[i,j] = value
 end
 
+function igmrf_ka(I::AbstractMatrix, p)
+    bk = KernelAbstractions.get_backend(I)
+    tmp = similar(I)
+    kernel! = igmrf_kernel!(bk)
+    kernel!(tmp, I, p; ndrange=size(I))
+    return tmp
+end
 
-ρr = ConcreteRNumber(2.0)
-x = rand(16, 16)
-
-f1 = @compile sync=true raise=true testmapreduce(ρr, x)
-f2 = @compile sync=true testmap_reduce(ρr, x)
-
-
-
-@benchmark f1($ρr, $x)
-
-@benchmark f2($ρr, $x)
-
-
-A = rand(64, 64)
-B = rand(64, 64)
-
-mapreduce(*, +, A, B)
+xr = Reactant.to_rarray(ones(64, 64))
+ar = ConcreteRNumber(10.0)
+@compile raise=true igmrf_ka(xr, ar)
 
 
-Ar = Reactant.to_rarray(A)
-Br = Reactant.to_rarray(B)
 
-mr(A, B) = mapreduce(splat(*), +, zip(A, B))
 
-f = @compile mr(Ar, Br)
