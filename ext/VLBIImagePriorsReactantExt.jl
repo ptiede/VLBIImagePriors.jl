@@ -7,13 +7,13 @@ using ComradeBase
 using LinearAlgebra
 using FFTW
 
-using Reactant: RArray, RNumber
+using Reactant: AnyTracedRArray, RNumber
 
-function VLBIImagePriors.igmrf_1n(I::RArray, κ², ::Serial)
+function VLBIImagePriors.igmrf_1n(I::AnyTracedRArray, κ², ::ComradeBase.ReactantEx)
     VLBIImagePriors.igmrf_1n(I, κ², KernelAbstractions.get_backend(I))
 end
 
-function VLBIImagePriors.igmrf_2n(I::RArray, κ², ::Serial)
+function VLBIImagePriors.igmrf_2n(I::AnyTracedRArray, κ², ::ComradeBase.ReactantEx)
     VLBIImagePriors.igmrf_2n(I, κ², KernelAbstractions.get_backend(I))
 end
 
@@ -27,14 +27,7 @@ function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {
     return N * a - length(d.λQ) * log(VLBIImagePriors.mrfnorm(d, κ²))
 end
 
-# TODO upsteam to Reactant (need to be able to compute fft in place and when using a plan)
-function VLBIImagePriors.myfft!(p, x::RArray)
-    y = fft(x)
-    copyto!(x, y)
-    return x
-end
-
-function VLBIImagePriors._spectrum!(bk::Union{Serial, ThreadsEx}, ns::RArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
+function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::AnyTracedRArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
     VLBIImagePriors._spectrum!(KernelAbstractions.get_backend(ns), ns, ps, kx, ky)
 end
 

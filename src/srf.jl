@@ -226,7 +226,7 @@ function genfield!(rast, rf::StationaryRandomField, z::AbstractArray)
     ns = similar(z, complex(eltype(z)))
     ampspectrum!(e, ns, ps, (kx, ky), z)
 
-    myfft!(p, ns)
+    p * ns
 
     rast .= (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
     return rast
@@ -259,7 +259,7 @@ function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
     nrm *= step(kx) * step(ky) * inv(2 * π)
     rtnrm = inv(sqrt(nrm))
 
-    ns .*= z .* rtnrm
+    ns .= ns .* z .* rtnrm
 
 
     return nothing
