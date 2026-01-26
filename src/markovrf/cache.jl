@@ -242,8 +242,10 @@ end
 function igmrf_1n(I::AbstractMatrix, κ², ::Any)
     value = zero(eltype(I))
 
-    for iy in axes(I, 2), ix in axes(I, 1)
-        value += igmrf_qv(I, κ², ix, iy) * I[ix, iy]
+    @allowscalar @trace for iy in axes(I, 2)
+        @trace for ix in axes(I, 1)
+            value += igmrf_qv(I, κ², ix, iy) * I[ix, iy]
+        end
     end
     return value
 end
@@ -259,21 +261,22 @@ end
 
 
 
-@inline @inbounds function igmrf_qv(I::AbstractMatrix, κ², ix::Integer, iy::Integer)
+using Reactant
+@inline @inbounds @allowscalar function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
     value = (4 + κ²) * I[ix, iy]
-    if ix < lastindex(I, 1)
+    @trace if ix < lastindex(I, 1)
         value -= I[ix + 1, iy]
     end
 
-    if iy < lastindex(I, 2)
+    @trace if iy < lastindex(I, 2)
         value -= I[ix, iy + 1]
     end
 
-    if ix > firstindex(I, 1)
+    @trace if ix > firstindex(I, 1)
         value -= I[ix - 1, iy]
     end
 
-    if iy > firstindex(I, 2)
+    @trace  if iy > firstindex(I, 2)
         value -= I[ix, iy - 1]
     end
 

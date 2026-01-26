@@ -37,7 +37,7 @@ Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 [extensions]
 VLBIImagePriorsEnzymeExt = "Enzyme"
 VLBIImagePriorsKernelAbstractionsExt = "KernelAbstractions"
-VLBIImagePriorsReactantExt = ["Reactant", "KernelAbstractions"]
+VLBIImagePriorsReactantExt = "Reactant"
 
 [compat]
 AbstractFFTs = "1"

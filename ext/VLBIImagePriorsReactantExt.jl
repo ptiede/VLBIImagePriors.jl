@@ -2,20 +2,19 @@ module VLBIImagePriorsReactantExt
 
 using VLBIImagePriors
 using Reactant 
-using KernelAbstractions
 using ComradeBase
 using LinearAlgebra
 using FFTW
 
 using Reactant: AnyTracedRArray, RNumber
 
-function VLBIImagePriors.igmrf_1n(I::AnyTracedRArray, κ², ::ComradeBase.ReactantEx)
-    VLBIImagePriors.igmrf_1n(I, κ², KernelAbstractions.get_backend(I))
-end
+# function VLBIImagePriors.igmrf_1n(I::AnyTracedRArray, κ², ::ComradeBase.ReactantEx)
+#     VLBIImagePriors.igmrf_1n(I, κ², KernelAbstractions.get_backend(I))
+# end
 
-function VLBIImagePriors.igmrf_2n(I::AnyTracedRArray, κ², ::ComradeBase.ReactantEx)
-    VLBIImagePriors.igmrf_2n(I, κ², KernelAbstractions.get_backend(I))
-end
+# function VLBIImagePriors.igmrf_2n(I::AnyTracedRArray, κ², ::ComradeBase.ReactantEx)
+#     VLBIImagePriors.igmrf_2n(I, κ², KernelAbstractions.get_backend(I))
+# end
 
 
 # This is currently required because Reactant has a performance issue with mapreduce
@@ -27,8 +26,10 @@ function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {
     return N * a - length(d.λQ) * log(VLBIImagePriors.mrfnorm(d, κ²))
 end
 
+# Needs Reactant support for Ref during broadcasting
+as(ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky) = VLBIImagePriors.amplitudespectrum(ps, (kx, ky))
 function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::AnyTracedRArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
-    VLBIImagePriors._spectrum!(KernelAbstractions.get_backend(ns), ns, ps, kx, ky)
+    ns .= as.(Ref(ps), kx, ky')
 end
 
 end
