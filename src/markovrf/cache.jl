@@ -241,11 +241,8 @@ end
 # this is equivalent to TSV regularizer
 function igmrf_1n(I::AbstractMatrix, κ², ::Any)
     value = zero(eltype(I))
-
-    @allowscalar @trace for iy in axes(I, 2)
-        @trace for ix in axes(I, 1)
-            value += igmrf_qv(I, κ², ix, iy) * I[ix, iy]
-        end
+    for iy in axes(I, 2), ix in axes(I, 1)
+        value += igmrf_qv(I, κ², ix, iy) * I[ix, iy]
     end
     return value
 end
@@ -260,23 +257,21 @@ function igmrf_2n(I::AbstractMatrix, κ², ::Any)
 end
 
 
-
-using Reactant
-@inline @inbounds @allowscalar function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
+@inline function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
     value = (4 + κ²) * I[ix, iy]
-    @trace if ix < lastindex(I, 1)
+    if ix < lastindex(I, 1)
         value -= I[ix + 1, iy]
     end
 
-    @trace if iy < lastindex(I, 2)
+    if iy < lastindex(I, 2)
         value -= I[ix, iy + 1]
     end
 
-    @trace if ix > firstindex(I, 1)
+    if ix > firstindex(I, 1)
         value -= I[ix - 1, iy]
     end
 
-    @trace  if iy > firstindex(I, 2)
+    if iy > firstindex(I, 2)
         value -= I[ix, iy - 1]
     end
 

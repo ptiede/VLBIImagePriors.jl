@@ -27,9 +27,52 @@ function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {
 end
 
 # Needs Reactant support for Ref during broadcasting
-as(ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky) = VLBIImagePriors.amplitudespectrum(ps, (kx, ky))
-function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::AnyTracedRArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
+as(ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky) = VLBIImagePriors.ampspectrum(ps, (kx, ky))
+function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::Reactant.AnyTracedRArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
     ns .= as.(Ref(ps), kx, ky')
 end
+
+@inline @inbounds @allowscalar function VLBIImagePriors.igmrf_qv(I::Reactant.AnyTracedRMatrix, κ², ix, iy)
+    value = (4 + κ²) * I[ix, iy]
+    @trace if ix < lastindex(I, 1)
+        value -= I[ix + 1, iy]
+    end
+
+    @trace if iy < lastindex(I, 2)
+        value -= I[ix, iy + 1]
+    end
+
+    @trace if ix > firstindex(I, 1)
+        value -= I[ix - 1, iy]
+    end
+
+    @trace  if iy > firstindex(I, 2)
+        value -= I[ix, iy - 1]
+    end
+
+    return value
+end
+
+function VLBIImagePriors.igmrf_1n(I::Reactant.AnyTracedRMatrix, κ², ::ComradeBase.ReactantEx)
+    value = zero(eltype(I))
+    @trace for iy in axes(I, 2)
+        @trace for ix in axes(I, 1)
+            value += VLBIImagePriors.igmrf_qv(I, κ², ix, iy) * @allowscalar(I[ix, iy])
+        end
+    end
+    return value
+end
+
+function VLBIImagePriors.igmrf_2n(I::Reactant.AnyTracedRMatrix, κ², ::ComradeBase.ReactantEx)
+    value = zero(eltype(I))
+    @trace for iy in axes(I, 2)
+        @trace for ix in axes(I, 1)
+            value += VLBIImagePriors.igmrf_qv(I, κ², ix, iy)^2
+        end
+    end
+    return value
+end
+
+
 
 end

@@ -394,20 +394,21 @@ Dists.mean(d::StdNormal) = zeros(size(d))
 Dists.cov(d::StdNormal) = I(length(d))
 
 
-function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T <: Real, N}
+function Dists.logpdf(d::StdNormal, x::AbstractArray)
     return __logpdf(d, x)
 end
-Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T <: Real} = __logpdf(d, x)
+Dists.logpdf(d::StdNormal, x::AbstractMatrix) = __logpdf(d, x)
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
 
 function __logpdf(d::StdNormal, x)
-    s = zero(eltype(x))
-    for i in eachindex(x)
-        s += abs2(x[i])
-    end
-    return -s / 2 - prod(d.dims) * Dists.log2π / 2
+    # s = zero(eltype(x))
+    # for i in eachindex(x)
+    #     s += abs2(x[i])
+    # end
+    s = sum(abs2, x)
+    return -s / 2 - length(x) * Dists.log2π / 2
 end
 
 
