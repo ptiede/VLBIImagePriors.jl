@@ -32,22 +32,22 @@ function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::Reactant.AnyTr
     ns .= as.(Ref(ps), kx, ky')
 end
 
-@inline @inbounds @allowscalar function VLBIImagePriors.igmrf_qv(I::Reactant.AnyTracedRMatrix, κ², ix, iy)
-    value = (4 + κ²) * I[ix, iy]
+@inline @inbounds function VLBIImagePriors.igmrf_qv(I::Reactant.AnyTracedRMatrix, κ², ix, iy)
+    value = (4 + κ²) * @allowscalar(I[ix, iy])
     @trace if ix < lastindex(I, 1)
-        value -= I[ix + 1, iy]
+        value -= @allowscalar(I[ix + 1, iy])
     end
 
     @trace if iy < lastindex(I, 2)
-        value -= I[ix, iy + 1]
+        value -= @allowscalar(I[ix, iy + 1])
     end
 
     @trace if ix > firstindex(I, 1)
-        value -= I[ix - 1, iy]
+        value -= @allowscalar(I[ix - 1, iy])
     end
 
     @trace  if iy > firstindex(I, 2)
-        value -= I[ix, iy - 1]
+        value -= @allowscalar(I[ix, iy - 1])
     end
 
     return value
