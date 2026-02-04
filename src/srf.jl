@@ -9,8 +9,8 @@ struct StationaryRandomFieldPlan{TΛ, E, P}
     executor::E
     p::P
     function StationaryRandomFieldPlan(T::Type{<:Number}, dims::Dims{2}; executor = Serial())
-        kx = fftshift(fftfreq(dims[1], one(T))) * π
-        ky = fftshift(fftfreq(dims[2], one(T))) * π
+        kx = (fftfreq(dims[1], one(T))) * π
+        ky = (fftfreq(dims[2], one(T))) * π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags = FFTW.MEASURE)
         if !(executor isa Serial || executor isa ThreadsEx)
             @warn "Executor type $((executor)) not supported, defaulting to Serial()"
