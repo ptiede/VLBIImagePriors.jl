@@ -14,8 +14,8 @@ TV.dimension(t::AngleTransform) = 2
 function TV.transform_with(flag::TV.LogJacFlag, ::AngleTransform, y::AbstractVector, index)
     T = eltype(y)
     ℓi = TV.logjac_zero(flag, T)
-    x1 = y[index]
-    x2 = y[index + 1]
+    x1 = rgetindex(y, index)
+    x2 = rgetindex(y, index + 1)
     r = sqrt(x1^2 + x2^2)
     # Use log-normal with μ = 0, σ = 1/4
     σ = oftype(r, 1 / 4)
@@ -32,11 +32,11 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Angl
     T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = similar(y, dims)
-    for i in eachindex(out)
+    @trace for i in eachindex(out)
         θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
         index = index2
         ℓ += ℓi
-        out[i] = θ
+        rsetindex!(out, θ, i)
     end
     return out, ℓ, index
 end
@@ -123,12 +123,12 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Sphe
     T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = ntuple(_ -> similar(y, dims), Val(N + 1))
-    for i in eachindex(out...)
+    @trace for i in eachindex(out...)
         θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
         ℓ += ℓi
         index = index2
         for n in 1:(N + 1)
-            out[n][i] = θ[n]
+            rsetindex!(out[n], rgetindex(θ, n), i)
         end
     end
     return out, ℓ, index

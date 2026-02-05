@@ -241,8 +241,10 @@ end
 # this is equivalent to TSV regularizer
 function igmrf_1n(I::AbstractMatrix, κ², ::Any)
     value = zero(eltype(I))
-    for iy in axes(I, 2), ix in axes(I, 1)
-        value += igmrf_qv(I, κ², ix, iy) * I[ix, iy]
+    @trace for iy in axes(I, 2) 
+        @trace for ix in axes(I, 1)
+            value += igmrf_qv(I, κ², ix, iy) * rgetindex(I, ix, iy)
+        end
     end
     return value
 end
@@ -250,29 +252,31 @@ end
 function igmrf_2n(I::AbstractMatrix, κ², ::Any)
     value = zero(eltype(I))
 
-    for iy in axes(I, 2), ix in axes(I, 1)
-        value += igmrf_qv(I, κ², ix, iy)^2
+    @trace for iy in axes(I, 2)
+        @trace for ix in axes(I, 1)
+            value += igmrf_qv(I, κ², ix, iy)^2
+        end
     end
     return value
 end
 
 
 @inline function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
-    value = (4 + κ²) * I[ix, iy]
-    if ix < lastindex(I, 1)
-        value -= I[ix + 1, iy]
+    value = (4 + κ²) * rgetindex(I, ix, iy)
+    @trace if ix < lastindex(I, 1)
+        value -= rgetindex(I, ix + 1, iy)
     end
 
-    if iy < lastindex(I, 2)
-        value -= I[ix, iy + 1]
+    @trace if iy < lastindex(I, 2)
+        value -= rgetindex(I, ix, iy + 1)
     end
 
-    if ix > firstindex(I, 1)
-        value -= I[ix - 1, iy]
+    @trace if ix > firstindex(I, 1)
+        value -= rgetindex(I, ix - 1, iy)
     end
 
-    if iy > firstindex(I, 2)
-        value -= I[ix, iy - 1]
+    @trace if iy > firstindex(I, 2)
+        value -= rgetindex(I, ix, iy - 1)
     end
 
     return value
