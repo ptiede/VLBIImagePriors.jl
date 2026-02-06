@@ -66,8 +66,8 @@ function _vonlogpdf(μ, κ, x)
     # end
     # return s
     # Enzyme bugs out on this
-    s = sum(zip(μ, κ, x); init=zero(eltype(μ))) do (μs, κs, xs)
-        return (cos(xs - μs) - 1)*κs
+    s = sum(zip(μ, κ, x); init = zero(eltype(μ))) do (μs, κs, xs)
+        return (cos(xs - μs) - 1) * κs
     end
     return s
 

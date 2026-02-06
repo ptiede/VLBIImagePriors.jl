@@ -1,7 +1,7 @@
-module VLBIImagePriorsReactantExt 
+module VLBIImagePriorsReactantExt
 
 using VLBIImagePriors
-using Reactant 
+using Reactant
 using ComradeBase
 using LinearAlgebra
 using FFTW
@@ -27,7 +27,7 @@ end
 # Needs Reactant support for Ref during broadcasting
 as(ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky) = VLBIImagePriors.ampspectrum(ps, (kx, ky))
 function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::Reactant.AnyTracedRArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
-    ns .= as.(Ref(ps), kx, ky')
+    return ns .= as.(Ref(ps), kx, ky')
 end
 
 end

@@ -80,8 +80,8 @@ end
 Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
 
-MarkovRandomFieldGraph(dims::Dims{2}; order::Integer = 1, executor=Serial()) = MarkovRandomFieldGraph(Float64, dims; order, executor)
-MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer = 1, executor=Serial()) where {T} = MarkovRandomFieldGraph(T, size(img); order, executor)
+MarkovRandomFieldGraph(dims::Dims{2}; order::Integer = 1, executor = Serial()) = MarkovRandomFieldGraph(Float64, dims; order, executor)
+MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer = 1, executor = Serial()) where {T} = MarkovRandomFieldGraph(T, size(img); order, executor)
 
 
 """
@@ -191,14 +191,14 @@ end
 
 function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T <: Number}
     Tπ = T(π)
-    n,m = size(d)
+    n, m = size(d)
     λ0 = 4 + 2 * cos(Tπ * n / (n + 1)) + 2 * cos(Tπ * m / (m + 1))
     return T(4π) * (k + λ0) #Empirical rule
 end
 
 function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T <: Number}
     Tπ = T(π)
-    n,m = size(d)
+    n, m = size(d)
     λ0 = 4 + 2 * cos(Tπ * n / (n + 1)) + 2 * cos(Tπ * m / (m + 1))
     return T(4π) * (k + λ0)^(N - 1) #Empirical rule
 end
@@ -241,7 +241,7 @@ end
 # this is equivalent to TSV regularizer
 function igmrf_1n(I::AbstractMatrix, κ², ::Any)
     value = zero(eltype(I))
-    @trace for iy in axes(I, 2) 
+    @trace for iy in axes(I, 2)
         @trace for ix in axes(I, 1)
             value += igmrf_qv(I, κ², ix, iy) * rgetindex(I, ix, iy)
         end
@@ -281,5 +281,3 @@ end
 
     return value
 end
-
-

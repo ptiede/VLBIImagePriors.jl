@@ -2,14 +2,14 @@ using Reactant, ComradeBase, VLBIImagePriors, Distributions
 using Test
 
 @testset "Reactant Ext" begin
-    @testset "GMRF" begin 
+    @testset "GMRF" begin
         d = GMRF(10.0, (6, 6))
         x = rand(d)
         xr = Reactant.to_rarray(x)
 
         @test @jit(logpdf(d, xr)) ≈ logpdf(d, x)
 
-        cm = ConditionalMarkov(GMRF, (8,8))
+        cm = ConditionalMarkov(GMRF, (8, 8))
         f(cm, ρ, x) = logpdf(cm(ρ), x)
         @test @jit(f(cm, ConcreteRNumber(10.0), xr)) ≈ f(cm, 10.0, x)
     end

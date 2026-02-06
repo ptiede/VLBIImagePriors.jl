@@ -48,12 +48,11 @@ function Dists.logpdf(d::ImageDirichlet, x::AbstractMatrix)
 end
 
 function myxlogym1(x::Number, y::Number)
-    result = (x-1) * log(y)
+    result = (x - 1) * log(y)
     b = iszero(x) & isnan(y)
     r = ifelse(b, zero(result), result)
     return r
 end
-
 
 
 function dirichlet_lpdf(α, lmnB, x)

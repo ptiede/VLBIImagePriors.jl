@@ -5,38 +5,36 @@ using KernelAbstractions
 using ComradeBase
 
 @kernel function igmrf_kernel!(tmp, x, p)
-    i0,j0 = @index(Global, NTuple)
+    i0, j0 = @index(Global, NTuple)
     i = i0 + 1
     j = j0 + 1
-    value = (4 + p) * x[i,j]
+    value = (4 + p) * x[i, j]
 
     value -= x[i + 1, j]
     value -= x[i, j + 1]
     value -= x[i - 1, j]
     value -= x[i, j - 1]
 
-    tmp[i,j] = value
+    tmp[i, j] = value
 end
-
-
 
 
 function igmrf_ka(I::AbstractMatrix, p, order)
     bk = KernelAbstractions.get_backend(I)
     sz = size(I)
-    # We split this into edges because Reactant raising 
+    # We split this into edges because Reactant raising
     # requires pure kernels so no conditional loads
 
     # The simplest thing to do is to allocate a slightly larger array
     # and fill the edges with zeros
-    padI = similar(I, ntuple(n->sz[1]+2, 2))
+    padI = similar(I, ntuple(n -> sz[1] + 2, 2))
     fill!(padI, 0)
     tmp = zero(padI)
 
-    padI[2:end-1, 2:end-1] .= I
+    padI[2:(end - 1), 2:(end - 1)] .= I
 
     kernel! = igmrf_kernel!(bk)
-    kernel!(tmp, padI, p; ndrange=size(I))
+    kernel!(tmp, padI, p; ndrange = size(I))
 
     return igmrf_ka_reduce(tmp, padI, order)
 end
@@ -57,25 +55,22 @@ function VLBIImagePriors.igmrf_1n(I::AbstractMatrix, κ², ::KernelAbstractions.
     return igmrf_ka(I, κ², Val(1))
 end
 
-function VLBIImagePriors.eigenvals(T, dims, bkend::KernelAbstractions.Backend) 
+function VLBIImagePriors.eigenvals(T, dims, bkend::KernelAbstractions.Backend)
     buf = allocate(bkend, T, dims)
     copyto!(buf, VLBIImagePriors.eigenvals(T, dims, Serial()))
     return buf
 end
 
 @kernel function spectrum_kernel!(ns, ps, kx, ky)
-    i,j = @index(Global, NTuple)
-    ns[i,j] = VLBIImagePriors.ampspectrum(ps, (kx[i], ky[j]))
+    i, j = @index(Global, NTuple)
+    ns[i, j] = VLBIImagePriors.ampspectrum(ps, (kx[i], ky[j]))
 end
 
 function VLBIImagePriors._spectrum!(bk::KernelAbstractions.Backend, ns, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
     bk = KernelAbstractions.get_backend(ns)
     kernel! = spectrum_kernel!(bk)
-    kernel!(ns, ps, kx, ky; ndrange=size(ns))
+    return kernel!(ns, ps, kx, ky; ndrange = size(ns))
 end
-
-
-
 
 
 end

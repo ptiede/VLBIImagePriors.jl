@@ -261,7 +261,7 @@ function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
 end
 
 function _spectrum!(executor, ns, ps::AbstractPowerSpectrum, kx, ky)
-    @threaded executor for i in eachindex(ky)
+    return @threaded executor for i in eachindex(ky)
         for j in eachindex(kx)
             @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
         end
@@ -399,7 +399,6 @@ function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T, N}
 end
 
 Dists.logpdf(d::StdNormal{T}, x::AbstractMatrix{T}) where {T} = __logpdf(d, x)
-
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2

@@ -107,9 +107,10 @@ function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::Abs
     vy = ntuple(i -> rgetindex(y, index + i - 1), Val(N + 1))
     sly = sum(abs2, vy)
 
-    x = ifelse(sly > 0,
-        ntuple(n->vy[n] / sqrt(sly), Val(N + 1)),
-        ntuple(i -> ifelse(i==1, one(T), zero(T)), Val(N + 1))
+    x = ifelse(
+        sly > 0,
+        ntuple(n -> vy[n] / sqrt(sly), Val(N + 1)),
+        ntuple(i -> ifelse(i == 1, one(T), zero(T)), Val(N + 1))
     )
 
     # jacobian term
@@ -134,7 +135,7 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Sphe
         ℓ += ℓi
         index = index2
         ntuple(Val(M)) do n
-             rsetindex!(out[n], rgetindex(θ, n), i)
+            rsetindex!(out[n], rgetindex(θ, n), i)
         end
     end
     return out, ℓ, index
@@ -147,7 +148,7 @@ function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransformation{<:Sph
     ix = 1
     itr = index:(N + 1):(index + TV.dimension(t) - 1)
     M = N + 1 # rename because scope issues with Reactant
-    @trace track_numbers=false for i in itr
+    @trace track_numbers = false for i in itr
         ntuple(Val(M)) do j
             rsetindex!(x, rgetindex(y[j], ix), i + j - 1)
         end
