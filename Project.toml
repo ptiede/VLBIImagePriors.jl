@@ -1,7 +1,7 @@
 name = "VLBIImagePriors"
 uuid = "b1ba175b-8447-452c-b961-7db2d6f7a029"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.10.6"
+version = "0.10.7"
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -44,7 +44,7 @@ AbstractFFTs = "1"
 ArgCheck = "2"
 Bessels = "0.2"
 ChainRulesCore = "1"
-ComradeBase = "^0.9.3"
+ComradeBase = "^0.9.8"
 DensityInterface = "0.4"
 Distributions = "0.24, 0.25"
 DocStringExtensions = "0.8, 0.9"
