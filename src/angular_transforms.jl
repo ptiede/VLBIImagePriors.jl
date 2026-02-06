@@ -104,10 +104,14 @@ function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::Abs
     T = eltype(y)
     index2 = index + N + 1
     # normalized vector
-    vy = NTuple{N + 1, T}(@view(y[index:(index2 - 1)]))
+    vy = ntuple(i -> rgetindex(y, index + i - 1), Val(N + 1))
     sly = sum(abs2, vy)
 
-    x = sly > 0 ? vy ./ sqrt(sly) : ntuple(i -> (i == 1 ? one(T) : zero(T)), N + 1)
+    x = ifelse(sly > 0,
+        ntuple(n->vy[n] / sqrt(sly), Val(N + 1)),
+        ntuple(i -> ifelse(i==1, one(T), zero(T)), Val(N + 1))
+    )
+
     # jacobian term
     ℓi = TV.logjac_zero(flag, T)
 
@@ -118,17 +122,19 @@ function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::Abs
     return x, ℓi, index2
 end
 
+
 function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:SphericalUnitVector{N}}, y::AbstractVector, index) where {N}
     (; inner_transformation, dims) = t
     T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = ntuple(_ -> similar(y, dims), Val(N + 1))
+    M = N + 1 # rename because scope issues with Reactant
     @trace for i in eachindex(out...)
         θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
         ℓ += ℓi
         index = index2
-        for n in 1:(N + 1)
-            rsetindex!(out[n], rgetindex(θ, n), i)
+        ntuple(Val(M)) do n
+             rsetindex!(out[n], rgetindex(θ, n), i)
         end
     end
     return out, ℓ, index
@@ -139,9 +145,11 @@ function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransformation{<:Sph
     @assert length(y) == N + 1 "Length of y must be equal to N + 1"
     index2 = index + TV.dimension(t)
     ix = 1
-    for i in index:(N + 1):(index + TV.dimension(t) - 1)
-        for j in 1:(N + 1)
-            x[i + j - 1] = y[j][ix]
+    itr = index:(N + 1):(index + TV.dimension(t) - 1)
+    M = N + 1 # rename because scope issues with Reactant
+    @trace track_numbers=false for i in itr
+        ntuple(Val(M)) do j
+            rsetindex!(x, rgetindex(y[j], ix), i + j - 1)
         end
         ix += 1
     end

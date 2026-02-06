@@ -12,11 +12,6 @@ struct StationaryRandomFieldPlan{TΛ, E, P}
         kx = (fftfreq(dims[1], one(T))) * π
         ky = (fftfreq(dims[2], one(T))) * π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags = FFTW.MEASURE)
-        if !(executor isa Serial || executor isa ThreadsEx)
-            @warn "Executor type $((executor)) not supported, defaulting to Serial()"
-            executor = Serial()
-        end
-
         return new{typeof(kx), typeof(executor), typeof(plan)}(kx, ky, executor, plan)
     end
 end
@@ -397,7 +392,14 @@ Dists.cov(d::StdNormal) = I(length(d))
 function Dists.logpdf(d::StdNormal, x::AbstractArray)
     return __logpdf(d, x)
 end
-Dists.logpdf(d::StdNormal, x::AbstractMatrix) = __logpdf(d, x)
+
+# For ambiguity resolution
+function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T, N}
+    return __logpdf(d, x)
+end
+
+Dists.logpdf(d::StdNormal{T}, x::AbstractMatrix{T}) where {T} = __logpdf(d, x)
+
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
