@@ -394,11 +394,13 @@ function Dists.logpdf(d::StdNormal, x::AbstractArray)
 end
 
 # For ambiguity resolution
-function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T, N}
+function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<:Number, N}
     return __logpdf(d, x)
 end
 
 Dists.logpdf(d::StdNormal{T}, x::AbstractMatrix{T}) where {T} = __logpdf(d, x)
+
+Dists.logpdf(d::StdNormal{T}, x::AbstractArray{T}) where {T<:Real} = __logpdf(d, x)
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
