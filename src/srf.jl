@@ -402,6 +402,8 @@ Dists.logpdf(d::StdNormal{T}, x::AbstractMatrix{T}) where {T} = __logpdf(d, x)
 
 Dists.logpdf(d::StdNormal{T}, x::AbstractArray{T}) where {T<:Real} = __logpdf(d, x)
 
+Dists.logpdf(::VLBIImagePriors.StdNormal{T, 2}, ::AbstractMatrix{T}) where T<:Real = __logpdf(d, x)
+
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
 
