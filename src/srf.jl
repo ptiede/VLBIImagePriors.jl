@@ -240,10 +240,6 @@ function genfield(rf::StationaryRandomField, z::AbstractArray)
     return rast
 end
 
-function myfft!(plan, x)
-    plan * x
-    return x
-end
 
 function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
     (kx, ky) = ks
@@ -394,15 +390,15 @@ function Dists.logpdf(d::StdNormal, x::AbstractArray)
 end
 
 # For ambiguity resolution
-function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T<:Number, N}
+function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T <: Number, N}
     return __logpdf(d, x)
 end
 
 Dists.logpdf(d::StdNormal{T}, x::AbstractMatrix{T}) where {T} = __logpdf(d, x)
 
-Dists.logpdf(d::StdNormal{T}, x::AbstractArray{T}) where {T<:Real} = __logpdf(d, x)
+Dists.logpdf(d::StdNormal{T}, x::AbstractArray{T}) where {T <: Real} = __logpdf(d, x)
 
-Dists.logpdf(d::VLBIImagePriors.StdNormal{T, 2}, x::AbstractMatrix{T}) where T<:Real = __logpdf(d, x)
+Dists.logpdf(d::VLBIImagePriors.StdNormal{T, 2}, x::AbstractMatrix{T}) where {T <: Real} = __logpdf(d, x)
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2

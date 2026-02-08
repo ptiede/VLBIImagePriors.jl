@@ -92,8 +92,8 @@ function GaussMarkovRandomField(ρ::Number, dims::Dims{2}; order::Integer = 1, e
     return GaussMarkovRandomField(ρ, cache)
 end
 
-function GaussMarkovRandomField(ρ::Number, g::ComradeBase.AbstractRectiGrid{<:Tuple{ComradeBase.X, ComradeBase.Y}}; order::Integer = 1, executor = Serial())
-    return GaussMarkovRandomField(ρ, size(g); order, executor)
+function GaussMarkovRandomField(ρ::Number, g::ComradeBase.AbstractRectiGrid{<:Tuple{ComradeBase.X, ComradeBase.Y}}; order::Integer = 1)
+    return GaussMarkovRandomField(ρ, size(g); order, executor = executor(g))
 end
 
 
