@@ -27,7 +27,7 @@ Currently only the first and second order processes are efficient. The others st
 than the usual Gaussian process but they have not been optimized to the same extent.
 
 =#
-struct MarkovRandomFieldGraph{Order, A, TD, M}
+struct MarkovRandomFieldGraph{Order, A, TD, M, E}
     """
     Intrinsic Gaussian Random Field pseudo-precison matrix.
     This is similar to the TSV regularizer
@@ -43,9 +43,13 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
     log-normalization constant of the GMRF.
     """
     λQ::M
+    """
+    Executor for the prior evalution
+    """
+    executor::E
 
     """
-        MarkovRandomFieldGraph([T=Float64], dims::Dims{2}; order=1)
+        MarkovRandomFieldGraph([T=Float64], dims::Dims{2}; order=1, executor = Serial())
 
     Constructs the graph for a `order` Markov Random Field with dimension `dims`.
     The first optional argument specifies the type used for the internal graph structure
@@ -56,7 +60,7 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
     RML imaging.
 
     """
-    function MarkovRandomFieldGraph(T::Type{<:Number}, dims::Dims{2}; order::Integer = 1)
+    function MarkovRandomFieldGraph(T::Type{<:Number}, dims::Dims{2}; order::Integer = 1, executor = Serial())
         order < 1 && ArgumentError("`order` parameter must be greater than or equal to 1, not $order")
 
         # build the 1D correlation matrices
@@ -66,8 +70,8 @@ struct MarkovRandomFieldGraph{Order, A, TD, M}
         # We do this ordering because Julia like column major
         G = kron(q2, I(dims[1])) + kron(I(dims[2]), q1)
         D = Diagonal(ones(eltype(G), size(G, 1)))
-        λQ = eigenvals(T, dims)
-        return new{order, typeof(G), typeof(D), typeof(λQ)}(G, D, λQ)
+        λQ = eigenvals(T, dims, executor)
+        return new{order, typeof(G), typeof(D), typeof(λQ), typeof(executor)}(G, D, λQ, executor)
     end
 
 end
@@ -76,8 +80,8 @@ end
 Base.size(c::MarkovRandomFieldGraph) = size(c.λQ)
 
 
-MarkovRandomFieldGraph(dims::Dims{2}; order::Integer = 1) = MarkovRandomFieldGraph(Float64, dims; order)
-MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer = 1) where {T} = MarkovRandomFieldGraph(T, size(img); order)
+MarkovRandomFieldGraph(dims::Dims{2}; order::Integer = 1, executor = Serial()) = MarkovRandomFieldGraph(Float64, dims; order, executor)
+MarkovRandomFieldGraph(img::AbstractMatrix{T}; order::Integer = 1, executor = Serial()) where {T} = MarkovRandomFieldGraph(T, size(img); order, executor)
 
 
 """
@@ -151,12 +155,12 @@ end
 # Compute the square manoblis distance or the <x,Qx> inner product.
 function sq_manoblis(d::MarkovRandomFieldGraph{1}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(1))^2
-    return igmrf_1n(ΔI, κ²) / mrfnorm(d, κ²)
+    return igmrf_1n(ΔI, κ², d.executor) / mrfnorm(d, κ²)
 end
 
 function sq_manoblis(d::MarkovRandomFieldGraph{2}, ΔI::AbstractMatrix, ρ)
     κ² = κ(ρ, Val(2))^2
-    return igmrf_2n(ΔI, κ²) / mrfnorm(d, κ²)
+    return igmrf_2n(ΔI, κ², d.executor) / mrfnorm(d, κ²)
 end
 
 function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) where {N}
@@ -164,14 +168,16 @@ function sq_manoblis(d::MarkovRandomFieldGraph{N}, ΔI::AbstractMatrix, ρ) wher
     return dot(ΔI, (κ² * d.D + d.G)^(N), vec(ΔI)) / mrfnorm(d, κ²)
 end
 
+__f(κ², x) = log(κ² + x)
+
+
 @inline function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     κ² = κ(ρ, Val(N))^2
-    a = zero(eltype(d.λQ))
-    @fastmath @simd for i in eachindex(d.λQ)
-        a += log(κ² + d.λQ[i])
-    end
+    f2 = Base.Fix1(__f, κ²)
+    a = sum(f2, d.λQ)
     return N * a - length(d.λQ) * log(mrfnorm(d, κ²))
 end
+
 
 # TODO
 # Figure out the actual narmalization from the lattice helmholtz decomposition
@@ -179,18 +185,21 @@ end
 
 # This is the σ to ensure we have a unit variance GMRF
 function mrfnorm(d::MarkovRandomFieldGraph{1}, κ²::T) where {T <: Number}
-    λ0 = first(d.λQ)
     return (κ² + 1) #Empirical rule
 end
 
 
 function mrfnorm(d::MarkovRandomFieldGraph{2}, k::T) where {T <: Number}
-    λ0 = first(d.λQ)
+    Tπ = T(π)
+    n, m = size(d)
+    λ0 = 4 + 2 * cos(Tπ * n / (n + 1)) + 2 * cos(Tπ * m / (m + 1))
     return T(4π) * (k + λ0) #Empirical rule
 end
 
 function mrfnorm(d::MarkovRandomFieldGraph{N}, k::T) where {N, T <: Number}
-    λ0 = first(d.λQ)
+    Tπ = T(π)
+    n, m = size(d)
+    λ0 = 4 + 2 * cos(Tπ * n / (n + 1)) + 2 * cos(Tπ * m / (m + 1))
     return T(4π) * (k + λ0)^(N - 1) #Empirical rule
 end
 
@@ -200,7 +209,7 @@ function scalematrix(d::MarkovRandomFieldGraph{N}, ρ) where {N}
     return (d.G .+ d.D .* κ²)^N / mrfnorm(d, κ²)
 end
 
-function eigenvals(T, dims)
+function eigenvals(T, dims, ::Any)
     m, n = dims
     ix = m:-1:1 #Reverse the order to match the DST conventions
     iy = n:-1:1 #Reverse the order to match the DST conventions
@@ -228,109 +237,47 @@ function build_q1d(T, n)
 end
 
 
-function igmrf_2n(I::AbstractMatrix, κ²)
-    value = zero(eltype(I))
-    for iy in axes(I, 2), ix in axes(I, 1)
-        value = value + igmrf_qv(I, κ², ix, iy)^2
-    end
-    return value
-end
-
 # computes the intrinsic gaussian process of a 1-neighbor method
 # this is equivalent to TSV regularizer
-function igmrf_1n(I::AbstractMatrix, κ²)
+function igmrf_1n(I::AbstractMatrix, κ², ::Any)
     value = zero(eltype(I))
-    for iy in axes(I, 2), ix in axes(I, 1)
-        value = value + igmrf_qv(I, κ², ix, iy) * I[ix, iy]
+    @trace for iy in axes(I, 2)
+        @trace for ix in axes(I, 1)
+            value += igmrf_qv(I, κ², ix, iy) * rgetindex(I, ix, iy)
+        end
+    end
+    return value
+end
+
+function igmrf_2n(I::AbstractMatrix, κ², ::Any)
+    value = zero(eltype(I))
+
+    @trace for iy in axes(I, 2)
+        @trace for ix in axes(I, 1)
+            value += igmrf_qv(I, κ², ix, iy)^2
+        end
     end
     return value
 end
 
 
-@inline @inbounds function igmrf_qv(I::AbstractMatrix, κ², ix::Integer, iy::Integer)
-    value = (4 + κ²) * I[ix, iy]
-    if ix < lastindex(I, 1)
-        value -= I[ix + 1, iy]
+@inline function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
+    value = (4 + κ²) * rgetindex(I, ix, iy)
+    @trace if ix < lastindex(I, 1)
+        value -= rgetindex(I, ix + 1, iy)
     end
 
-    if iy < lastindex(I, 2)
-        value -= I[ix, iy + 1]
+    @trace if iy < lastindex(I, 2)
+        value -= rgetindex(I, ix, iy + 1)
     end
 
-    if ix > firstindex(I, 1)
-        value -= I[ix - 1, iy]
+    @trace if ix > firstindex(I, 1)
+        value -= rgetindex(I, ix - 1, iy)
     end
 
-    if iy > firstindex(I, 2)
-        value -= I[ix, iy - 1]
+    @trace if iy > firstindex(I, 2)
+        value -= rgetindex(I, ix, iy - 1)
     end
 
     return value
 end
-
-
-# @inline function igmrf_1n_grad_pixel(I::AbstractArray, ix::Integer, iy::Integer)
-#     nx = lastindex(I, 1)
-#     ny = lastindex(I, 2)
-
-#     i1 = ix
-#     j1 = iy
-#     i0 = i1 - 1
-#     j0 = j1 - 1
-#     i2 = i1 + 1
-#     j2 = j1 + 1
-
-#     grad = 0.0
-
-#     # For ΔIx = I[i+1,j] - I[i,j]
-#     if i2 < nx + 1
-#         @inbounds grad += -2 * (I[i2, j1] - I[i1, j1])
-#     else
-#         @inbounds grad += -2*(I[begin, j1] - I[i1, j1])
-#     end
-
-
-#     # For ΔIy = I[i,j+1] - I[i,j]
-#     if j2 < ny + 1
-#         @inbounds grad += -2 * (I[i1, j2] - I[i1, j1])
-#     else
-#         @inbounds grad += -2*(I[i1, begin] - I[i1, j1])
-#     end
-
-#     # For ΔIx = I[i,j] - I[i-1,j]
-#     if i0 > 0
-#         @inbounds grad += 2 * (I[i1, j1] - I[i0, j1])
-#     else
-#         @inbounds grad += 2*(I[i1, j1] - I[end, j1])
-#     end
-
-#     # For ΔIy = I[i,j] - I[i,j-1]
-#     if j0 > 0
-#         @inbounds grad += 2 * (I[i1, j1] - I[i1, j0])
-#     else
-#         @inbounds grad += 2*(I[i1, j1] - I[i1, end])
-#     end
-
-#     return grad
-# end
-
-
-# function ChainRulesCore.rrule(::typeof(igmrf_1n), x::AbstractArray)
-#     y = igmrf_1n(x)
-#     px = ProjectTo(x)
-#     function pullback(Δy)
-#         f̄bar = NoTangent()
-#         xbar = @thunk(igmrf_1n_grad(x) .* Δy)
-#         return f̄bar, px(xbar)
-#     end
-#     return y, pullback
-# end
-
-
-# @inline function igmrf_1n_grad(I::AbstractArray)
-#     grad = similar(I)
-#     for iy in axes(I,2), ix in axes(I,1)
-#         @inbounds grad[ix, iy] = igmrf_1n_grad_pixel(I, ix, iy)
-#     end
-#     return grad
-# end

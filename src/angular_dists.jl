@@ -53,7 +53,7 @@ end
 
 Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Real) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
 
-function Dists._logpdf(d::DiagonalVonMises, x::Union{Real, AbstractVector{<:Real}})
+function Dists.logpdf(d::DiagonalVonMises, x::Union{Number, AbstractVector})
     μ = d.μ
     κ = d.κ
     return _vonlogpdf(μ, κ, x) + d.lnorm
@@ -61,14 +61,15 @@ end
 
 function _vonlogpdf(μ, κ, x)
     s = zero(eltype(μ))
-    @simd for i in eachindex(μ, κ)
-        s += (cos(x[i] - μ[i]) - 1) * κ[i]
+    # @simd for i in eachindex(μ, κ)
+    #     s += (cos(x[i] - μ[i]) - 1) * κ[i]
+    # end
+    # return s
+    # Enzyme bugs out on this
+    s = sum(zip(μ, κ, x); init = zero(eltype(μ))) do (μs, κs, xs)
+        return (cos(xs - μs) - 1) * κs
     end
     return s
-    # Enzyme bugs out on this
-    # s = sum(zip(μ, κ, x); init=zero(eltype(μ))) do (μs, κs, xs)
-    #     return (cos(xs - μs) - 1)*κs
-    # end
 
 end
 _vonlogpdf(μ::Real, κ::Real, x::Real) = (cos(x - μ) - 1) * κ

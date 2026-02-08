@@ -18,19 +18,15 @@ struct ImageDirichlet{T, A <: AbstractMatrix{T}, S} <: Dists.ContinuousMatrixDis
     α::A
     α0::T
     lmnB::S
-    function ImageDirichlet{T}(α::AbstractMatrix{T}) where {T}
+    function ImageDirichlet(α::AbstractMatrix{T}) where {T}
         α0 = sum(α)
         lmnB = sum(loggamma, α) - loggamma(α0)
         return new{T, typeof(α), typeof(lmnB)}(α, α0, lmnB)
     end
 end
 
-function ImageDirichlet(α::AbstractMatrix{T}) where {T}
-    return ImageDirichlet{T}(α)
-end
-
 function ImageDirichlet(α::Real, nx::Int, ny::Int)
-    return ImageDirichlet(FillArrays.Fill(α, nx, ny))
+    return ImageDirichlet(fill(α, nx, ny))
 end
 
 Base.size(d::ImageDirichlet) = size(d.α)
@@ -40,27 +36,28 @@ Dists.mean(d::ImageDirichlet) = d.α .* inv(d.α0)
 HC.asflat(d::ImageDirichlet) = ImageSimplex(size(d))
 
 function Dists.insupport(d::ImageDirichlet, x::AbstractMatrix)
-    return (size(d.α) == size(x)) && !any(x -> x < zero(x), x) && sum(x) ≈ 1
+    return (size(d.α) == size(x)) & !any(<(zero(eltype(x))), x) & isapprox(sum(x), one(eltype(x)))
 end
 
 using EnzymeCore: EnzymeRules
 EnzymeRules.inactive(::typeof(Dists.insupport), args...) = nothing
 
-function Dists._logpdf(d::ImageDirichlet, x::AbstractMatrix{<:Real})
-    if !(Dists.insupport(d, x))
-        return xlogy(one(eltype(d.α)), zero(eltype(x))) - d.lmnB
-    end
+function Dists.logpdf(d::ImageDirichlet, x::AbstractMatrix)
+    l = dirichlet_lpdf(d.α, d.lmnB, x)
+    return ifelse(Dists.insupport(d, x), l, oftype(l, -Inf))
+end
 
-    return dirichlet_lpdf(d.α, d.lmnB, x)
+function myxlogym1(x::Number, y::Number)
+    result = (x - 1) * log(y)
+    b = iszero(x) & isnan(y)
+    r = ifelse(b, zero(result), result)
+    return r
 end
 
 
 function dirichlet_lpdf(α, lmnB, x)
-    s = -lmnB
-    @simd for i in eachindex(x, α)
-        s += xlogy(α[i] - 1, x[i])
-    end
-    return s
+    s = mapreduce(splat(myxlogym1), +, zip(α, x))
+    return s - lmnB
 end
 
 # function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α, lmnB, x::AbstractMatrix{<:Real})

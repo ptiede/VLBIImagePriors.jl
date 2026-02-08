@@ -19,6 +19,8 @@ import TransformVariables as TV
 import HypercubeTransform as HC
 using NamedTupleTools
 using HypercubeTransform: DeltaDist
+using ReactantCore
+using ComradeBase: rgetindex, rsetindex!
 
 export DeltaDist
 
@@ -28,7 +30,6 @@ using ComradeBase: @threaded
 include("imagesimplex.jl")
 include("dirichlet.jl")
 include("uniform.jl")
-include("centered.jl")
 include("angular_transforms.jl")
 include("angular_dists.jl")
 include("special_rules.jl")

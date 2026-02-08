@@ -9,14 +9,9 @@ struct StationaryRandomFieldPlan{TΛ, E, P}
     executor::E
     p::P
     function StationaryRandomFieldPlan(T::Type{<:Number}, dims::Dims{2}; executor = Serial())
-        kx = fftfreq(dims[1], one(T)) * π
-        ky = fftfreq(dims[2], one(T)) * π
+        kx = (fftfreq(dims[1], one(T))) * π
+        ky = (fftfreq(dims[2], one(T))) * π
         plan = FFTW.plan_fft!(zeros(Complex{T}, dims); flags = FFTW.MEASURE)
-        if !(executor isa Serial || executor isa ThreadsEx)
-            @warn "Executor type $((executor)) not supported, defaulting to Serial()"
-            executor = Serial()
-        end
-
         return new{typeof(kx), typeof(executor), typeof(plan)}(kx, ky, executor, plan)
     end
 end
@@ -196,7 +191,7 @@ struct MarkovPS{T, N} <: AbstractPowerSpectrum
     ρs::NTuple{N, T}
 end
 
-@inline function ampspectrum(ps::MarkovPS{T, N}, ks) where {T, N}
+@inline @fastmath function ampspectrum(ps::MarkovPS{T, N}, ks) where {T, N}
     (; ρs) = ps
     kx, ky = ks
     k2 = kx^2 + ky^2
@@ -204,15 +199,6 @@ end
         (ρs[n]^2 * k2)^n
     end
 
-    # κ = T(sqrt(8 * ν) / ρ)
-    # κ2 = κ * κ
-    # τ = κ^ν * sqrt(ν * convert(T, π))
-
-
-    norm = ntuple(Val(N)) do n
-        m = (n == 1 ? 2 : n)
-        ρs[n]^(2) * n * sin(T(π) / m)
-    end
     return inv(sqrt(1 + reduce(+, terms)))
 end
 
@@ -227,14 +213,7 @@ struct StationaryRandomField{PS <: AbstractPowerSpectrum, P}
     plan::P
 end
 
-"""
-    genfield(rf::StationaryRandomField, z::AbstractArray)
-
-Generates a stationary random field from the standardized normal random field `z`
-using the power spectrum and plan defined in `rf`. Typically the input `z` should be 
-a draw from `std_dist(rf)`.
-"""
-function genfield(rf::StationaryRandomField, z::AbstractArray)
+function genfield!(rast, rf::StationaryRandomField, z::AbstractArray)
     ps = rf.ps
     (; kx, ky, p) = rf.plan
     e = executor(rf.plan)
@@ -244,33 +223,45 @@ function genfield(rf::StationaryRandomField, z::AbstractArray)
 
     p * ns
 
-    rast = (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
+    rast .= (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
     return rast
 end
 
+"""
+    genfield(rast::AbstractArray,rf::StationaryRandomField, z::AbstractArray)
+
+Generates a stationary random field from the standardized normal random field `z`
+using the power spectrum and plan defined in `rf`. Typically the input `z` should be 
+a draw from `std_dist(rf)`.
+"""
+function genfield(rf::StationaryRandomField, z::AbstractArray)
+    rast = similar(z)
+    genfield!(rast, rf, z)
+    return rast
+end
+
+
 function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
     (kx, ky) = ks
-    @threaded executor for i in eachindex(ky)
+
+    _spectrum!(executor, ns, ps, kx, ky)
+
+    nrm = sum(abs2, ns)
+    nrm *= step(kx) * step(ky) * inv(2 * π)
+    rtnrm = inv(sqrt(nrm))
+
+    ns .= ns .* z .* rtnrm
+
+
+    return nothing
+end
+
+function _spectrum!(executor, ns, ps::AbstractPowerSpectrum, kx, ky)
+    return @threaded executor for i in eachindex(ky)
         for j in eachindex(kx)
             @inbounds ns[j, i] = ampspectrum(ps, (kx[j], ky[i]))
         end
     end
-
-    # Here we ensure that the power spectrum is normalized
-    # inv 2π because of FFTW conventions
-    nrm = zero(eltype(z))
-    for i in eachindex(ns)
-        nrm += abs2(ns[i])
-    end
-    nrm *= step(kx) * step(ky) * inv(2 * π)
-    rtnrm = sqrt(nrm)
-
-    for i in eachindex(ns, z)
-        @inbounds ns[i] *= z[i] / rtnrm
-    end
-
-
-    return nothing
 end
 
 
@@ -394,20 +385,31 @@ Dists.mean(d::StdNormal) = zeros(size(d))
 Dists.cov(d::StdNormal) = I(length(d))
 
 
-function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T <: Real, N}
+function Dists.logpdf(d::StdNormal, x::AbstractArray)
     return __logpdf(d, x)
 end
-Dists._logpdf(d::StdNormal{T, 2}, x::AbstractMatrix{T}) where {T <: Real} = __logpdf(d, x)
+
+# For ambiguity resolution
+function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{T, N}) where {T <: Number, N}
+    return __logpdf(d, x)
+end
+
+Dists.logpdf(d::StdNormal{T}, x::AbstractMatrix{T}) where {T} = __logpdf(d, x)
+
+Dists.logpdf(d::StdNormal{T}, x::AbstractArray{T}) where {T <: Real} = __logpdf(d, x)
+
+Dists.logpdf(d::VLBIImagePriors.StdNormal{T, 2}, x::AbstractMatrix{T}) where {T <: Real} = __logpdf(d, x)
 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
 
 function __logpdf(d::StdNormal, x)
-    s = zero(eltype(x))
-    for i in eachindex(x)
-        s += abs2(x[i])
-    end
-    return -s / 2 - prod(d.dims) * Dists.log2π / 2
+    # s = zero(eltype(x))
+    # for i in eachindex(x)
+    #     s += abs2(x[i])
+    # end
+    s = sum(abs2, x)
+    return -s / 2 - length(x) * Dists.log2π / 2
 end
 
 
