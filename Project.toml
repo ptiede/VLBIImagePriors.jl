@@ -1,7 +1,7 @@
 name = "VLBIImagePriors"
 uuid = "b1ba175b-8447-452c-b961-7db2d6f7a029"
-authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 version = "0.10.7"
+authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -53,12 +53,13 @@ EnzymeCore = "0.8"
 FFTW = "1"
 FillArrays = "0.13, 1"
 HypercubeTransform = "^0.4.5"
+KernelAbstractions = "0.9"
 LinearAlgebra = "1.8"
 NamedTupleTools = "0.13, 0.14"
 Random = "1.8"
-Reexport = "1"
 Reactant = "0.2"
 ReactantCore = "0.1"
+Reexport = "1"
 Serialization = "1.8"
 SparseArrays = "1.8"
 SpecialFunctions = "1,2"
