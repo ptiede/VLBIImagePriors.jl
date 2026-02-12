@@ -403,13 +403,13 @@ Dists.logpdf(d::VLBIImagePriors.StdNormal{T, 2}, x::AbstractMatrix{T}) where {T 
 
 # __logpdf(d::StdNormal, x) = -sum(abs2, x)/2 - prod(d.dims)*Dists.log2π/2
 
-function __logpdf(d::StdNormal, x)
+function __logpdf(d::StdNormal{T}, x) where {T}
     # s = zero(eltype(x))
     # for i in eachindex(x)
     #     s += abs2(x[i])
     # end
     s = sum(abs2, x)
-    return -s / 2 - length(x) * Dists.log2π / 2
+    return -s / 2 - length(x) * convert(T, Dists.log2π) / 2
 end
 
 
