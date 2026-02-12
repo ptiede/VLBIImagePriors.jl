@@ -13,6 +13,9 @@
         d2 = product_distribution(VonMises.(d1.μ, d1.κ))
 
         ds = DiagonalVonMises(0.5, 0.1)
+        d32 = DiagonalVonMises(0.5f0, 0.1f0)
+        @test logpdf(d32,3f-1) isa Float32
+        
         dv = DiagonalVonMises([0.5], [0.1])
         x = rand(ds)
         @test logpdf(ds, x) ≈ logpdf(dv, [x])

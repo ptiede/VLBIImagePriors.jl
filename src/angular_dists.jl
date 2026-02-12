@@ -48,7 +48,8 @@ HC.asflat(d::DiagonalVonMises{<:Real, <:Real, <:Real}) = AngleTransform()
 function _vonmisesnorm(μ, κ)
     @assert length(μ) == length(κ) "Mean and std. dev. vector are not the same length"
     n = length(μ)
-    return -n * log2π - sum(x -> log(besseli0x(x)), κ)
+    Ts = promote_type(eltype(μ), eltype(κ))
+    return -n * convert(Ts, log2π) - sum(x -> log(besseli0x(x)), κ)
 end
 
 Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Real) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
