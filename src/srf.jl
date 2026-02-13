@@ -222,8 +222,8 @@ function genfield!(rast, rf::StationaryRandomField, z::AbstractArray)
     ampspectrum!(e, ns, ps, (kx, ky), z)
 
     p * ns
-
-    rast .= (real.(ns) .+ imag.(ns)) ./ sqrt(prod(size(z)))
+    T = eltype(z)
+    rast .= (real.(ns) .+ imag.(ns)) ./ sqrt(T(prod(size(z))))
     return rast
 end
 
@@ -246,8 +246,9 @@ function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
 
     _spectrum!(executor, ns, ps, kx, ky)
 
+    Tπ = convert(eltype(z), π)   
     nrm = sum(abs2, ns)
-    nrm *= step(kx) * step(ky) * inv(2 * π)
+    nrm *= step(kx) * step(ky) * inv(2*Tπ)
     rtnrm = inv(sqrt(nrm))
 
     ns .= ns .* z .* rtnrm
