@@ -108,7 +108,7 @@ function unnormed_logpdf(d::GaussMarkovRandomField, I::AbstractMatrix)
     return -sq_manoblis(graph(d), I, ρ) / 2
 end
 
-function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMatrix{<:Real})
+function Dists._rand!(rng::AbstractRNG, d::GaussMarkovRandomField, x::AbstractMatrix{<:Number})
     Q = scalematrix(d)
     cQ = cholesky(Symmetric(Q))
     z = randn(rng, length(x))
