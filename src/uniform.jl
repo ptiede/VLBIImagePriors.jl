@@ -2,7 +2,7 @@ export ImageUniform, ImageSphericalUniform
 using FillArrays
 
 """
-    ImageUniform(a::Real, b::Real, nx, ny)
+    ImageUniform(a::Number, b::Number, nx, ny)
 
 A uniform distribution in image pixels where `a/b` are the
 lower/upper bound for the interval. This then concatenates ny×nx
@@ -13,7 +13,7 @@ struct ImageUniform{T} <: Dists.ContinuousMatrixDistribution
     b::T
     nx::Int
     ny::Int
-    function ImageUniform(a::Real, b::Real, nx::Integer, ny::Integer)
+    function ImageUniform(a::Number, b::Number, nx::Integer, ny::Integer)
         aT, bT = promote(a, b)
         T = typeof(aT)
         return new{T}(aT, bT, nx, ny)
@@ -35,12 +35,12 @@ function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
     return (size(d) == size(x)) && !any(x -> (d.a > x)||(x > d.b), x)
 end
 
-function Dists._logpdf(d::ImageUniform, x::AbstractMatrix{<:Real})
+function Dists._logpdf(d::ImageUniform, x::AbstractMatrix{<:Number})
     !Dists.insupport(d, x) && return -Inf
     return -log(d.b - d.a) * (d.nx * d.ny)
 end
 
-function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Real})
+function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Number})
     return Dists._logpdf(d, x), Δ -> (NoTangent(), NoTangent(), ZeroTangent())
 end
 

@@ -1,8 +1,8 @@
 export DiagonalVonMises, WrappedUniform
 
 """
-    DiagonalVonMises(μ::Real, κ::Real)
-    DiagonalVonMises(μ::AbstractVector{<:Real}, κ::AbstractVector{<:Real})
+    DiagonalVonMises(μ::Number, κ::Number)
+    DiagonalVonMises(μ::AbstractVector{<:Number}, κ::AbstractVector{<:Number})
 
 Constructs a Von Mises distribution, with mean `μ` and concentraion parameter `κ`.
 If `μ` and `κ` are vectors then this constructs a independent multivariate Von Mises
@@ -29,7 +29,7 @@ function DiagonalVonMises(μ::AbstractVector, κ::AbstractVector)
     return DiagonalVonMises(μ, κ, lognorm)
 end
 
-function DiagonalVonMises(μ::Real, κ::Real)
+function DiagonalVonMises(μ::Number, κ::Number)
     lognorm = _vonmisesnorm(μ, κ)
     return DiagonalVonMises(μ, κ, lognorm)
 end
@@ -39,10 +39,10 @@ function Dists._rand!(rng::AbstractRNG, d::DiagonalVonMises, x::AbstractVector)
     return rand!(rng, dv, x)
 end
 
-Dists.rand(rng::AbstractRNG, d::DiagonalVonMises{<:Real, <:Real}) = rand(rng, Dists.VonMises.(d.μ, d.κ))
+Dists.rand(rng::AbstractRNG, d::DiagonalVonMises{<:Number, <:Number}) = rand(rng, Dists.VonMises.(d.μ, d.κ))
 
 HC.asflat(d::DiagonalVonMises) = TV.as(Vector, AngleTransform(), length(d))
-HC.asflat(d::DiagonalVonMises{<:Real, <:Real, <:Real}) = AngleTransform()
+HC.asflat(d::DiagonalVonMises{<:Number, <:Number, <:Number}) = AngleTransform()
 
 
 function _vonmisesnorm(μ, κ)
@@ -52,7 +52,7 @@ function _vonmisesnorm(μ, κ)
     return -n * convert(Ts, log2π) - sum(x -> log(besseli0x(x)), κ)
 end
 
-Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Real) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
+Dists.logpdf(d::DiagonalVonMises{<:Number, <:Number, <:Number}, x::Number) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
 
 function Dists.logpdf(d::DiagonalVonMises, x::Union{Number, AbstractVector})
     μ = d.μ
@@ -73,9 +73,9 @@ function _vonlogpdf(μ, κ, x)
     return s
 
 end
-_vonlogpdf(μ::Real, κ::Real, x::Real) = (cos(x - μ) - 1) * κ
+_vonlogpdf(μ::Number, κ::Number, x::Number) = (cos(x - μ) - 1) * κ
 
-function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVector}, κ::Union{Real, AbstractVector}, x::Union{Real, AbstractVector})
+function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Number, AbstractVector}, κ::Union{Number, AbstractVector}, x::Union{Number, AbstractVector})
     s = _vonlogpdf(μ, κ, x)
     pμ = ProjectTo(μ)
     pκ = ProjectTo(κ)
@@ -99,7 +99,7 @@ function Dists.product_distribution(dists::AbstractVector{<:DiagonalVonMises})
 end
 
 
-function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::Union{Real, AbstractVector})
+function ChainRulesCore.rrule(::typeof(_vonmisesnorm), μ, κ::Union{Number, AbstractVector})
     v = zero(eltype(κ))
     n = length(κ)
     dκ = zero(κ)
@@ -156,23 +156,23 @@ function WrappedUniform(p::AbstractVector)
     return WrappedUniform(p, lnorm)
 end
 
-function WrappedUniform(p::Real, n::Int)
+function WrappedUniform(p::Number, n::Int)
     p > 0 && ArgumentError("Period `p` must be positive")
     pvec = Fill(p, n)
     return WrappedUniform(pvec, n * log(p))
 end
 
-function WrappedUniform(p::Real)
+function WrappedUniform(p::Number)
     p > 0 && ArgumentError("Period `p` must be positive")
     return WrappedUniform(p, log(p))
 end
 
-Dists.logpdf(d::WrappedUniform{<:Real}, ::Real) = -d.lnorm
-Dists.rand(rng::AbstractRNG, d::WrappedUniform{<:Real}) = rand(rng) * d.periods
+Dists.logpdf(d::WrappedUniform{<:Number}, ::Number) = -d.lnorm
+Dists.rand(rng::AbstractRNG, d::WrappedUniform{<:Number}) = rand(rng) * d.periods
 
 Dists._logpdf(d::WrappedUniform, ::AbstractVector) = -d.lnorm
 
-function Dists._rand!(rng::AbstractRNG, d::WrappedUniform, x::AbstractVector{T}) where {T <: Real}
+function Dists._rand!(rng::AbstractRNG, d::WrappedUniform, x::AbstractVector{T}) where {T <: Number}
     rand!(rng, x)
     x .= x .* d.periods
     return x
@@ -185,4 +185,4 @@ function Dists.product_distribution(dists::AbstractVector{<:WrappedUniform})
 end
 
 HC.asflat(d::WrappedUniform) = TV.as(Vector, AngleTransform(), length(d))
-HC.asflat(::WrappedUniform{<:Real}) = AngleTransform()
+HC.asflat(::WrappedUniform{<:Number}) = AngleTransform()

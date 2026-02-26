@@ -94,7 +94,7 @@ function unnormed_logpdf(d::ExpMarkovRandomField, I::AbstractMatrix)
     return -sqrt(sq_manoblis(graph(d), I, ρ) * length(d))
 end
 
-function Dists._rand!(rng::AbstractRNG, d::ExpMarkovRandomField, x::AbstractMatrix{<:Real})
+function Dists._rand!(rng::AbstractRNG, d::ExpMarkovRandomField, x::AbstractMatrix{<:Number})
     Q = scalematrix(d)
     cQ = cholesky(Q)
     z = randn(rng, length(x))
