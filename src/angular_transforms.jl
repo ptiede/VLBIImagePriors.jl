@@ -32,13 +32,14 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Angl
     T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = similar(y, dims)
+    index0 = index
     @trace for i in eachindex(out)
-        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
-        index = index2
+        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index0)
+        index0 = index2
         ℓ += ℓi
         rsetindex!(out, θ, i)
     end
-    return out, ℓ, index
+    return out, ℓ, index + 2 * length(out)
 end
 
 
@@ -101,6 +102,7 @@ TV.inverse_eltype(::TV.ArrayTransformation{<:SphericalUnitVector}, x::Type{NTupl
 
 
 function TV.transform_with(flag::TV.LogJacFlag, ::SphericalUnitVector{N}, y::AbstractVector, index) where {N}
+    @info "HERE"
     T = eltype(y)
     index2 = index + N + 1
     # normalized vector
@@ -130,15 +132,16 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Sphe
     ℓ = TV.logjac_zero(flag, T)
     out = ntuple(_ -> similar(y, dims), Val(N + 1))
     M = N + 1 # rename because scope issues with Reactant
+    index0 = index
     @trace for i in eachindex(out...)
-        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
+        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index0)
         ℓ += ℓi
-        index = index2
+        index0 = index2
         ntuple(Val(M)) do n
             rsetindex!(out[n], rgetindex(θ, n), i)
         end
     end
-    return out, ℓ, index
+    return out, ℓ, index + N * length(out)
 end
 
 
@@ -148,7 +151,7 @@ function TV.inverse_at!(x::AbstractArray, index, t::TV.ArrayTransformation{<:Sph
     ix = 1
     itr = index:(N + 1):(index + TV.dimension(t) - 1)
     M = N + 1 # rename because scope issues with Reactant
-    @trace track_numbers = false for i in itr
+    @trace for i in itr
         ntuple(Val(M)) do j
             rsetindex!(x, rgetindex(y[j], ix), i + j - 1)
         end
