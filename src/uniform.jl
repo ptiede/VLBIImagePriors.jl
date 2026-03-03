@@ -35,16 +35,16 @@ function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
     return (size(d) == size(x)) && !any(x -> (d.a > x)||(x > d.b), x)
 end
 
-function Dists._logpdf(d::ImageUniform, x::AbstractMatrix{<:Real})
+function Dists.logpdf(d::ImageUniform, x::AbstractMatrix{<:Number})
     !Dists.insupport(d, x) && return -Inf
     return -log(d.b - d.a) * (d.nx * d.ny)
 end
 
-function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Real})
-    return Dists._logpdf(d, x), Δ -> (NoTangent(), NoTangent(), ZeroTangent())
+function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageUniform, x::AbstractMatrix{<:Number})
+    return Dists.logpdf(d, x), Δ -> (NoTangent(), NoTangent(), ZeroTangent())
 end
 
-function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
+function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix{<:Number})
     @assert size(d) == size(x) "Size of input matrix and distribution are not the same"
     d = Dists.Uniform(d.a, d.b)
     return rand!(rng, d, x)
