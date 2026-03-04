@@ -14,6 +14,26 @@ end
 EnzymeRules.inactive(::typeof(FFTW.assert_applicable), args...) = nothing
 EnzymeRules.inactive_type(::Type{<:FFTW.Plan}) = true
 
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfig,
+        func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
+        ::Type{RT},
+		plan::EnzymeRules.Const,
+        X::EnzymeRules.Annotation{<:StridedArray{T}},
+        Y::EnzymeRules.Annotation{<:StridedArray{T}}
+    ) where {RT, T}
+    func.val(plan.val, X.val, Y.val)
+    if EnzymeRules.width(config) == 1
+        func.val(plan.val, X.dval, Y.dval)
+    else
+        ntuple(EnzymeRules.width(config)) do i
+            Base.@_inline_meta
+            return func.val(plan.val, X.dval[i], Y.dval[i])
+        end
+    end
+    return nothing
+end
+
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfig,
         func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},

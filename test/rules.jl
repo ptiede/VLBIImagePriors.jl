@@ -20,6 +20,12 @@ using FiniteDifferences
         autodiff(Reverse, f, Const(p), Duplicated(copy(X), dX))
         dXfd, = grad(fdm, x -> f(p, copy(x)), copy(X)) # have to copy because of inplace
         @test dX ≈ dXfd
+
+        # test Forward via directional derivative consistency
+        V = randn(ComplexF64, size(X))
+        dϕ_fwd, = autodiff(Forward, f, Duplicated, Const(p), Duplicated(copy(X), copy(V)))
+        dϕ_rev = sum(real.(conj.(dX) .* V))
+        @test dϕ_fwd ≈ dϕ_rev
     end
 
 
@@ -30,5 +36,12 @@ using FiniteDifferences
         autodiff(Reverse, f, Const(p), Duplicated(copy(X), dX))
         dXfd, = grad(fdm, x -> f(p, copy(x)), copy(X)) # have to copy because of inplace
         @test dX ≈ dXfd
+
+        # test Forward via directional derivative consistency
+        V = randn(Float64, size(X))
+        dϕ_fwd, = autodiff(Forward, f, Duplicated, Const(p), Duplicated(copy(X), copy(V)))
+        dϕ_rev = sum(dX .* V)
+        @test dϕ_fwd ≈ dϕ_rev
+
     end
 end
