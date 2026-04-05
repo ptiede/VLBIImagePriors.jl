@@ -26,6 +26,21 @@ using FiniteDifferences
         dϕ_fwd, = autodiff(Forward, f, Duplicated, Const(p), Duplicated(copy(X), copy(V)))
         dϕ_rev = sum(real.(conj.(dX) .* V))
         @test dϕ_fwd ≈ dϕ_rev
+
+        # Complex inplace transform with BatchDuplicated
+        @testset "Complex inplace transform with BatchDuplicated" begin
+            batch_size = 3
+            
+            Xs = rand(ComplexF64, 8, 8)
+            dXs = (randn(ComplexF64, 8, 8) for _ in 1:batch_size)
+        
+            dϕ_fwd, = autodiff(Forward, f, BatchDuplicated, Const(p), BatchDuplicated(copy(Xs), copy.(dXs)))
+            # Check consistency with directional derivatives
+            for (i, input) in enumerate(Xs)
+                dϕ_rev = sum(real.(conj.(dXs[i]) .* input))
+                @test dϕ_fwd ≈ dϕ_rev
+            end
+        end
     end
 
 
