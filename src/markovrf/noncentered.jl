@@ -54,11 +54,11 @@ standardize(c::GaussMarkovRandomField; flag = FFTW.MEASURE) = standardize(graph(
 
 
 """
-    centerdist!(out, c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real}) where {Order, N}
+    centerdist!(out, c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Number}) where {Order, N}
 
 The in-place version of [`centerdist`](@ref).
 """
-function centerdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real, N}) where {Order, N}
+function centerdist!(out::AbstractArray{<:Number}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Number, N}) where {Order, N}
     κ² = κ(ρ, Val(Order))^2
     # numerator is the normaliztion of the MRF
     # denominator is to make the DST orthonormal
@@ -89,7 +89,7 @@ Note this is substantially more efficient than the manual Cholesky decomposition
 approach, since we are able to use the fact that the MRF has a particularlly simple eigenspace 
 decomposition.
 """
-function centerdist(c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
+function centerdist(c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Number}) where {Order}
     out = similar(z)
     centerdist!(out, c, ρ, z)
     return out
@@ -103,18 +103,18 @@ Note this is substantially more efficient than the manual Cholesky decomposition
 approach, since we are able to use the fact that the MRF has a particularlly simple eigenspace 
 decomposition.
 """
-function noncenterdist(c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real})
+function noncenterdist(c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Number})
     out = similar(z)
     noncenterdist!(out, c, ρ, z)
     return out
 end
 
 """
-    noncenterdist!(out, c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Real}) where {Order}
+    noncenterdist!(out, c::NonCenteredMarkovTransform, ρ, z::AbstractArray{<:Number}) where {Order}
 Transforms the Markov Random Field `z` back uncorrelated standardized space, i.e. whitened noise,
 inplace into `out`.
 """
-function noncenterdist!(out::AbstractArray{<:Real}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Real}) where {Order}
+function noncenterdist!(out::AbstractArray{<:Number}, c::NonCenteredMarkovTransform{Order}, ρ, z::AbstractArray{<:Number}) where {Order}
     κ² = κ(ρ, Val(Order))^2
     # numerator is the normaliztion of the MRF
     # denominator is to make the DST orthonormal

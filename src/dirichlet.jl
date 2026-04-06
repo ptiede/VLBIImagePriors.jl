@@ -2,7 +2,7 @@ export ImageDirichlet
 
 """
     ImageDirichlet(α::AbstractMatrix)
-    ImageDirichlet(α::Real, ny, nx)
+    ImageDirichlet(α::Number, ny, nx)
 
 A Dirichlet distribution defined on a matrix. Samples from this produce matrices
 whose elements sum to unity. This is a useful image prior when you want to separately
@@ -25,7 +25,7 @@ struct ImageDirichlet{T, A <: AbstractMatrix{T}, S} <: Dists.ContinuousMatrixDis
     end
 end
 
-function ImageDirichlet(α::Real, nx::Int, ny::Int)
+function ImageDirichlet(α::Number, nx::Int, ny::Int)
     return ImageDirichlet(fill(α, nx, ny))
 end
 
@@ -96,8 +96,8 @@ end
 function Dists._rand!(
         rng::AbstractRNG,
         d::ImageDirichlet{T, <:FillArrays.AbstractFill{T}},
-        x::AbstractMatrix{<:Real}
-    ) where {T <: Real}
+        x::AbstractMatrix{<:Number}
+    ) where {T <: Number}
     Dists.rand!(rng, Dists.Gamma(FillArrays.getindex_value(d.α)), x)
     return lmul!(inv(sum(x)), x) # this returns x
 end
