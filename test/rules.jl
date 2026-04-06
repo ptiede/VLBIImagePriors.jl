@@ -20,6 +20,25 @@ using FiniteDifferences
         autodiff(Reverse, f, Const(p), Duplicated(copy(X), dX))
         dXfd, = grad(fdm, x -> f(p, copy(x)), copy(X)) # have to copy because of inplace
         @test dX ≈ dXfd
+
+        # test Forward via directional derivative consistency
+        V = randn(ComplexF64, size(X))
+        dϕ_fwd, = autodiff(Forward, f, Duplicated, Const(p), Duplicated(copy(X), copy(V)))
+        dϕ_rev = sum(real.(conj.(dX) .* V))
+        @test dϕ_fwd ≈ dϕ_rev
+
+        # Complex inplace transform with BatchDuplicated
+        @testset "Complex inplace transform with BatchDuplicated" begin
+            batch_size = 3
+            
+            dXs = Tuple(collect(randn(ComplexF64, 8, 8) for _ in 1:batch_size))
+            dϕ_fwd = autodiff(Forward, f, BatchDuplicated, Const(p), BatchDuplicated(copy(X), deepcopy(dXs)))
+            # Check consistency with directional derivatives
+            for (i, V) in enumerate(dXs)
+                dϕ_rev = sum(real.(conj.(dX) .* V))
+                @test dϕ_fwd[1][i] ≈ dϕ_rev
+            end
+        end
     end
 
 
@@ -30,5 +49,23 @@ using FiniteDifferences
         autodiff(Reverse, f, Const(p), Duplicated(copy(X), dX))
         dXfd, = grad(fdm, x -> f(p, copy(x)), copy(X)) # have to copy because of inplace
         @test dX ≈ dXfd
+
+        # test Forward via directional derivative consistency
+        V = randn(Float64, size(X))
+        dϕ_fwd, = autodiff(Forward, f, Duplicated, Const(p), Duplicated(copy(X), copy(V)))
+        dϕ_rev = sum(dX .* V)
+        @test dϕ_fwd ≈ dϕ_rev
+
+        @testset "R2R inplace transform with BatchDuplicated" begin
+            batch_size = 3
+
+            dXs = Tuple(collect(randn(Float64, 8, 8) for _ in 1:batch_size))
+            dϕ_fwd = autodiff(Forward, f, BatchDuplicated, Const(p), BatchDuplicated(copy(X), deepcopy(dXs)))
+
+            for (i, V) in enumerate(dXs)
+                dϕ_rev = sum(dX .* V)
+                @test dϕ_fwd[1][i] ≈ dϕ_rev
+            end
+        end
     end
 end
