@@ -56,5 +56,16 @@ using FiniteDifferences
         dϕ_rev = sum(dX .* V)
         @test dϕ_fwd ≈ dϕ_rev
 
+        @testset "R2R inplace transform with BatchDuplicated" begin
+            batch_size = 3
+
+            dXs = Tuple(collect(randn(Float64, 8, 8) for _ in 1:batch_size))
+            dϕ_fwd = autodiff(Forward, f, BatchDuplicated, Const(p), BatchDuplicated(copy(X), deepcopy(dXs)))
+
+            for (i, V) in enumerate(dXs)
+                dϕ_rev = sum(dX .* V)
+                @test dϕ_fwd[1][i] ≈ dϕ_rev
+            end
+        end
     end
 end
