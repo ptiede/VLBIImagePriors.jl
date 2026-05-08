@@ -246,9 +246,9 @@ function ampspectrum!(executor, ns, ps::AbstractPowerSpectrum, ks, z)
 
     _spectrum!(executor, ns, ps, kx, ky)
 
-    Tπ = convert(eltype(z), π)   
+    Tπ = convert(eltype(z), π)
     nrm = sum(abs2, ns)
-    nrm *= step(kx) * step(ky) * inv(2*Tπ)
+    nrm *= step(kx) * step(ky) * inv(2 * Tπ)
     rtnrm = inv(sqrt(nrm))
 
     ns .= ns .* z .* rtnrm

@@ -24,7 +24,6 @@ function LinearAlgebra.logdet(d::MarkovRandomFieldGraph{N}, ρ::RNumber) where {
     return N * a - length(d.λQ) * log(VLBIImagePriors.mrfnorm(d, κ²))
 end
 
-# Needs Reactant support for Ref during broadcasting
 as(ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky) = VLBIImagePriors.ampspectrum(ps, (kx, ky))
 function VLBIImagePriors._spectrum!(::ComradeBase.ReactantEx, ns::Reactant.AnyTracedRArray, ps::VLBIImagePriors.AbstractPowerSpectrum, kx, ky)
     return ns .= as.(Ref(ps), kx, ky')
