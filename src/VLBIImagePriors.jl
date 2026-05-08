@@ -17,7 +17,6 @@ using SpecialFunctions: loggamma
 using StatsFuns
 import TransformVariables as TV
 import HypercubeTransform as HC
-using NamedTupleTools
 using HypercubeTransform: DeltaDist
 using ReactantCore
 using ComradeBase: rgetindex, rsetindex!
