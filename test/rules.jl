@@ -30,7 +30,7 @@ using FiniteDifferences
         # Complex inplace transform with BatchDuplicated
         @testset "Complex inplace transform with BatchDuplicated" begin
             batch_size = 3
-            
+
             dXs = Tuple(collect(randn(ComplexF64, 8, 8) for _ in 1:batch_size))
             dϕ_fwd = autodiff(Forward, f, BatchDuplicated, Const(p), BatchDuplicated(copy(X), deepcopy(dXs)))
             # Check consistency with directional derivatives

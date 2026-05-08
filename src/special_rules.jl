@@ -18,7 +18,7 @@ function EnzymeRules.forward(
         config::EnzymeRules.FwdConfig,
         func::EnzymeRules.Const{typeof(FFTW.unsafe_execute!)},
         ::Type{RT},
-		plan::EnzymeRules.Const,
+        plan::EnzymeRules.Const,
         X::EnzymeRules.Annotation{<:StridedArray{T}},
         Y::EnzymeRules.Annotation{<:StridedArray{T}}
     ) where {RT, T}
