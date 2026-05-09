@@ -1,11 +1,60 @@
 @testset "Reactant-friendly distributions" begin
 
+    @testset "argument validation" begin
+        @test_throws ArgumentError VLBIGaussian(0.0, -1.0)
+        @test_throws ArgumentError VLBIGaussian(0.0, 0.0)
+        @test_throws ArgumentError VLBIGaussian(0.0, [1.0, -1.0])
+        @test_throws ArgumentError VLBIExponential(-1.0)
+        @test_throws ArgumentError VLBIUniform(2.0, 1.0)
+        @test_throws ArgumentError VLBIUniform(2.0, 2.0)
+        @test_throws ArgumentError VLBIUniform([1.0, 2.0], [3.0, 1.5])
+        @test_throws ArgumentError VLBIInverseGamma(-1.0, 2.0)
+        @test_throws ArgumentError VLBIInverseGamma(2.0, -1.0)
+        @test_throws ArgumentError VLBITDist(-1.0)
+        @test_throws ArgumentError VLBITDist(5.0, 0.0, -1.0)
+
+        # Public AffineDistribution constructor enforces shape match.
+        @test_throws ArgumentError AffineDistribution(zeros(3, 3), 1.0, StdNormal((4, 4)))
+        @test_throws ArgumentError AffineDistribution(0.0, ones(3, 3), StdNormal((4, 4)))
+    end
+
+    @testset "Distributions.params returns user-visible parameters" begin
+        @test params(VLBIGaussian(0.3, 1.2)) == (0.3, 1.2)
+        @test params(VLBIExponential(2.5)) == (2.5,)
+        @test params(VLBIUniform(-1.0, 3.0)) == (-1.0, 3.0)
+        @test params(VLBIInverseGamma(3.0, 2.0)) == (3.0, 2.0)
+        @test params(VLBITDist(5.0, 0.3, 1.2)) == (5.0, 0.3, 1.2)
+    end
+
+    @testset "mean / var work for array AffineDistribution" begin
+        d = VLBIGaussian(2.0, 1.5, (3, 4))
+        @test mean(d) == fill(2.0, 3, 4)
+        @test var(d) ≈ fill(1.5^2, 3, 4)
+
+        μ = randn(2, 3)
+        σ = abs.(randn(2, 3)) .+ 0.1
+        dpe = VLBIGaussian(μ, σ)
+        @test mean(dpe) ≈ μ
+        @test var(dpe) ≈ σ .^ 2
+    end
+
+    @testset "Base.show for AffineDistribution" begin
+        io = IOBuffer()
+        show(io, VLBIGaussian(0.0, 1.0, (3, 4)))
+        s = String(take!(io))
+        @test occursin("StdNormal", s)
+        @test occursin("size=(3, 4)", s)
+    end
+
+
     @testset "unnormed_logpdf + lognorm == logpdf (and lognorm is data-independent)" begin
         scalar_cases = [
             VLBIGaussian(0.5, 1.3),
             VLBIExponential(2.0),
             VLBIUniform(-1.0, 3.0),
             VLBIInverseGamma(3.0, 2.0),
+            VLBITDist(5.0),
+            VLBITDist(5.0, 0.3, 1.2),
         ]
         for d in scalar_cases
             ln = lognorm(d)
@@ -22,8 +71,11 @@
             VLBIUniform(-1.0, 1.0, (3, 4)),
             VLBIInverseGamma(2.0, 1.0, (3, 4)),
             VLBIInverseGamma(abs.(randn(3, 4)) .+ 1.5, abs.(randn(3, 4)) .+ 0.5),
+            VLBITDist(5.0, 0.0, 1.0, (3, 4)),
+            VLBITDist(abs.(randn(3, 4)) .+ 2.0, zeros(3, 4), ones(3, 4)),
             StdNormal((3, 4)),
             StdInverseGamma(abs.(randn(3, 4)) .+ 1.5),
+            StdTDist(abs.(randn(3, 4)) .+ 2.0),
         ]
         for d in array_cases
             ln = lognorm(d)
@@ -43,6 +95,7 @@
             (VLBIExponential(2.5), Distributions.Exponential(2.5)),
             (VLBIUniform(-1.0, 3.0), Uniform(-1.0, 3.0)),
             (VLBIInverseGamma(3.0, 2.0), InverseGamma(3.0, 2.0)),
+            (VLBITDist(5.0), TDist(5.0)),
         ]
         for (d, ref) in cases
             for x in [rand(ref) for _ in 1:50]
@@ -59,6 +112,7 @@
             (VLBIExponential(2.5), Distributions.Exponential(2.5)),
             (VLBIUniform(-1.0, 3.0), Uniform(-1.0, 3.0)),
             (VLBIInverseGamma(3.0, 2.0), InverseGamma(3.0, 2.0)),
+            (VLBITDist(5.0), TDist(5.0)),
         ]
         ps = collect(0.05:0.1:0.95)
         for (d, ref) in cases
@@ -70,7 +124,10 @@
     end
 
     @testset "scalar asflat round-trip" begin
-        for d in (VLBIGaussian(0.0, 1.0), VLBIExponential(2.0), VLBIUniform(-1.0, 1.0), VLBIInverseGamma(2.0, 1.0))
+        for d in (
+                VLBIGaussian(0.0, 1.0), VLBIExponential(2.0), VLBIUniform(-1.0, 1.0),
+                VLBIInverseGamma(2.0, 1.0), VLBITDist(5.0), VLBITDist(5.0, 0.3, 1.2),
+            )
             t = asflat(d)
             x = rand(d)
             p = HypercubeTransform.inverse(t, x)
@@ -121,6 +178,12 @@
         ed = VLBIExponential(θe)
         ye = abs.(randn(2, 3)) .+ 0.1
         @test logpdf(ed, ye) ≈ sum(logpdf.(Distributions.Exponential.(θe), ye))
+
+        # TDist per-element
+        νg = abs.(randn(2, 3)) .+ 2.0
+        td = VLBITDist(νg, zeros(2, 3), ones(2, 3))
+        yt = randn(2, 3)
+        @test logpdf(td, yt) ≈ sum(logpdf.(TDist.(νg), yt))
     end
 
     @testset "mixed scalar / array params" begin
@@ -136,7 +199,10 @@
     end
 
     @testset "Std bases" begin
-        for b in (StdNormal((3, 4)), StdExponential((3, 4)), StdUniform((3, 4)), StdInverseGamma(2.0, (3, 4)))
+        for b in (
+                StdNormal((3, 4)), StdExponential((3, 4)), StdUniform((3, 4)),
+                StdInverseGamma(2.0, (3, 4)), StdTDist(5.0, (3, 4)),
+            )
             z = rand(b)
             @test size(z) == (3, 4)
             @test isfinite(logpdf(b, z))
@@ -146,7 +212,10 @@
         end
 
         # scalar bases
-        for b in (StdNormal{Float64, 0}(()), StdExponential(), StdUniform(), StdInverseGamma(2.0))
+        for b in (
+                StdNormal{Float64, 0}(()), StdExponential(), StdUniform(),
+                StdInverseGamma(2.0), StdTDist(5.0),
+            )
             z = rand(b)
             @test isfinite(logpdf(b, z))
             t = asflat(b)

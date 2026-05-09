@@ -27,8 +27,27 @@ end
 function AffineDistribution(
         loc, scale, base::Dists.Distribution{Dists.ArrayLikeVariate{N}}
     ) where {N}
+    if loc isa AbstractArray
+        @argcheck size(loc) == size(base) "AffineDistribution: size(loc) must match size(base)"
+    end
+    if scale isa AbstractArray
+        @argcheck size(scale) == size(base) "AffineDistribution: size(scale) must match size(base)"
+    end
     return AffineDistribution{typeof(loc), typeof(scale), typeof(base), N}(loc, scale, base)
 end
+
+
+function Base.show(io::IO, d::AffineDistribution)
+    print(io, "AffineDistribution(")
+    print(io, "loc::", _summarize_param(d.loc))
+    print(io, ", scale::", _summarize_param(d.scale))
+    print(io, ", base=", nameof(typeof(d.base)))
+    sz = size(d)
+    isempty(sz) || print(io, ", size=", sz)
+    return print(io, ")")
+end
+@inline _summarize_param(p::Number) = string(p)
+@inline _summarize_param(p::AbstractArray) = string(eltype(p), size(p))
 
 Base.size(d::AffineDistribution) = size(d.base)
 Base.length(d::AffineDistribution) = length(d.base)
@@ -115,15 +134,12 @@ end
     end
     return x
 end
+# Sampling is CPU-only — under Reactant tracing, `rand!` has no clean
+# semantics so we don't override `<:Number` here. Gradients flow through
+# `logpdf`, not sampling.
 function Dists._rand!(
         rng::AbstractRNG, d::AffineDistribution{Tloc, Tscale, B, N},
         x::AbstractArray{<:Real, N}
-    ) where {Tloc, Tscale, B, N}
-    return _affine_rand!(rng, d, x)
-end
-function Dists._rand!(
-        rng::AbstractRNG, d::AffineDistribution{Tloc, Tscale, B, N},
-        x::AbstractArray{<:Number, N}
     ) where {Tloc, Tscale, B, N}
     return _affine_rand!(rng, d, x)
 end
@@ -148,13 +164,28 @@ end
 
 # ----- moments ------------------------------------------------------------
 
-function Dists.mean(d::AffineDistribution{<:Number, <:Number, B, 0}) where {B}
-    return d.loc + d.scale * Dists.mean(d.base)
+# Moments. Broadcasting forms work for both scalar (N = 0) and array
+# (N >= 1) — the scalar case collapses via scalar arithmetic, the array
+# case lifts to the right shape via the per-element base mean/var.
+Dists.mean(d::AffineDistribution) = d.loc .+ d.scale .* Dists.mean(d.base)
+Dists.var(d::AffineDistribution) = d.scale .^ 2 .* Dists.var(d.base)
+Dists.std(d::AffineDistribution) = sqrt.(Dists.var(d))
+
+
+# ----- params -------------------------------------------------------------
+# The user-visible parameter tuple in the order each user-facing constructor
+# accepts, so introspecting tools (e.g. for serialisation or pretty-printing
+# a hierarchical model) recover the original argument list.
+
+Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdNormal}) = (d.loc, d.scale)
+Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdExponential}) = (d.scale,)
+Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdUniform}) = (d.loc, d.loc .+ d.scale)
+function Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdInverseGamma})
+    return (d.base.α, d.scale)
 end
-function Dists.var(d::AffineDistribution{<:Number, <:Number, B, 0}) where {B}
-    return d.scale^2 * Dists.var(d.base)
+function Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdTDist})
+    return (d.base.ν, d.loc, d.scale)
 end
-Dists.std(d::AffineDistribution{<:Number, <:Number, B, 0}) where {B} = sqrt(Dists.var(d))
 
 
 # ----- cdf / quantile -----------------------------------------------------
@@ -181,6 +212,7 @@ end
 # fall back to unconstrained transforms and let `logpdf` enforce support.
 
 HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdNormal, 0}) = TV.asℝ
+HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdTDist, 0}) = TV.asℝ
 HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdExponential, 0}) = TV.asℝ₊
 HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdInverseGamma, 0}) = TV.asℝ₊
 function HC.asflat(d::AffineDistribution{<:Real, <:Real, <:StdUniform, 0})
@@ -189,6 +221,9 @@ end
 HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdUniform, 0}) = TV.asℝ
 
 function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdNormal, N}) where {N}
+    return TV.as(Array, TV.asℝ, size(d)...)
+end
+function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdTDist, N}) where {N}
     return TV.as(Array, TV.asℝ, size(d)...)
 end
 function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdExponential, N}) where {N}
