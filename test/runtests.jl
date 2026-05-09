@@ -20,5 +20,6 @@ using Zygote
     include("srf.jl")
     include("simplex.jl")
     include("rules.jl")
+    include("distributions.jl")
     include("reactant.jl")
 end

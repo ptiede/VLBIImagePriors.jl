@@ -49,5 +49,36 @@ using Test
 
     end
 
+    @testset "Affine distributions" begin
+        # Scalar with traced parameters and traced input
+        f_g(μ, σ, x) = logpdf(VLBIGaussian(μ, σ), x)
+        @test @jit(f_g(ConcreteRNumber(0.3), ConcreteRNumber(1.2), ConcreteRNumber(0.5))) ≈
+            f_g(0.3, 1.2, 0.5)
+
+        f_e(θ, x) = logpdf(VLBIExponential(θ), x)
+        @test @jit(f_e(ConcreteRNumber(2.5), ConcreteRNumber(1.0))) ≈ f_e(2.5, 1.0)
+
+        f_u(a, b, x) = logpdf(VLBIUniform(a, b), x)
+        @test @jit(f_u(ConcreteRNumber(-1.0), ConcreteRNumber(3.0), ConcreteRNumber(0.5))) ≈
+            f_u(-1.0, 3.0, 0.5)
+
+        f_ig(α, θ, x) = logpdf(VLBIInverseGamma(α, θ), x)
+        @test @jit(f_ig(ConcreteRNumber(3.0), ConcreteRNumber(2.0), ConcreteRNumber(1.5))) ≈
+            f_ig(3.0, 2.0, 1.5)
+
+        # Array form: shared scalar parameters, traced input matrix
+        d = VLBIGaussian(0.0, 1.0, (4, 4))
+        x = randn(4, 4)
+        xr = Reactant.to_rarray(x)
+        @test @jit(logpdf(d, xr)) ≈ logpdf(d, x)
+
+        # Per-element params with traced parameter arrays and traced input
+        μ = randn(4, 4)
+        σ = abs.(randn(4, 4)) .+ 0.1
+        μr = Reactant.to_rarray(μ)
+        σr = Reactant.to_rarray(σ)
+        f_pe(μ, σ, x) = logpdf(VLBIGaussian(μ, σ), x)
+        @test @jit(f_pe(μr, σr, xr)) ≈ f_pe(μ, σ, x)
+    end
 
 end

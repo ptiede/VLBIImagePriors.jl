@@ -13,7 +13,8 @@ using FFTW
 import FillArrays
 using LinearAlgebra
 using Random
-using SpecialFunctions: loggamma
+using SpecialFunctions: loggamma, erf, erfinv
+using SpecialFunctions
 using StatsFuns
 import TransformVariables as TV
 import HypercubeTransform as HC
@@ -34,6 +35,7 @@ include("angular_dists.jl")
 include("special_rules.jl")
 include("markovrf/markovrf.jl")
 include("srf.jl")
+include("distributions/distributions.jl")
 include("heirarchical.jl")
 include("logratio_transform.jl")
 
