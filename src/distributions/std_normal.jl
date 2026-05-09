@@ -39,8 +39,11 @@ end
 
 Dists.logpdf(d::StdNormal{T, 0}, x::Number) where {T} = unnormed_logpdf(d, x) + lognorm(d)
 
-# Three-method pattern (`<:Real`, `<:Number`, `_logpdf`) breaks ambiguity with
-# Distributions' fallback `logpdf(::Distribution{ArrayLikeVariate{N}}, ::AbstractArray{<:Real, N})`.
+# Three-method pattern. `<:Number` is the workhorse (covers Reactant traced
+# eltypes); `<:Real` is required to break ambiguity with Distributions'
+# fallback `logpdf(::Distribution{ArrayLikeVariate{N}}, ::AbstractArray{<:Real, M})`
+# at `Distributions/.../common.jl:261`. Without the `<:Real` override Julia
+# emits an ambiguity error for `Matrix{Float64}` inputs (verified empirically).
 function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{<:Number, N}) where {T, N}
     return unnormed_logpdf(d, x) + lognorm(d)
 end

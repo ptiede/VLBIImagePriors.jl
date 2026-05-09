@@ -97,8 +97,11 @@ function Dists.logpdf(
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
-# Array — three-method pattern matches `bases.jl` to break ambiguity with
-# Distributions' fallback `logpdf(::Distribution{ArrayLikeVariate{N}}, ::AbstractArray{<:Real, N})`.
+# Three-method pattern, identical to `bases.jl`. The `<:Real` override is
+# required to break ambiguity with Distributions' top-level
+# `logpdf(::Distribution{ArrayLikeVariate{N}}, ::AbstractArray{<:Real, M})`
+# at `Distributions/.../common.jl:261` — Julia errors on `Matrix{Float64}`
+# inputs without it (verified empirically).
 function Dists._logpdf(
         d::AffineDistribution{Tloc, Tscale, B, N}, x::AbstractArray{<:Number, N}
     ) where {Tloc, Tscale, B, N}

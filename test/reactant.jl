@@ -66,6 +66,14 @@ using Test
         @test @jit(f_ig(ConcreteRNumber(3.0), ConcreteRNumber(2.0), ConcreteRNumber(1.5))) ≈
             f_ig(3.0, 2.0, 1.5)
 
+        f_t(ν, μ, σ, x) = logpdf(VLBITDist(ν, μ, σ), x)
+        @test @jit(
+            f_t(
+                ConcreteRNumber(5.0), ConcreteRNumber(0.3),
+                ConcreteRNumber(1.2), ConcreteRNumber(0.7)
+            )
+        ) ≈ f_t(5.0, 0.3, 1.2, 0.7)
+
         # Array form: shared scalar parameters, traced input matrix
         d = VLBIGaussian(0.0, 1.0, (4, 4))
         x = randn(4, 4)
@@ -79,6 +87,30 @@ using Test
         σr = Reactant.to_rarray(σ)
         f_pe(μ, σ, x) = logpdf(VLBIGaussian(μ, σ), x)
         @test @jit(f_pe(μr, σr, xr)) ≈ f_pe(μ, σ, x)
+
+        # Per-element TDist with traced ν, μ, σ
+        νg = abs.(randn(4, 4)) .+ 2.0
+        νr = Reactant.to_rarray(νg)
+        f_tpe(ν, μ, σ, x) = logpdf(VLBITDist(ν, μ, σ), x)
+        @test @jit(f_tpe(νr, μr, σr, xr)) ≈ f_tpe(νg, μ, σ, x)
+
+        # `unnormed_logpdf` + `lognorm` split traces under Reactant (the
+        # caching pathway — `lognorm` should be precomputable from traced
+        # parameters and `unnormed_logpdf` evaluable on traced inputs).
+        f_split(μ, σ, x) =
+            unnormed_logpdf(VLBIGaussian(μ, σ), x) + lognorm(VLBIGaussian(μ, σ))
+        @test @jit(f_split(μr, σr, xr)) ≈ f_split(μ, σ, x)
+
+        αg = abs.(randn(4, 4)) .+ 1.5
+        θg = abs.(randn(4, 4)) .+ 0.5
+        αr = Reactant.to_rarray(αg)
+        θr = Reactant.to_rarray(θg)
+        yg = abs.(randn(4, 4)) .+ 0.1
+        yr = Reactant.to_rarray(yg)
+        f_ig_split(α, θ, y) =
+            unnormed_logpdf(VLBIInverseGamma(α, θ), y) +
+            lognorm(VLBIInverseGamma(α, θ))
+        @test @jit(f_ig_split(αr, θr, yr)) ≈ f_ig_split(αg, θg, yg)
     end
 
 end

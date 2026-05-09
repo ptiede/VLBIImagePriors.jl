@@ -236,7 +236,7 @@
         @test size(xback.params) == (3, 4)
     end
 
-    @testset "gradient cross-check (Zygote vs FiniteDifferences) on per-element Gaussian" begin
+    @testset "gradient cross-check (Enzyme vs FiniteDifferences) on per-element Gaussian" begin
         μ = randn(2, 3)
         σ = abs.(randn(2, 3)) .+ 0.2
         d = VLBIGaussian(μ, σ)
@@ -248,8 +248,8 @@
 
         s = central_fdm(5, 1)
         g_fd = first(FiniteDifferences.grad(s, f, x))
-        g_zy = first(Zygote.gradient(f, x))
-        @test isapprox(g_fd, g_zy; atol = 1.0e-6)
+        g_en = Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(f), x)[1]
+        @test isapprox(g_fd, g_en; atol = 1.0e-6)
     end
 
 end

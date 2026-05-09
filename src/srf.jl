@@ -354,5 +354,3 @@ end
 function std_dist(d::StationaryRandomFieldPlan)
     return StdNormal{eltype(d.kx), 2}((length(d.kx), length(d.ky)))
 end
-
-
