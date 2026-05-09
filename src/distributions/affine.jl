@@ -155,6 +155,13 @@ function Dists.insupport(
     ) where {Tloc, Tscale, B}
     return Dists.insupport(d.base, (x - d.loc) / d.scale)
 end
+# Break ambiguity with `Distributions.insupport(::ContinuousUnivariateDistribution, ::Real)`
+# — `AffineDistribution{...,0}` is a univariate continuous distribution.
+function Dists.insupport(
+        d::AffineDistribution{Tloc, Tscale, B, 0}, x::Real
+    ) where {Tloc, Tscale, B}
+    return Dists.insupport(d.base, (x - d.loc) / d.scale)
+end
 function Dists.insupport(d::AffineDistribution, x::AbstractArray)
     size(x) == size(d) || return false
     @inbounds for i in eachindex(x)

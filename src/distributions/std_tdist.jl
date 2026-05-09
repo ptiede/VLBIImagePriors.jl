@@ -104,6 +104,9 @@ end
 # ----- support / moments --------------------------------------------------
 
 Dists.insupport(::StdTDist, ::Number) = true
+# `<:Real` overload breaks ambiguity with Distributions' generic
+# `insupport(::ContinuousUnivariateDistribution, ::Real)`.
+Dists.insupport(::StdTDist, ::Real) = true
 Dists.insupport(d::StdTDist, x::AbstractArray) = size(d) == size(x)
 
 function Dists.mean(d::StdTDist{T, <:Real, 0}) where {T}

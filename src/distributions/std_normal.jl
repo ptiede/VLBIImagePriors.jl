@@ -14,6 +14,9 @@ Base.size(d::StdNormal) = d.dims
 Base.length(d::StdNormal) = prod(d.dims)
 Base.eltype(::StdNormal{T}) where {T} = T
 Dists.insupport(::StdNormal, ::Number) = true
+# `<:Real` overload breaks ambiguity with Distributions' generic
+# `insupport(::ContinuousUnivariateDistribution, ::Real)`.
+Dists.insupport(::StdNormal, ::Real) = true
 Dists.insupport(::StdNormal, x::AbstractArray) = true
 
 

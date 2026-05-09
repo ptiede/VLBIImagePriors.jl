@@ -69,6 +69,9 @@ end
 # ----- support / moments --------------------------------------------------
 
 Dists.insupport(::StdExponential, x::Number) = x >= 0
+# `<:Real` overload breaks ambiguity with Distributions' generic
+# `insupport(::ContinuousUnivariateDistribution, ::Real)`.
+Dists.insupport(::StdExponential, x::Real) = x >= 0
 function Dists.insupport(d::StdExponential, x::AbstractArray)
     return size(d) == size(x) && all(>=(0), x)
 end
