@@ -87,3 +87,17 @@ Dists.quantile(d::StdExponential{T, 0}, p::Number) where {T} = _std_quantile(d, 
 
 HC.asflat(::StdExponential{T, 0}) where {T} = TV.asℝ₊
 HC.asflat(d::StdExponential{T, N}) where {T, N} = TV.as(Array, TV.asℝ₊, size(d)...)
+
+# Force ArrayHC for all dimensions so the round-trip uses the broadcasting
+# kernel — see the comment in distributions.jl for why ScalarHC doesn't work.
+HC.ascube(d::StdExponential) = HC.ArrayHC(d)
+function HC._step_transform(h::HC.ArrayHC{<:StdExponential}, p::AbstractVector, index)
+    out = _ascube_z(h.dist, p)
+    return out, index + HC.dimension(h)
+end
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:StdExponential}, y::AbstractVector
+    )
+    x .= _ascube_p(h.dist, y)
+    return index + HC.dimension(h)
+end

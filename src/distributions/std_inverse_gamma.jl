@@ -134,13 +134,15 @@ end
 # ----- cdf / quantile -----------------------------------------------------
 # StdInverseGamma(α): cdf(x) = Q(α, 1/x), where Q is the regularised upper
 # incomplete gamma. SpecialFunctions provides both directions.
+# Element-wise kernels take `α` directly so they broadcast against either a
+# scalar or a per-element parameter array — used by the ArrayHC ascube path
+# below for the per-element-α specialisation.
 
-@inline function _std_cdf(d::StdInverseGamma, x)
-    return last(SpecialFunctions.gamma_inc(d.α, inv(x), 0))
-end
-@inline function _std_quantile(d::StdInverseGamma, p)
-    return inv(SpecialFunctions.gamma_inc_inv(d.α, one(p) - p, p))
-end
+@inline _ig_elem_cdf(α, x) = last(SpecialFunctions.gamma_inc(α, inv(x), 0))
+@inline _ig_elem_quantile(α, p) = inv(SpecialFunctions.gamma_inc_inv(α, one(p) - p, p))
+
+@inline _std_cdf(d::StdInverseGamma, x) = _ig_elem_cdf(d.α, x)
+@inline _std_quantile(d::StdInverseGamma, p) = _ig_elem_quantile(d.α, p)
 
 function Dists.cdf(d::StdInverseGamma{T, <:Number, 0}, x::Number) where {T}
     return _std_cdf(d, x)
@@ -154,3 +156,23 @@ end
 
 HC.asflat(::StdInverseGamma{T, <:Number, 0}) where {T} = TV.asℝ₊
 HC.asflat(d::StdInverseGamma{T, <:Any, N}) where {T, N} = TV.as(Array, TV.asℝ₊, size(d)...)
+
+HC.ascube(d::StdInverseGamma) = HC.ArrayHC(d)
+function HC._step_transform(h::HC.ArrayHC{<:StdInverseGamma}, p::AbstractVector, index)
+    out = _ascube_z(h.dist, p)
+    return out, index + HC.dimension(h)
+end
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:StdInverseGamma}, y::AbstractVector
+    )
+    x .= _ascube_p(h.dist, y)
+    return index + HC.dimension(h)
+end
+
+# Per-element-α override: broadcast against `vec(d.α)` so each data element
+# uses its own shape parameter. The default in distributions.jl uses
+# `Ref(b)`, which traps the whole base — wrong for the array-α case.
+@inline _ascube_z(b::StdInverseGamma{T, <:AbstractArray}, p) where {T} =
+    _ig_elem_quantile.(vec(b.α), p)
+@inline _ascube_p(b::StdInverseGamma{T, <:AbstractArray}, z) where {T} =
+    _ig_elem_cdf.(vec(b.α), z)

@@ -283,6 +283,43 @@ function HC.asflat(d::AffineDistribution{<:StdUniform, N}) where {N}
 end
 
 
+# ----- ascube -------------------------------------------------------------
+# Force ArrayHC for every shape (0-d through N-d), mirroring the per-base
+# ascube overrides. Without this, `AffineDistribution{B, 0, ...}` would fall
+# through to HC's `ascube(::UnivariateDistribution) = ScalarHC(d)` whose
+# `_step_inverse!` only accepts a scalar — but `transform(::ScalarHC, [u])`
+# returns a Vector via `Distributions.quantile`'s broadcast, breaking the
+# round-trip.
+#
+# The matrix-scale variant (`<:AbstractMatrix` scale, 1D base) is excluded:
+# it's a linear-operator transform with no element-wise quantile, so it
+# falls through to HC's default and a clear error.
+
+HC.ascube(d::AffineDistribution{<:Any, <:Any, <:Any, <:Number}) = HC.ArrayHC(d)
+HC.ascube(d::AffineDistribution{<:Any, <:Any, <:Any, <:AbstractArray}) = HC.ArrayHC(d)
+
+function HC._step_transform(
+        h::HC.ArrayHC{<:AffineDistribution}, p::AbstractVector, index
+    )
+    d = h.dist
+    n = HC.dimension(h)
+    pslice = view(p, index:(index + n - 1))
+    z = _ascube_z(d.base, pslice)
+    out = _flat_or_scalar(d.loc) .+ _flat_or_scalar(d.scale) .* z
+    return out, index + n
+end
+
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:AffineDistribution}, y
+    )
+    d = h.dist
+    n = HC.dimension(h)
+    z = (vec(y) .- _flat_or_scalar(d.loc)) ./ _flat_or_scalar(d.scale)
+    @views x[index:(index + n - 1)] .= _ascube_p(d.base, z)
+    return index + n
+end
+
+
 # ----- product_distribution lifting --------------------------------------
 # Mirrors the `DiagonalVonMises` pattern: an `AbstractVector` of scalar
 # `AffineDistribution`s with the same Std base folds into one 1D
