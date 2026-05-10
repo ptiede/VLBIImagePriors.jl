@@ -49,7 +49,7 @@ function simplex_fwd!(x::AbstractArray, y::AbstractArray, flag::Bool)
     n = length(x) - 1
     x[end] = zero(eltype(x))
     stick = one(eltype(x))
-    for i in eachindex(y)
+    @trace for i in eachindex(y)
         z = logistic(y[i] - log(n - i))
         x[i] = stick * z
 

@@ -2,7 +2,7 @@ export ImageDirichlet
 
 """
     ImageDirichlet(α::AbstractMatrix)
-    ImageDirichlet(α::Real, ny, nx)
+    ImageDirichlet(α::Number, ny, nx)
 
 A Dirichlet distribution defined on a matrix. Samples from this produce matrices
 whose elements sum to unity. This is a useful image prior when you want to separately
@@ -25,7 +25,7 @@ struct ImageDirichlet{T, A <: AbstractMatrix{T}, S} <: Dists.ContinuousMatrixDis
     end
 end
 
-function ImageDirichlet(α::Real, nx::Int, ny::Int)
+function ImageDirichlet(α::Number, nx::Int, ny::Int)
     return ImageDirichlet(fill(α, nx, ny))
 end
 
@@ -85,7 +85,7 @@ function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α, lmnB, x::AbstractMat
 end
 
 # Taken from  https://github.com/JuliaStats/Distributions.jl/blob/master/src/multivariate/dirichlet.jl
-function Dists._rand!(rng::AbstractRNG, d::ImageDirichlet, x::AbstractMatrix)
+function Dists.rand!(rng::AbstractRNG, d::ImageDirichlet, x::AbstractMatrix)
     for (i, αi) in zip(eachindex(x), d.α)
         @inbounds x[i] = Dists.rand(rng, Dists.Gamma(αi))
     end
@@ -93,7 +93,7 @@ function Dists._rand!(rng::AbstractRNG, d::ImageDirichlet, x::AbstractMatrix)
 end
 
 # Taken from https://github.com/JuliaStats/Distributions.jl/blob/master/src/multivariate/dirichlet.jl
-function Dists._rand!(
+function Dists.rand!(
         rng::AbstractRNG,
         d::ImageDirichlet{T, <:FillArrays.AbstractFill{T}},
         x::AbstractMatrix{<:Real}

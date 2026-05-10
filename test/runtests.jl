@@ -9,6 +9,7 @@ using Test
 using ComradeBase
 using Serialization
 using LinearAlgebra
+using Random
 using Enzyme
 using Zygote
 
@@ -20,5 +21,6 @@ using Zygote
     include("srf.jl")
     include("simplex.jl")
     include("rules.jl")
+    include("distributions.jl")
     include("reactant.jl")
 end
