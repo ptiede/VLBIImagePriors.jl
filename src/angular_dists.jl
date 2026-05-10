@@ -1,7 +1,7 @@
 export DiagonalVonMises, WrappedUniform
 
 """
-    DiagonalVonMises(μ::Real, κ::Real)
+    DiagonalVonMises(μ::Number, κ::Number)
     DiagonalVonMises(μ::AbstractVector{<:Real}, κ::AbstractVector{<:Real})
 
 Constructs a Von Mises distribution, with mean `μ` and concentraion parameter `κ`.
@@ -29,7 +29,7 @@ function DiagonalVonMises(μ::AbstractVector, κ::AbstractVector)
     return DiagonalVonMises(μ, κ, lognorm)
 end
 
-function DiagonalVonMises(μ::Real, κ::Real)
+function DiagonalVonMises(μ::Number, κ::Number)
     lognorm = _vonmisesnorm(μ, κ)
     return DiagonalVonMises(μ, κ, lognorm)
 end
@@ -52,7 +52,7 @@ function _vonmisesnorm(μ, κ)
     return -n * convert(Ts, log2π) - sum(x -> log(besseli0x(x)), κ)
 end
 
-Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Real) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
+Dists.logpdf(d::DiagonalVonMises{<:Real, <:Real, <:Real}, x::Number) = _vonlogpdf(d.μ, d.κ, x) + d.lnorm
 
 function Dists.logpdf(d::DiagonalVonMises, x::Union{Number, AbstractVector})
     μ = d.μ
@@ -73,7 +73,7 @@ function _vonlogpdf(μ, κ, x)
     return s
 
 end
-_vonlogpdf(μ::Real, κ::Real, x::Real) = (cos(x - μ) - 1) * κ
+_vonlogpdf(μ::Number, κ::Number, x::Number) = (cos(x - μ) - 1) * κ
 
 function ChainRulesCore.rrule(::typeof(_vonlogpdf), μ::Union{Real, AbstractVector}, κ::Union{Real, AbstractVector}, x::Union{Real, AbstractVector})
     s = _vonlogpdf(μ, κ, x)
@@ -156,18 +156,18 @@ function WrappedUniform(p::AbstractVector)
     return WrappedUniform(p, lnorm)
 end
 
-function WrappedUniform(p::Real, n::Int)
+function WrappedUniform(p::Number, n::Int)
     p > 0 && ArgumentError("Period `p` must be positive")
     pvec = FillArrays.Fill(p, n)
     return WrappedUniform(pvec, n * log(p))
 end
 
-function WrappedUniform(p::Real)
+function WrappedUniform(p::Number)
     p > 0 && ArgumentError("Period `p` must be positive")
     return WrappedUniform(p, log(p))
 end
 
-Dists.logpdf(d::WrappedUniform{<:Real}, ::Real) = -d.lnorm
+Dists.logpdf(d::WrappedUniform{<:Real}, ::Number) = -d.lnorm
 Dists.rand(rng::AbstractRNG, d::WrappedUniform{<:Real}) = rand(rng) * d.periods
 
 Dists._logpdf(d::WrappedUniform, ::AbstractVector) = -d.lnorm

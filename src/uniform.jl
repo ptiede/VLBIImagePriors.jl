@@ -1,14 +1,14 @@
 export ImageUniform, ImageSphericalUniform
 
 """
-    ImageUniform(a::Real, b::Real, nx, ny)
+    ImageUniform(a::Number, b::Number, nx, ny)
     ImageUniform(nx, ny)
 
 A uniform distribution over an `nx × ny` image where each pixel is
 independently `Uniform(a, b)`. Thin wrapper around `VLBIUniform(a, b, (nx, ny))`
 — see that constructor for the underlying `AffineDistribution{<:StdUniform, 2}`.
 """
-ImageUniform(a::Real, b::Real, nx::Integer, ny::Integer) = VLBIUniform(a, b, (nx, ny))
+ImageUniform(a::Number, b::Number, nx::Integer, ny::Integer) = VLBIUniform(a, b, (nx, ny))
 ImageUniform(nx::Integer, ny::Integer) = VLBIUniform(0.0, 1.0, (nx, ny))
 
 """

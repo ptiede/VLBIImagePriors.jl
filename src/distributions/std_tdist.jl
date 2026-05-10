@@ -74,7 +74,7 @@ end
 # ----- sampling -----------------------------------------------------------
 
 # `T = Z / sqrt(W/ν)` with `Z ~ N(0, 1)` and `W ~ χ²(ν) = 2·Gamma(ν/2, 1)`.
-@inline function _rand_tdist(rng::AbstractRNG, ν::Real)
+@inline function _rand_tdist(rng::AbstractRNG, ν::Number)
     z = randn(rng)
     g = _rand_gamma(rng, ν / 2)
     return z / sqrt(2 * g / ν)
@@ -106,7 +106,7 @@ end
 
 Dists.insupport(::StdTDist, ::Number) = true
 # `<:Real` overload breaks ambiguity with Distributions' generic
-# `insupport(::ContinuousUnivariateDistribution, ::Real)`.
+# `insupport(::ContinuousUnivariateDistribution, ::Number)`.
 Dists.insupport(::StdTDist, ::Real) = true
 Dists.insupport(d::StdTDist, x::AbstractArray) = size(d) == size(x)
 
@@ -116,8 +116,8 @@ end
 function Dists.var(d::StdTDist{T, <:Real, 0}) where {T}
     return d.ν > 2 ? T(d.ν / (d.ν - 2)) : T(Inf)
 end
-@inline _t_elemmean(ν::Real, T) = ν > 1 ? zero(T) : T(NaN)
-@inline _t_elemvar(ν::Real, T) = ν > 2 ? T(ν / (ν - 2)) : T(Inf)
+@inline _t_elemmean(ν::Number, T) = ν > 1 ? zero(T) : T(NaN)
+@inline _t_elemvar(ν::Number, T) = ν > 2 ? T(ν / (ν - 2)) : T(Inf)
 function Dists.mean(d::StdTDist{T, <:Real, N}) where {T, N}
     return fill(_t_elemmean(d.ν, T), size(d))
 end

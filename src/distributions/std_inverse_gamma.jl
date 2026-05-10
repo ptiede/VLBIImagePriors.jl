@@ -115,8 +115,8 @@ end
 function Dists.var(d::StdInverseGamma{T, <:Real, 0}) where {T}
     return d.α > 2 ? T(1 / ((d.α - 1)^2 * (d.α - 2))) : T(Inf)
 end
-@inline _ig_elemmean(α::Real, T) = α > 1 ? T(1 / (α - 1)) : T(Inf)
-@inline _ig_elemvar(α::Real, T) = α > 2 ? T(1 / ((α - 1)^2 * (α - 2))) : T(Inf)
+@inline _ig_elemmean(α::Number, T) = α > 1 ? T(1 / (α - 1)) : T(Inf)
+@inline _ig_elemvar(α::Number, T) = α > 2 ? T(1 / ((α - 1)^2 * (α - 2))) : T(Inf)
 function Dists.mean(d::StdInverseGamma{T, <:Real, N}) where {T, N}
     return fill(_ig_elemmean(d.α, T), size(d))
 end

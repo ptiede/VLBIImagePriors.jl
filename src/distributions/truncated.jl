@@ -31,8 +31,9 @@ struct VLBITruncated{D <: Dists.UnivariateDistribution, Tl, Tu, T} <:
     lcdf::T    # cdf(d.untruncated, lower) — zero when `lower === nothing`
 end
 
-# Both bounds finite.
-function VLBITruncated(d::Dists.UnivariateDistribution, lower::Real, upper::Real)
+# Both bounds finite. Bounds are `<:Number` (not `<:Real`) so Reactant
+# tracers go through the same constructor.
+function VLBITruncated(d::Dists.UnivariateDistribution, lower::Number, upper::Number)
     lcdf = Dists.cdf(d, lower)
     ucdf = Dists.cdf(d, upper)
     loglcdf = log(lcdf)
@@ -45,7 +46,7 @@ function VLBITruncated(d::Dists.UnivariateDistribution, lower::Real, upper::Real
     )
 end
 # Right-truncated only: `X <= upper`. `lcdf = 0`, `tp = ucdf`.
-function VLBITruncated(d::Dists.UnivariateDistribution, ::Nothing, upper::Real)
+function VLBITruncated(d::Dists.UnivariateDistribution, ::Nothing, upper::Number)
     ucdf = Dists.cdf(d, upper)
     logtp = log(ucdf)
     T = promote_type(typeof(logtp), typeof(ucdf))
@@ -54,7 +55,7 @@ function VLBITruncated(d::Dists.UnivariateDistribution, ::Nothing, upper::Real)
     )
 end
 # Left-truncated only: `X >= lower`. `ucdf = 1`, `tp = 1 - lcdf`.
-function VLBITruncated(d::Dists.UnivariateDistribution, lower::Real, ::Nothing)
+function VLBITruncated(d::Dists.UnivariateDistribution, lower::Number, ::Nothing)
     lcdf = Dists.cdf(d, lower)
     logtp = log1p(-lcdf)
     T = promote_type(typeof(logtp), typeof(lcdf))
@@ -68,9 +69,9 @@ function VLBITruncated(d::Dists.UnivariateDistribution; lower = nothing, upper =
 end
 
 
-Base.minimum(d::VLBITruncated{<:Any, <:Real}) = d.lower
+Base.minimum(d::VLBITruncated{<:Any, <:Number}) = d.lower
 Base.minimum(d::VLBITruncated{<:Any, Nothing}) = Dists.minimum(d.untruncated)
-Base.maximum(d::VLBITruncated{<:Any, <:Any, <:Real}) = d.upper
+Base.maximum(d::VLBITruncated{<:Any, <:Any, <:Number}) = d.upper
 Base.maximum(d::VLBITruncated{<:Any, <:Any, Nothing}) = Dists.maximum(d.untruncated)
 Dists.params(d::VLBITruncated) = (Dists.params(d.untruncated)..., d.lower, d.upper)
 

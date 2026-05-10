@@ -51,7 +51,7 @@ function lognorm end
 # and is a plain Julia `while` loop otherwise — early-exit on first
 # accepted sample either way.
 
-function _rand_gamma(rng::AbstractRNG, α::Real)
+function _rand_gamma(rng::AbstractRNG, α::Number)
     # For α < 1, sample Gamma(α+1, 1) and multiply by U^(1/α).
     boost = α < one(α)
     α_eff = ifelse(boost, α + one(α), α)
