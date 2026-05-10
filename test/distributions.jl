@@ -497,6 +497,48 @@
         @test u_back ≈ u
     end
 
+    @testset "ascube round-trip for Std bases and AffineDistributions" begin
+        # Every base + shape combination must route through ArrayHC and
+        # round-trip via the broadcasting kernel — without this, scalar
+        # AffineDistributions land on ScalarHC and `inverse(c, ::Vector)`
+        # errors (the original user-reported bug).
+        cases = Any[
+            StdNormal(),
+            StdExponential(),
+            StdExponential((6,)),
+            StdUniform(),
+            StdUniform((4,)),
+            StdInverseGamma(2.5),
+            StdInverseGamma(2.5, (3,)),
+            StdInverseGamma(abs.(randn(4)) .+ 1.5),
+            StdTDist(5.0),
+            StdTDist(5.0, (3,)),
+            StdTDist(abs.(randn(4)) .+ 2.0),
+            VLBIGaussian(0.0, 1.0),
+            VLBIGaussian(2.0, 1.5, (3, 4)),
+            VLBIGaussian(randn(2, 3), abs.(randn(2, 3)) .+ 0.1),
+            VLBIExponential(2.0),
+            VLBIExponential(2.0, (3,)),
+            VLBIExponential(abs.(randn(2, 3)) .+ 0.1),
+            VLBIUniform(-1.0, 3.0),
+            VLBIUniform(-1.0, 1.0, (3,)),
+            VLBIUniform(randn(2, 3), randn(2, 3) .+ 5.0),
+            VLBIInverseGamma(2.0, 1.0),
+            VLBIInverseGamma(2.0, 1.0, (3,)),
+            VLBIInverseGamma(abs.(randn(2, 3)) .+ 1.5, abs.(randn(2, 3)) .+ 0.5),
+            VLBITDist(5.0, 0.0, 1.0),
+            VLBITDist(5.0, 0.0, 1.0, (3,)),
+            VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
+        ]
+        for d in cases
+            c = HypercubeTransform.ascube(d)
+            u = rand(HypercubeTransform.dimension(c))
+            x = HypercubeTransform.transform(c, u)
+            u_back = HypercubeTransform.inverse(c, x)
+            @test u_back ≈ u
+        end
+    end
+
     @testset "array asflat round-trip for all VLBI* families" begin
         # Covers the array asflat dispatches in affine.jl (StdNormal, StdTDist,
         # StdExponential, StdInverseGamma, StdUniform — both shared-param and

@@ -138,17 +138,18 @@ end
 #   cdf(z) = 1 - I(arg; a, b) / 2   for z >= 0
 #   cdf(z) =     I(arg; a, b) / 2   for z <  0
 # Quantile inverts the same identity.
+# Element-wise kernels take `ν` directly so they broadcast against either a
+# scalar or a per-element parameter array — used by the ArrayHC ascube path
+# below for the per-element-ν specialisation.
 
-@inline function _std_cdf(d::StdTDist, x)
-    ν = d.ν
+@inline function _t_elem_cdf(ν, x)
     a = ν / 2
     b = oftype(ν, 0.5)
     arg = ν / (ν + x * x)
     P_arg = first(SpecialFunctions.beta_inc(a, b, arg))
     return ifelse(x >= zero(x), one(x) - P_arg / 2, P_arg / 2)
 end
-@inline function _std_quantile(d::StdTDist, p)
-    ν = d.ν
+@inline function _t_elem_quantile(ν, p)
     a = ν / 2
     b = oftype(ν, 0.5)
     p_in = ifelse(p < oftype(p, 0.5), 2 * p, 2 * (one(p) - p))
@@ -157,6 +158,9 @@ end
     z_abs = sqrt(ν * (one(ν) / arg - one(ν)))
     return ifelse(p < oftype(p, 0.5), -z_abs, z_abs)
 end
+
+@inline _std_cdf(d::StdTDist, x) = _t_elem_cdf(d.ν, x)
+@inline _std_quantile(d::StdTDist, p) = _t_elem_quantile(d.ν, p)
 
 function Dists.cdf(d::StdTDist{T, <:Number, 0}, x::Number) where {T}
     return _std_cdf(d, x)
@@ -170,3 +174,21 @@ end
 
 HC.asflat(::StdTDist{T, <:Number, 0}) where {T} = TV.asℝ
 HC.asflat(d::StdTDist{T, <:Any, N}) where {T, N} = TV.as(Array, TV.asℝ, size(d)...)
+
+HC.ascube(d::StdTDist) = HC.ArrayHC(d)
+function HC._step_transform(h::HC.ArrayHC{<:StdTDist}, p::AbstractVector, index)
+    out = _ascube_z(h.dist, p)
+    return out, index + HC.dimension(h)
+end
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:StdTDist}, y::AbstractVector
+    )
+    x .= _ascube_p(h.dist, y)
+    return index + HC.dimension(h)
+end
+
+# Per-element-ν override; see std_inverse_gamma.jl for the rationale.
+@inline _ascube_z(b::StdTDist{T, <:AbstractArray}, p) where {T} =
+    _t_elem_quantile.(vec(b.ν), p)
+@inline _ascube_p(b::StdTDist{T, <:AbstractArray}, z) where {T} =
+    _t_elem_cdf.(vec(b.ν), z)

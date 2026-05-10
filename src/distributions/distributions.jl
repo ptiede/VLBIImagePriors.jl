@@ -51,6 +51,29 @@ function lognorm end
 # and is a plain Julia `while` loop otherwise — early-exit on first
 # accepted sample either way.
 
+# ----- HC.ascube broadcasting helpers ------------------------------------
+# Used by the per-base `HC._step_transform` / `HC._step_inverse!` overrides
+# (and the AffineDistribution wrapper). The whole point is to force every
+# Std base + AffineDistribution through `ArrayHC` so the round-trip is one
+# broadcasting code path regardless of dimension. ScalarHC's `_step_inverse!`
+# only accepts a scalar, but `transform(::ScalarHC, [u])` returns a Vector
+# (from `Distributions.quantile`'s broadcast), which breaks the round-trip.
+#
+# `_flat_or_scalar` lets us mix `Number` and `AbstractArray` `loc`/`scale`
+# (or per-element `α`/`ν`) without per-combination dispatch — scalars
+# broadcast as singletons, arrays get `vec`'d so they zip with the flat
+# data vector that ArrayHC operates on.
+@inline _flat_or_scalar(x::Number) = x
+@inline _flat_or_scalar(x::AbstractArray) = vec(x)
+
+# Default for scalar-parameter bases (StdNormal, StdExponential, StdUniform,
+# and the scalar-α/ν specialisations of StdInverseGamma/StdTDist):
+# broadcast the base's element-wise kernel via `Ref(b)`.
+# Per-element-parameter bases override these in their own files.
+@inline _ascube_z(b, p) = _std_quantile.(Ref(b), p)
+@inline _ascube_p(b, z) = _std_cdf.(Ref(b), z)
+
+
 function _rand_gamma(rng::AbstractRNG, α::Number)
     # For α < 1, sample Gamma(α+1, 1) and multiply by U^(1/α).
     boost = α < one(α)
