@@ -563,4 +563,49 @@
         @test var(d3) ≈ scale .^ 2
     end
 
+    @testset "AffineDistribution with Matrix scale (linear operator)" begin
+        # `AffineDistribution(μ, A, StdNormal((K,)))` with A::Matrix is the
+        # MvNormal(μ, A * A') reparameterisation via Cholesky factor.
+        K = 4
+        μ = randn(K)
+        Σ = let M = randn(K, K)
+            M * M' + I  # positive definite
+        end
+        L = cholesky(Σ).L
+        A = Matrix(L)
+
+        d = AffineDistribution(μ, A, StdNormal((K,)))
+        ref = MvNormal(μ, Σ)
+
+        # logpdf round-trip
+        for _ in 1:20
+            x = μ .+ A * randn(K)
+            @test logpdf(d, x) ≈ logpdf(ref, x) atol = 1.0e-8
+            @test logpdf(d, x) ≈ unnormed_logpdf(d, x) + lognorm(d)
+        end
+
+        # Moments
+        @test mean(d) ≈ mean(ref)
+        @test cov(d) ≈ cov(ref)
+        @test var(d) ≈ diag(Σ)
+
+        # Sampling — empirical mean/cov over a large sample
+        n = 50_000
+        samples = reduce(hcat, [rand(d) for _ in 1:n])
+        @test isapprox(vec(mean(samples; dims = 2)), μ; atol = 0.05)
+        emp_cov = cov(samples; dims = 2)
+        @test isapprox(emp_cov, Σ; atol = 0.1)
+
+        # insupport — Normal base accepts everything in ℝᴷ
+        @test insupport(d, randn(K))
+        @test !insupport(d, randn(K + 1))   # wrong length
+
+        # asflat: 1D unconstrained, dimension == K
+        t = asflat(d)
+        @test TV.dimension(t) == K
+        x = rand(d)
+        p = HypercubeTransform.inverse(t, x)
+        @test HypercubeTransform.transform(t, p) ≈ x
+    end
+
 end

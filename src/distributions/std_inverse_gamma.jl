@@ -75,15 +75,16 @@ end
 
 # ----- sampling -----------------------------------------------------------
 
+# `InverseGamma(α, 1)` sample = `1 / Gamma(α, 1)`.
 function Random.rand(rng::AbstractRNG, d::StdInverseGamma{T, <:Number, 0}) where {T}
-    return T(rand(rng, Dists.InverseGamma(Float64(d.α), 1.0)))
+    return T(inv(_rand_gamma(rng, Float64(d.α))))
 end
 function Dists._rand!(
         rng::AbstractRNG, d::StdInverseGamma{T, <:Number, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
-    rd = Dists.InverseGamma(Float64(d.α), 1.0)
+    α = Float64(d.α)
     @inbounds for i in eachindex(x)
-        x[i] = rand(rng, rd)
+        x[i] = inv(_rand_gamma(rng, α))
     end
     return x
 end
@@ -92,7 +93,7 @@ function Dists._rand!(
         x::AbstractArray{<:Real, N}
     ) where {T, N}
     @inbounds for i in eachindex(x)
-        x[i] = rand(rng, Dists.InverseGamma(Float64(d.α[i]), 1.0))
+        x[i] = inv(_rand_gamma(rng, Float64(d.α[i])))
     end
     return x
 end

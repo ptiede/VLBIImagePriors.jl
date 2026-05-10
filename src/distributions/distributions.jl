@@ -40,9 +40,42 @@ function unnormed_logpdf end
 """
     lognorm(d)
 
-Returns the data-independent log-normalisation constant of `d`. 
+Returns the data-independent log-normalisation constant of `d`.
 """
 function lognorm end
+
+
+# ----- shared sampling helpers -------------------------------------------
+# Marsaglia & Tsang (2000) Gamma(α, 1) sampler with branchless masked
+# acceptance and a bounded iteration count, so the body traces cleanly
+# under Reactant. With `K = 64` retries the failure probability is
+# `<10^-50` for α >= 1, so the unbounded rejection loop is unnecessary.
+
+const _GAMMA_RETRIES = 64
+
+function _rand_gamma(rng::AbstractRNG, α::Real)
+    # For α < 1, sample Gamma(α+1, 1) and multiply by U^(1/α).
+    boost = α < one(α)
+    α_eff = ifelse(boost, α + one(α), α)
+    d = α_eff - one(α_eff) / 3
+    c = one(α_eff) / sqrt(9 * d)
+
+    sample = d
+    accepted = false
+    for _ in 1:_GAMMA_RETRIES
+        x = randn(rng)
+        v = (one(α_eff) + c * x)^3
+        u = rand(rng)
+        v_safe = ifelse(v > zero(v), v, one(v))
+        ok = (v > zero(v)) & (log(u) < x * x / 2 + d - d * v_safe + d * log(v_safe))
+        take = ok & !accepted
+        sample = ifelse(take, d * v, sample)
+        accepted = accepted | take
+    end
+
+    boost_u = rand(rng)
+    return ifelse(boost, sample * boost_u^(one(α) / α), sample)
+end
 
 
 include("std_normal.jl")

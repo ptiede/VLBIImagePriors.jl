@@ -2,12 +2,16 @@
 # location-scale distribution: if `z ~ base`, then
 # `loc + scale .* z ~ AffineDistribution(loc, scale, base)`.
 #
-# `loc` and `scale` may each be a `Number` (broadcast across the support of
-# `base`) or an `AbstractArray` of the same dimensionality as `base`. No
-# parameter type bound is `<:Real`, so traced numbers from Reactant are
-# accepted. The implementation reuses the per-element kernels and reductions
-# defined in `bases.jl` so the only thing this file adds is the affine
-# transform on top.
+# `scale` is one of:
+#   * `Number` — broadcast across the support of `base`
+#   * `AbstractArray` matching `size(base)` — element-wise (diagonal) scale
+#   * `AbstractMatrix` (1D base only) — full linear operator: `y = loc + A z`
+#     and `unnormed_logpdf(d, x) = unnormed_logpdf(d.base, A \ (x - loc))`,
+#     `lognorm` picks up `-logabsdet(A)`. Anything that supports `*`, `\`,
+#     and `LinearAlgebra.logabsdet` works (e.g. a `LinearMap`).
+#
+# No parameter type bound is `<:Real`, so traced numbers from Reactant are
+# accepted.
 
 
 """
@@ -81,6 +85,19 @@ end
     return lognorm(d.base) - sum(log, d.scale)
 end
 
+# Matrix / linear-operator scale (1D base): `y = loc + A z`. The base
+# `unnormed_logpdf` sees `z = A \ (y - loc)` and the affine Jacobian is
+# `logabsdet(A)`, replacing the per-element `sum(log, scale)` term.
+function unnormed_logpdf(
+        d::AffineDistribution{B, 1, Tloc, <:AbstractMatrix}, x::AbstractVector{<:Number}
+    ) where {B, Tloc}
+    z = d.scale \ (x .- d.loc)
+    return unnormed_logpdf(d.base, z)
+end
+@inline function lognorm(d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix})
+    return lognorm(d.base) - first(logabsdet(d.scale))
+end
+
 
 # ----- logpdf -------------------------------------------------------------
 # Composes the `unnormed_logpdf` + `lognorm` split above.
@@ -130,6 +147,16 @@ end
     @. x = d.loc + d.scale * z
     return x
 end
+# Matrix-scale sampling: `y = loc + A z` (matrix-vector product).
+@inline function _affine_rand!(
+        rng, d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix}, x::AbstractVector
+    )
+    z = similar(x, eltype(d.base))
+    Dists._rand!(rng, d.base, z)
+    mul!(x, d.scale, z)
+    x .+= d.loc
+    return x
+end
 # Sampling is CPU-only — under Reactant tracing, `rand!` has no clean
 # semantics so we don't override `<:Number` here. Gradients flow through
 # `logpdf`, not sampling.
@@ -160,6 +187,13 @@ function Dists.insupport(d::AffineDistribution, x::AbstractArray)
     z = (x .- d.loc) ./ d.scale
     return all(zi -> Dists.insupport(d.base, zi), z)
 end
+function Dists.insupport(
+        d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix}, x::AbstractVector
+    )
+    length(x) == length(d) || return false
+    z = d.scale \ (x .- d.loc)
+    return all(zi -> Dists.insupport(d.base, zi), z)
+end
 
 
 # ----- moments ------------------------------------------------------------
@@ -170,6 +204,18 @@ end
 Dists.mean(d::AffineDistribution) = d.loc .+ d.scale .* Dists.mean(d.base)
 Dists.var(d::AffineDistribution) = d.scale .^ 2 .* Dists.var(d.base)
 Dists.std(d::AffineDistribution) = sqrt.(Dists.var(d))
+
+# Matrix-scale moments: `y = loc + A z`, so `mean(y) = loc + A mean(z)` and
+# `cov(y) = A cov(z) A'`. `var(y) = diag(cov(y))`.
+function Dists.mean(d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix})
+    return d.loc .+ d.scale * Dists.mean(d.base)
+end
+function Dists.cov(d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix})
+    return d.scale * Dists.cov(d.base) * d.scale'
+end
+function Dists.var(d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix})
+    return diag(Dists.cov(d))
+end
 
 
 # ----- params -------------------------------------------------------------

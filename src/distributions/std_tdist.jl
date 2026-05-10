@@ -73,15 +73,22 @@ end
 
 # ----- sampling -----------------------------------------------------------
 
+# `T = Z / sqrt(W/ν)` with `Z ~ N(0, 1)` and `W ~ χ²(ν) = 2·Gamma(ν/2, 1)`.
+@inline function _rand_tdist(rng::AbstractRNG, ν::Real)
+    z = randn(rng)
+    g = _rand_gamma(rng, ν / 2)
+    return z / sqrt(2 * g / ν)
+end
+
 function Random.rand(rng::AbstractRNG, d::StdTDist{T, <:Number, 0}) where {T}
-    return T(rand(rng, Dists.TDist(Float64(d.ν))))
+    return T(_rand_tdist(rng, Float64(d.ν)))
 end
 function Dists._rand!(
         rng::AbstractRNG, d::StdTDist{T, <:Number, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
-    rd = Dists.TDist(Float64(d.ν))
+    ν = Float64(d.ν)
     @inbounds for i in eachindex(x)
-        x[i] = rand(rng, rd)
+        x[i] = _rand_tdist(rng, ν)
     end
     return x
 end
@@ -89,7 +96,7 @@ function Dists._rand!(
         rng::AbstractRNG, d::StdTDist{T, <:AbstractArray, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
     @inbounds for i in eachindex(x)
-        x[i] = rand(rng, Dists.TDist(Float64(d.ν[i])))
+        x[i] = _rand_tdist(rng, Float64(d.ν[i]))
     end
     return x
 end
