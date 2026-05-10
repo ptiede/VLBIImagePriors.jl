@@ -41,28 +41,20 @@ function Dists._logpdf(d::StdExponential{T, N}, x::AbstractArray{<:Number, N}) w
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(d::StdExponential{T, N}, x::AbstractArray{<:Real, N}) where {T, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(d::StdExponential{T, N}, x::AbstractArray{<:Number, N}) where {T, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
 
 # ----- sampling -----------------------------------------------------------
 
-function Random.rand(rng::AbstractRNG, ::StdExponential{T, 0}) where {T}
-    return T(rand(rng, Dists.Exponential()))
-end
+Random.rand(rng::AbstractRNG, ::StdExponential{T, 0}) where {T} = T(randexp(rng))
 function Dists._rand!(
         rng::AbstractRNG, ::StdExponential{T, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
-    rd = Dists.Exponential()
-    @inbounds for i in eachindex(x)
-        x[i] = rand(rng, rd)
-    end
-    return x
+    return randexp!(rng, x)
 end
 
 

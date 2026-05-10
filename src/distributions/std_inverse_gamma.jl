@@ -1,7 +1,7 @@
 # StdInverseGamma — inverse-gamma with shape `α` and scale 1.
 # pdf(z; α) = z^(-α-1) exp(-1/z) / Γ(α) for z > 0.
 # `α` may be a scalar (broadcast across the support) or an array of the same
-# shape as the distribution; the per-element loops use `_at` to dispatch.
+# shape as the distribution.
 
 struct StdInverseGamma{T, Tα, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
     α::Tα
@@ -25,16 +25,10 @@ Base.eltype(::StdInverseGamma{T}) where {T} = T
 # `loggamma(α)` is the expensive piece for an array `α`; folding it into
 # `lognorm` lets a caller cache it across many `logpdf` evaluations.
 
-@inline _ig_loggamma_sum(α::Number, n::Int) = n * loggamma(α)
-@inline function _ig_loggamma_sum(α::AbstractArray, _)
-    tmp = loggamma.(α)
-    return sum(tmp)
-end
-
-@inline function _unnormed_kernel(d::StdInverseGamma, z, i)
-    αi = _at(d.α, i)
+@inline function _unnormed_kernel(d::StdInverseGamma, z)
+    α = d.α
     zsafe = ifelse(z > zero(z), z, oftype(z, 1))
-    val = -(αi + one(αi)) * log(zsafe) - inv(zsafe)
+    val = -(α + one(α)) * log(zsafe) - inv(zsafe)
     return ifelse(z > zero(z), val, oftype(z, -Inf))
 end
 @inline function _unnormed_kernel_sum(d::StdInverseGamma, z)
@@ -45,7 +39,7 @@ end
 end
 
 function unnormed_logpdf(d::StdInverseGamma{T, <:Number, 0}, x::Number) where {T}
-    return _unnormed_kernel(d, x, 1)
+    return _unnormed_kernel(d, x)
 end
 function unnormed_logpdf(
         d::StdInverseGamma{T, Tα, N}, x::AbstractArray{<:Number, N}
@@ -53,7 +47,8 @@ function unnormed_logpdf(
     return _unnormed_kernel_sum(d, x)
 end
 
-@inline lognorm(d::StdInverseGamma) = -_ig_loggamma_sum(d.α, length(d))
+@inline lognorm(d::StdInverseGamma{T, <:Number}) where {T} = -length(d) * loggamma(d.α)
+@inline lognorm(d::StdInverseGamma{T, <:AbstractArray}) where {T} = -sum(loggamma, d.α)
 
 
 # ----- Distributions interface --------------------------------------------
@@ -69,13 +64,11 @@ end
 function Dists.logpdf(
         d::StdInverseGamma{T, Tα, N}, x::AbstractArray{<:Real, N}
     ) where {T, Tα, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(
         d::StdInverseGamma{T, Tα, N}, x::AbstractArray{<:Number, N}
     ) where {T, Tα, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
@@ -142,12 +135,10 @@ end
 # incomplete gamma. SpecialFunctions provides both directions.
 
 @inline function _std_cdf(d::StdInverseGamma, x)
-    α = _at(d.α, 1)
-    return last(SpecialFunctions.gamma_inc(α, inv(x), 0))
+    return last(SpecialFunctions.gamma_inc(d.α, inv(x), 0))
 end
 @inline function _std_quantile(d::StdInverseGamma, p)
-    α = _at(d.α, 1)
-    return inv(SpecialFunctions.gamma_inc_inv(α, one(p) - p, p))
+    return inv(SpecialFunctions.gamma_inc_inv(d.α, one(p) - p, p))
 end
 
 function Dists.cdf(d::StdInverseGamma{T, <:Number, 0}, x::Number) where {T}

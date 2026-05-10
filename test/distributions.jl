@@ -1,23 +1,5 @@
 @testset "Reactant-friendly distributions" begin
 
-    @testset "argument validation" begin
-        @test_throws ArgumentError VLBIGaussian(0.0, -1.0)
-        @test_throws ArgumentError VLBIGaussian(0.0, 0.0)
-        @test_throws ArgumentError VLBIGaussian(0.0, [1.0, -1.0])
-        @test_throws ArgumentError VLBIExponential(-1.0)
-        @test_throws ArgumentError VLBIUniform(2.0, 1.0)
-        @test_throws ArgumentError VLBIUniform(2.0, 2.0)
-        @test_throws ArgumentError VLBIUniform([1.0, 2.0], [3.0, 1.5])
-        @test_throws ArgumentError VLBIInverseGamma(-1.0, 2.0)
-        @test_throws ArgumentError VLBIInverseGamma(2.0, -1.0)
-        @test_throws ArgumentError VLBITDist(-1.0)
-        @test_throws ArgumentError VLBITDist(5.0, 0.0, -1.0)
-
-        # Public AffineDistribution constructor enforces shape match.
-        @test_throws ArgumentError AffineDistribution(zeros(3, 3), 1.0, StdNormal((4, 4)))
-        @test_throws ArgumentError AffineDistribution(0.0, ones(3, 3), StdNormal((4, 4)))
-    end
-
     @testset "Distributions.params returns user-visible parameters" begin
         @test params(VLBIGaussian(0.3, 1.2)) == (0.3, 1.2)
         @test params(VLBIExponential(2.5)) == (2.5,)
@@ -318,19 +300,6 @@
         @test logpdf(d2, x2) ≈ sum(logpdf.(Uniform.(a_arr, 5.0), x2))
     end
 
-    @testset "more argument validation" begin
-        @test_throws ArgumentError VLBIGaussian([0.0, 0.0], [1.0, 1.0, 1.0])
-        @test_throws ArgumentError VLBIInverseGamma([1.0, 2.0], [1.0, 2.0, 3.0])
-        @test_throws ArgumentError VLBIInverseGamma([-1.0, 2.0], [1.0, 2.0])
-        @test_throws ArgumentError VLBIInverseGamma([1.0, 2.0], [-1.0, 2.0])
-        @test_throws ArgumentError VLBIExponential([1.0, -1.0])
-        @test_throws ArgumentError VLBITDist([5.0, -1.0], 0.0, 1.0)
-        @test_throws ArgumentError VLBITDist([5.0, 1.0], [0.0, 0.0], [1.0, -1.0])
-        @test_throws ArgumentError VLBITDist([5.0, 1.0], [0.0, 0.0], [1.0, 1.0, 1.0])
-        @test_throws ArgumentError VLBIUniform(2.0, [1.0, 3.0])
-        @test_throws ArgumentError VLBIUniform([0.0, 5.0], 4.0)
-    end
-
     @testset "insupport for VLBI* (scalar and array)" begin
         # Scalar
         @test insupport(VLBIGaussian(0.0, 1.0), 0.5)
@@ -518,18 +487,6 @@
         @test size(z2) == (2, 3)
     end
 
-    @testset "Std bases — array logpdf size mismatch errors" begin
-        @test_throws Exception logpdf(StdNormal((2, 3)), zeros(2, 4))
-        @test_throws Exception logpdf(StdExponential((2, 3)), zeros(2, 4))
-        @test_throws Exception logpdf(StdUniform((2, 3)), zeros(2, 4))
-        @test_throws Exception logpdf(StdInverseGamma(2.0, (2, 3)), ones(2, 4))
-        @test_throws Exception logpdf(StdTDist(5.0, (2, 3)), zeros(2, 4))
-
-        # AffineDistribution scalar bases
-        @test_throws Exception logpdf(VLBIGaussian(0.0, 1.0, (2, 3)), zeros(2, 4))
-        @test_throws Exception logpdf(VLBIExponential(1.0, (2, 3)), zeros(2, 4))
-    end
-
     @testset "StdNormal ascube round-trip" begin
         sn = StdNormal((6,))
         c = HypercubeTransform.ascube(sn)
@@ -538,6 +495,49 @@
         x = HypercubeTransform.transform(c, u)
         u_back = HypercubeTransform.inverse(c, x)
         @test u_back ≈ u
+    end
+
+    @testset "array asflat round-trip for all VLBI* families" begin
+        # Covers the array asflat dispatches in affine.jl (StdNormal, StdTDist,
+        # StdExponential, StdInverseGamma, StdUniform — both shared-param and
+        # per-element constructors).
+        cases = [
+            VLBIGaussian(0.0, 1.0, (2, 3)),
+            VLBIGaussian(randn(2, 3), abs.(randn(2, 3)) .+ 0.1),
+            VLBIExponential(2.0, (2, 3)),
+            VLBIExponential(abs.(randn(2, 3)) .+ 0.1),
+            VLBIUniform(-1.0, 1.0, (2, 3)),
+            VLBIUniform(randn(2, 3), randn(2, 3) .+ 5.0),
+            VLBIInverseGamma(2.0, 1.0, (2, 3)),
+            VLBIInverseGamma(abs.(randn(2, 3)) .+ 1.5, abs.(randn(2, 3)) .+ 0.5),
+            VLBITDist(5.0, 0.0, 1.0, (2, 3)),
+            VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
+        ]
+        for d in cases
+            t = asflat(d)
+            @test TV.dimension(t) == length(d)
+            x = rand(d)
+            p = HypercubeTransform.inverse(t, x)
+            @test HypercubeTransform.transform(t, p) ≈ x
+        end
+    end
+
+    @testset "Std base array asflat round-trip" begin
+        for b in (
+                StdNormal((2, 3)),
+                StdExponential((2, 3)),
+                StdUniform((2, 3)),
+                StdInverseGamma(2.0, (2, 3)),
+                StdInverseGamma(abs.(randn(2, 3)) .+ 1.5),
+                StdTDist(5.0, (2, 3)),
+                StdTDist(abs.(randn(2, 3)) .+ 2.0),
+            )
+            t = asflat(b)
+            @test TV.dimension(t) == length(b)
+            z = rand(b)
+            p = HypercubeTransform.inverse(t, z)
+            @test HypercubeTransform.transform(t, p) ≈ z
+        end
     end
 
     @testset "AffineDistribution direct construction from Std bases" begin

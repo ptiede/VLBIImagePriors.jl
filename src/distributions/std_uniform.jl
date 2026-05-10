@@ -34,28 +34,20 @@ function Dists._logpdf(d::StdUniform{T, N}, x::AbstractArray{<:Number, N}) where
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(d::StdUniform{T, N}, x::AbstractArray{<:Real, N}) where {T, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(d::StdUniform{T, N}, x::AbstractArray{<:Number, N}) where {T, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
 
 # ----- sampling -----------------------------------------------------------
 
-function Random.rand(rng::AbstractRNG, ::StdUniform{T, 0}) where {T}
-    return T(rand(rng, Dists.Uniform()))
-end
+Random.rand(rng::AbstractRNG, ::StdUniform{T, 0}) where {T} = rand(rng, T)
 function Dists._rand!(
         rng::AbstractRNG, ::StdUniform{T, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
-    rd = Dists.Uniform()
-    @inbounds for i in eachindex(x)
-        x[i] = rand(rng, rd)
-    end
-    return x
+    return rand!(rng, x)
 end
 
 

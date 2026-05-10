@@ -1,7 +1,7 @@
 # StdTDist — Student's t with degrees of freedom `ν`, mean 0, scale 1.
 # pdf(z; ν) = Γ((ν+1)/2) / (sqrt(ν π) Γ(ν/2)) · (1 + z²/ν)^(-(ν+1)/2)
 # `ν` may be a scalar or a per-element array of the same shape as the
-# distribution; `_at` resolves the dispatch in the kernels.
+# distribution.
 
 struct StdTDist{T, Tν, N} <: Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
     ν::Tν
@@ -26,15 +26,10 @@ Base.eltype(::StdTDist{T}) where {T} = T
 @inline function _t_lognorm_per_elem(ν)
     return loggamma((ν + 1) / 2) - loggamma(ν / 2) - oftype(ν, log(π)) / 2 - log(ν) / 2
 end
-@inline _t_lognorm_sum(ν::Number, n::Int) = n * _t_lognorm_per_elem(ν)
-@inline function _t_lognorm_sum(ν::AbstractArray, _)
-    tmp = _t_lognorm_per_elem.(ν)
-    return sum(tmp)
-end
 
-@inline function _unnormed_kernel(d::StdTDist, z, i)
-    νi = _at(d.ν, i)
-    return -((νi + one(νi)) / 2) * log1p(z * z / νi)
+@inline function _unnormed_kernel(d::StdTDist, z)
+    ν = d.ν
+    return -((ν + one(ν)) / 2) * log1p(z * z / ν)
 end
 @inline function _unnormed_kernel_sum(d::StdTDist, z)
     ν = d.ν
@@ -43,14 +38,15 @@ end
     return -sum(((ν .+ 1) ./ 2) .* log_terms)
 end
 
-unnormed_logpdf(d::StdTDist{T, <:Number, 0}, x::Number) where {T} = _unnormed_kernel(d, x, 1)
+unnormed_logpdf(d::StdTDist{T, <:Number, 0}, x::Number) where {T} = _unnormed_kernel(d, x)
 function unnormed_logpdf(
         d::StdTDist{T, Tν, N}, x::AbstractArray{<:Number, N}
     ) where {T, Tν, N}
     return _unnormed_kernel_sum(d, x)
 end
 
-@inline lognorm(d::StdTDist) = _t_lognorm_sum(d.ν, length(d))
+@inline lognorm(d::StdTDist{T, <:Number}) where {T} = length(d) * _t_lognorm_per_elem(d.ν)
+@inline lognorm(d::StdTDist{T, <:AbstractArray}) where {T} = sum(_t_lognorm_per_elem, d.ν)
 
 
 # ----- Distributions interface --------------------------------------------
@@ -66,13 +62,11 @@ end
 function Dists.logpdf(
         d::StdTDist{T, Tν, N}, x::AbstractArray{<:Real, N}
     ) where {T, Tν, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(
         d::StdTDist{T, Tν, N}, x::AbstractArray{<:Number, N}
     ) where {T, Tν, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
@@ -139,7 +133,7 @@ end
 # Quantile inverts the same identity.
 
 @inline function _std_cdf(d::StdTDist, x)
-    ν = _at(d.ν, 1)
+    ν = d.ν
     a = ν / 2
     b = oftype(ν, 0.5)
     arg = ν / (ν + x * x)
@@ -147,7 +141,7 @@ end
     return ifelse(x >= zero(x), one(x) - P_arg / 2, P_arg / 2)
 end
 @inline function _std_quantile(d::StdTDist, p)
-    ν = _at(d.ν, 1)
+    ν = d.ν
     a = ν / 2
     b = oftype(ν, 0.5)
     p_in = ifelse(p < oftype(p, 0.5), 2 * p, 2 * (one(p) - p))

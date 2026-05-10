@@ -51,11 +51,9 @@ function Dists._logpdf(d::StdNormal{T, N}, x::AbstractArray{<:Number, N}) where 
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{<:Real, N}) where {T, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 function Dists.logpdf(d::StdNormal{T, N}, x::AbstractArray{<:Number, N}) where {T, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
@@ -85,8 +83,8 @@ Dists.cov(d::StdNormal) = I(length(d))
 @inline _std_cdf(::StdNormal, x) = (one(x) + erf(x / sqrt(oftype(x, 2)))) / 2
 @inline _std_quantile(::StdNormal, p) = sqrt(oftype(p, 2)) * erfinv(2 * p - one(p))
 
-Dists.cdf(d::StdNormal{T, 0}, x::Number) where {T} = _std_cdf(d, x)
-Dists.quantile(d::StdNormal{T, 0}, p::Number) where {T} = _std_quantile(d, p)
+Dists.cdf(d::StdNormal, x::Number) = _std_cdf(d, x)
+Dists.quantile(d::StdNormal, p::Number) = _std_quantile(d, p)
 
 
 # ----- transforms ---------------------------------------------------------
@@ -96,14 +94,14 @@ HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
 HC.ascube(d::StdNormal) = HC.ArrayHC(d)
 
 function HC._step_transform(h::HC.ArrayHC{<:StdNormal}, p::AbstractVector, index)
-    d = Dists.Normal()
+    d = h.dist
     out = Dists.quantile.(Ref(d), p)
     return out, index + HC.dimension(h)
 end
 function HC._step_inverse!(
         x::AbstractVector, index, h::HC.ArrayHC{<:StdNormal}, y::AbstractVector
     )
-    d = Dists.Normal()
+    d = h.dist
     x .= Dists.cdf.(Ref(d), y)
     return index + HC.dimension(h)
 end

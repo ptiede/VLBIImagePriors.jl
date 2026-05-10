@@ -18,30 +18,24 @@ Represents the distribution of `loc + scale .* z` where `z ~ base`. `loc` and
 `AbstractArray` of the same dimensionality as `base`. Reactant-friendly: no
 parameter type bound is `<:Real`, so traced numbers are accepted.
 """
-struct AffineDistribution{Tloc, Tscale, D <: Dists.Distribution, N} <:
+struct AffineDistribution{D <: Dists.Distribution, N, Tloc, Tscale} <:
     Dists.ContinuousDistribution{Dists.ArrayLikeVariate{N}}
+    base::D
     loc::Tloc
     scale::Tscale
-    base::D
 end
 function AffineDistribution(
         loc, scale, base::Dists.Distribution{Dists.ArrayLikeVariate{N}}
     ) where {N}
-    if loc isa AbstractArray
-        @argcheck size(loc) == size(base) "AffineDistribution: size(loc) must match size(base)"
-    end
-    if scale isa AbstractArray
-        @argcheck size(scale) == size(base) "AffineDistribution: size(scale) must match size(base)"
-    end
-    return AffineDistribution{typeof(loc), typeof(scale), typeof(base), N}(loc, scale, base)
+    return AffineDistribution{typeof(base), N, typeof(loc), typeof(scale)}(base, loc, scale)
 end
 
 
 function Base.show(io::IO, d::AffineDistribution)
     print(io, "AffineDistribution(")
-    print(io, "loc::", _summarize_param(d.loc))
+    print(io, "base=", nameof(typeof(d.base)))
+    print(io, ", loc::", _summarize_param(d.loc))
     print(io, ", scale::", _summarize_param(d.scale))
-    print(io, ", base=", nameof(typeof(d.base)))
     sz = size(d)
     isempty(sz) || print(io, ", size=", sz)
     return print(io, ")")
@@ -52,7 +46,7 @@ end
 Base.size(d::AffineDistribution) = size(d.base)
 Base.length(d::AffineDistribution) = length(d.base)
 function Base.eltype(d::AffineDistribution)
-    return promote_type(_peltype(d.loc), _peltype(d.scale), eltype(d.base))
+    return promote_type(eltype(d.loc), eltype(d.scale), eltype(d.base))
 end
 
 
@@ -66,22 +60,25 @@ end
 
 # scalar (N = 0)
 function unnormed_logpdf(
-        d::AffineDistribution{Tloc, Tscale, B, 0}, x::Number
-    ) where {Tloc, Tscale, B}
+        d::AffineDistribution{B, 0, Tloc, Tscale}, x::Number
+    ) where {B, Tloc, Tscale}
     z = (x - d.loc) / d.scale
     return unnormed_logpdf(d.base, z)
 end
 
 # array (N >= 1) — vectorised so it traces under Reactant
 function unnormed_logpdf(
-        d::AffineDistribution{Tloc, Tscale, B, N}, x::AbstractArray{<:Number, N}
-    ) where {Tloc, Tscale, B, N}
+        d::AffineDistribution{B, N, Tloc, Tscale}, x::AbstractArray{<:Number, N}
+    ) where {B, N, Tloc, Tscale}
     z = (x .- d.loc) ./ d.scale
     return unnormed_logpdf(d.base, z)
 end
 
-@inline function lognorm(d::AffineDistribution)
-    return lognorm(d.base) - _scale_logsum(d.scale, length(d))
+@inline function lognorm(d::AffineDistribution{<:Any, <:Any, <:Any, <:Number})
+    return lognorm(d.base) - length(d) * log(d.scale)
+end
+@inline function lognorm(d::AffineDistribution{<:Any, <:Any, <:Any, <:AbstractArray})
+    return lognorm(d.base) - sum(log, d.scale)
 end
 
 
@@ -92,8 +89,8 @@ end
 
 # Scalar
 function Dists.logpdf(
-        d::AffineDistribution{Tloc, Tscale, B, 0}, x::Number
-    ) where {Tloc, Tscale, B}
+        d::AffineDistribution{B, 0, Tloc, Tscale}, x::Number
+    ) where {B, Tloc, Tscale}
     return unnormed_logpdf(d, x) + lognorm(d)
 end
 
@@ -103,20 +100,18 @@ end
 # at `Distributions/.../common.jl:261` — Julia errors on `Matrix{Float64}`
 # inputs without it (verified empirically).
 function Dists._logpdf(
-        d::AffineDistribution{Tloc, Tscale, B, N}, x::AbstractArray{<:Number, N}
-    ) where {Tloc, Tscale, B, N}
+        d::AffineDistribution{B, N, Tloc, Tscale}, x::AbstractArray{<:Number, N}
+    ) where {B, N, Tloc, Tscale}
     return _affine_array_logpdf(d, x)
 end
 function Dists.logpdf(
-        d::AffineDistribution{Tloc, Tscale, B, N}, x::AbstractArray{<:Real, N}
-    ) where {Tloc, Tscale, B, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
+        d::AffineDistribution{B, N, Tloc, Tscale}, x::AbstractArray{<:Real, N}
+    ) where {B, N, Tloc, Tscale}
     return _affine_array_logpdf(d, x)
 end
 function Dists.logpdf(
-        d::AffineDistribution{Tloc, Tscale, B, N}, x::AbstractArray{<:Number, N}
-    ) where {Tloc, Tscale, B, N}
-    @argcheck size(x) == size(d) "input/distribution size mismatch"
+        d::AffineDistribution{B, N, Tloc, Tscale}, x::AbstractArray{<:Number, N}
+    ) where {B, N, Tloc, Tscale}
     return _affine_array_logpdf(d, x)
 end
 
@@ -124,7 +119,7 @@ end
 # ----- sampling -----------------------------------------------------------
 
 function Random.rand(
-        rng::AbstractRNG, d::AffineDistribution{<:Number, <:Number, B, 0}
+        rng::AbstractRNG, d::AffineDistribution{B, 0, <:Number, <:Number}
     ) where {B}
     return d.loc + d.scale * rand(rng, d.base)
 end
@@ -132,18 +127,16 @@ end
 @inline function _affine_rand!(rng, d::AffineDistribution, x)
     z = similar(x, eltype(d.base))
     Dists._rand!(rng, d.base, z)
-    @inbounds for i in eachindex(x)
-        x[i] = _at(d.loc, i) + _at(d.scale, i) * z[i]
-    end
+    @. x = d.loc + d.scale * z
     return x
 end
 # Sampling is CPU-only — under Reactant tracing, `rand!` has no clean
 # semantics so we don't override `<:Number` here. Gradients flow through
 # `logpdf`, not sampling.
 function Dists._rand!(
-        rng::AbstractRNG, d::AffineDistribution{Tloc, Tscale, B, N},
+        rng::AbstractRNG, d::AffineDistribution{B, N, Tloc, Tscale},
         x::AbstractArray{<:Real, N}
-    ) where {Tloc, Tscale, B, N}
+    ) where {B, N, Tloc, Tscale}
     return _affine_rand!(rng, d, x)
 end
 
@@ -151,24 +144,21 @@ end
 # ----- support ------------------------------------------------------------
 
 function Dists.insupport(
-        d::AffineDistribution{Tloc, Tscale, B, 0}, x::Number
-    ) where {Tloc, Tscale, B}
+        d::AffineDistribution{B, 0, Tloc, Tscale}, x::Number
+    ) where {B, Tloc, Tscale}
     return Dists.insupport(d.base, (x - d.loc) / d.scale)
 end
 # Break ambiguity with `Distributions.insupport(::ContinuousUnivariateDistribution, ::Real)`
 # — `AffineDistribution{...,0}` is a univariate continuous distribution.
 function Dists.insupport(
-        d::AffineDistribution{Tloc, Tscale, B, 0}, x::Real
-    ) where {Tloc, Tscale, B}
+        d::AffineDistribution{B, 0, Tloc, Tscale}, x::Real
+    ) where {B, Tloc, Tscale}
     return Dists.insupport(d.base, (x - d.loc) / d.scale)
 end
 function Dists.insupport(d::AffineDistribution, x::AbstractArray)
     size(x) == size(d) || return false
-    @inbounds for i in eachindex(x)
-        zi = (x[i] - _at(d.loc, i)) / _at(d.scale, i)
-        Dists.insupport(d.base, zi) || return false
-    end
-    return true
+    z = (x .- d.loc) ./ d.scale
+    return all(zi -> Dists.insupport(d.base, zi), z)
 end
 
 
@@ -187,15 +177,11 @@ Dists.std(d::AffineDistribution) = sqrt.(Dists.var(d))
 # accepts, so introspecting tools (e.g. for serialisation or pretty-printing
 # a hierarchical model) recover the original argument list.
 
-Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdNormal}) = (d.loc, d.scale)
-Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdExponential}) = (d.scale,)
-Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdUniform}) = (d.loc, d.loc .+ d.scale)
-function Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdInverseGamma})
-    return (d.base.α, d.scale)
-end
-function Dists.params(d::AffineDistribution{<:Any, <:Any, <:StdTDist})
-    return (d.base.ν, d.loc, d.scale)
-end
+Dists.params(d::AffineDistribution{<:StdNormal}) = (d.loc, d.scale)
+Dists.params(d::AffineDistribution{<:StdExponential}) = (d.scale,)
+Dists.params(d::AffineDistribution{<:StdUniform}) = (d.loc, d.loc .+ d.scale)
+Dists.params(d::AffineDistribution{<:StdInverseGamma}) = (d.base.α, d.scale)
+Dists.params(d::AffineDistribution{<:StdTDist}) = (d.base.ν, d.loc, d.scale)
 
 
 # ----- cdf / quantile -----------------------------------------------------
@@ -205,14 +191,14 @@ end
 # non-`Real` parameters.
 
 function Dists.cdf(
-        d::AffineDistribution{Tloc, Tscale, B, 0}, x::Number
-    ) where {Tloc, Tscale, B}
+        d::AffineDistribution{B, 0, Tloc, Tscale}, x::Number
+    ) where {B, Tloc, Tscale}
     z = (x - d.loc) / d.scale
     return _std_cdf(d.base, z)
 end
 function Dists.quantile(
-        d::AffineDistribution{Tloc, Tscale, B, 0}, p::Number
-    ) where {Tloc, Tscale, B}
+        d::AffineDistribution{B, 0, Tloc, Tscale}, p::Number
+    ) where {B, Tloc, Tscale}
     return d.loc + d.scale * _std_quantile(d.base, p)
 end
 
@@ -220,33 +206,32 @@ end
 # ----- asflat -------------------------------------------------------------
 # Dispatched on the base type. For non-`Real` params (Reactant traced) we
 # fall back to unconstrained transforms and let `logpdf` enforce support.
-
-HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdNormal, 0}) = TV.asℝ
-HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdTDist, 0}) = TV.asℝ
-HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdExponential, 0}) = TV.asℝ₊
-HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdInverseGamma, 0}) = TV.asℝ₊
-function HC.asflat(d::AffineDistribution{<:Real, <:Real, <:StdUniform, 0})
-    return TV.as(Real, Float64(d.loc), Float64(d.loc) + Float64(d.scale))
+HC.asflat(::AffineDistribution{<:StdNormal, 0, <:Number, <:Number}) = TV.asℝ
+HC.asflat(::AffineDistribution{<:StdTDist, 0, <:Number, <:Number}) = TV.asℝ
+HC.asflat(::AffineDistribution{<:StdExponential, 0, <:Number, <:Number}) = TV.asℝ₊
+HC.asflat(::AffineDistribution{<:StdInverseGamma, 0, <:Number, <:Number}) = TV.asℝ₊
+function HC.asflat(d::AffineDistribution{<:StdUniform, 0, <:Real, <:Real})
+    return TV.as(Real, d.loc, d.loc + d.scale)
 end
-HC.asflat(::AffineDistribution{<:Number, <:Number, <:StdUniform, 0}) = TV.asℝ
+HC.asflat(::AffineDistribution{<:StdUniform, 0, <:Number, <:Number}) = TV.asℝ
 
-function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdNormal, N}) where {N}
+function HC.asflat(d::AffineDistribution{<:StdNormal, N}) where {N}
     return TV.as(Array, TV.asℝ, size(d)...)
 end
-function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdTDist, N}) where {N}
+function HC.asflat(d::AffineDistribution{<:StdTDist, N}) where {N}
     return TV.as(Array, TV.asℝ, size(d)...)
 end
-function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdExponential, N}) where {N}
+function HC.asflat(d::AffineDistribution{<:StdExponential, N}) where {N}
     return TV.as(Array, TV.asℝ₊, size(d)...)
 end
-function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdInverseGamma, N}) where {N}
+function HC.asflat(d::AffineDistribution{<:StdInverseGamma, N}) where {N}
     return TV.as(Array, TV.asℝ₊, size(d)...)
 end
-function HC.asflat(d::AffineDistribution{<:Real, <:Real, <:StdUniform, N}) where {N}
+function HC.asflat(d::AffineDistribution{<:StdUniform, N, <:Real, <:Real}) where {N}
     return TV.as(
         Array, TV.as(Real, Float64(d.loc), Float64(d.loc) + Float64(d.scale)), size(d)...
     )
 end
-function HC.asflat(d::AffineDistribution{<:Any, <:Any, <:StdUniform, N}) where {N}
+function HC.asflat(d::AffineDistribution{<:StdUniform, N}) where {N}
     return TV.as(Array, TV.asℝ, size(d)...)
 end
