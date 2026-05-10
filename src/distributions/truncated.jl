@@ -148,3 +148,9 @@ function HC.asflat(d::VLBITruncated{<:Any, Nothing, <:Real})
     return TV.as(Real, -TV.∞, d.upper)
 end
 HC.asflat(::VLBITruncated) = TV.asℝ
+
+HC.inverse_eltype(b::VLBITruncated, y::Type) = HC.inverse_eltype(b.untruncated, y)
+# `HC.ascube` not overridden: VLBITruncated is always a UnivariateDistribution
+# so HC's default routes it to `ScalarHC`. The scalar `Dists.cdf` /
+# `Dists.quantile` defined above feed HC's stock `_step_inverse!` /
+# `_step_transform` for ScalarHC directly.

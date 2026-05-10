@@ -156,8 +156,11 @@ end
 
 HC.asflat(::StdInverseGamma{T, <:Number, 0}) where {T} = TV.asℝ₊
 HC.asflat(d::StdInverseGamma{T, <:Any, N}) where {T, N} = TV.as(Array, TV.asℝ₊, size(d)...)
+HC.inverse_eltype(::StdInverseGamma{T}, y::Type) where {T} = promote_type(T, eltype(y))
 
+HC.ascube(d::StdInverseGamma{T, <:Any, 0}) where {T} = HC.ScalarHC(d)
 HC.ascube(d::StdInverseGamma) = HC.ArrayHC(d)
+
 function HC._step_transform(h::HC.ArrayHC{<:StdInverseGamma}, p::AbstractVector, index)
     out = _ascube_z(h.dist, p)
     return out, index + HC.dimension(h)

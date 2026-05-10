@@ -80,8 +80,11 @@ Dists.quantile(d::StdUniform{T, 0}, p::Number) where {T} = _std_quantile(d, p)
 
 HC.asflat(::StdUniform{T, 0}) where {T} = TV.as(Real, 0.0, 1.0)
 HC.asflat(d::StdUniform{T, N}) where {T, N} = TV.as(Array, TV.as(Real, 0.0, 1.0), size(d)...)
+HC.inverse_eltype(::StdUniform{T}, y::Type) where {T} = promote_type(T, eltype(y))
 
+HC.ascube(d::StdUniform{T, 0}) where {T} = HC.ScalarHC(d)
 HC.ascube(d::StdUniform) = HC.ArrayHC(d)
+
 function HC._step_transform(h::HC.ArrayHC{<:StdUniform}, p::AbstractVector, index)
     out = _ascube_z(h.dist, p)
     return out, index + HC.dimension(h)
