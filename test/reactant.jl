@@ -113,4 +113,76 @@ using Test
         @test @jit(f_ig_split(αr, θr, yr)) ≈ f_ig_split(αg, θg, yg)
     end
 
+    @testset "Matrix-scale AffineDistribution (MvNormal reparam)" begin
+        # `AffineDistribution(μ, A, StdNormal((K,)))` ≡ `MvNormal(μ, A * A')`.
+        # Traced params + traced input: `\\` (linear solve) and `logabsdet`
+        # have to lower under Reactant for this to work.
+        K = 3
+        A = randn(K, K) + I  # well-conditioned, not symmetric
+        μ = randn(K)
+        x = μ .+ A * randn(K)
+        Ar = Reactant.to_rarray(A)
+        μr = Reactant.to_rarray(μ)
+        xr = Reactant.to_rarray(x)
+        f_mat(μ, A, x) = logpdf(AffineDistribution(μ, A, StdNormal((length(μ),))), x)
+        @test @jit(f_mat(μr, Ar, xr)) ≈ f_mat(μ, A, x)
+    end
+
+    @testset "VLBITruncated" begin
+        # Two-sided truncated normal with traced parameters + traced input.
+        f_t2(μ, σ, lo, hi, x) = logpdf(VLBITruncated(VLBIGaussian(μ, σ), lo, hi), x)
+        @test @jit(
+            f_t2(
+                ConcreteRNumber(0.0), ConcreteRNumber(1.0),
+                ConcreteRNumber(-1.5), ConcreteRNumber(2.0),
+                ConcreteRNumber(0.5)
+            )
+        ) ≈ f_t2(0.0, 1.0, -1.5, 2.0, 0.5)
+
+        # Out-of-support → -Inf even when tracing
+        @test @jit(
+            f_t2(
+                ConcreteRNumber(0.0), ConcreteRNumber(1.0),
+                ConcreteRNumber(-1.5), ConcreteRNumber(2.0),
+                ConcreteRNumber(3.0)
+            )
+        ) == -Inf
+
+        # Left-truncated only
+        f_lt(μ, σ, lo, x) = logpdf(VLBITruncated(VLBIGaussian(μ, σ); lower = lo), x)
+        @test @jit(
+            f_lt(
+                ConcreteRNumber(0.0), ConcreteRNumber(1.0),
+                ConcreteRNumber(0.0), ConcreteRNumber(0.5)
+            )
+        ) ≈ f_lt(0.0, 1.0, 0.0, 0.5)
+
+        # Right-truncated only
+        f_rt(μ, σ, hi, x) = logpdf(VLBITruncated(VLBIGaussian(μ, σ); upper = hi), x)
+        @test @jit(
+            f_rt(
+                ConcreteRNumber(0.0), ConcreteRNumber(1.0),
+                ConcreteRNumber(0.0), ConcreteRNumber(-0.5)
+            )
+        ) ≈ f_rt(0.0, 1.0, 0.0, -0.5)
+    end
+
+    @testset "product_distribution lift" begin
+        # An array of scalar VLBIGaussians folds into one 1D
+        # AffineDistribution; the lift uses `[d.loc for d in dists]` which
+        # has to allow comprehensions over a vector of structs holding
+        # traced numbers.
+        function f_pd(μs, σs, x)
+            ds = [VLBIGaussian(μs[i], σs[i]) for i in eachindex(μs)]
+            return logpdf(product_distribution(ds), x)
+        end
+        μs = randn(4)
+        σs = abs.(randn(4)) .+ 0.1
+        x = μs .+ σs .* randn(4)
+        μsr = Reactant.to_rarray(μs)
+        σsr = Reactant.to_rarray(σs)
+        xr = Reactant.to_rarray(x)
+        @test_skip @jit(f_pd(μsr, σsr, xr)) ≈ f_pd(μs, σs, x)
+    end
+
 end
