@@ -81,13 +81,13 @@ end
 end
 
 function Random.rand(rng::AbstractRNG, d::StdTDist{T, <:Number, 0}) where {T}
-    return T(_rand_tdist(rng, Float64(d.ν)))
+    return _rand_tdist(rng, d.ν)
 end
 function Dists._rand!(
         rng::AbstractRNG, d::StdTDist{T, <:Number, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
-    ν = Float64(d.ν)
-    @inbounds for i in eachindex(x)
+    ν = d.ν
+    @trace for i in eachindex(x)
         x[i] = _rand_tdist(rng, ν)
     end
     return x
@@ -95,8 +95,8 @@ end
 function Dists._rand!(
         rng::AbstractRNG, d::StdTDist{T, <:AbstractArray, N}, x::AbstractArray{<:Real, N}
     ) where {T, N}
-    @inbounds for i in eachindex(x)
-        x[i] = _rand_tdist(rng, Float64(d.ν[i]))
+    @trace for i in eachindex(x)
+        x[i] = _rand_tdist(rng, d.ν[i])
     end
     return x
 end

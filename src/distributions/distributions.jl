@@ -46,12 +46,10 @@ function lognorm end
 
 
 # ----- shared sampling helpers -------------------------------------------
-# Marsaglia & Tsang (2000) Gamma(α, 1) sampler with branchless masked
-# acceptance and a bounded iteration count, so the body traces cleanly
-# under Reactant. With `K = 64` retries the failure probability is
-# `<10^-50` for α >= 1, so the unbounded rejection loop is unnecessary.
-
-const _GAMMA_RETRIES = 64
+# Marsaglia & Tsang (2000) Gamma(α, 1) sampler. The `@trace while` loop
+# (from `ReactantCore`) lowers to MLIR `while_loop` under Reactant tracing
+# and is a plain Julia `while` loop otherwise — early-exit on first
+# accepted sample either way.
 
 function _rand_gamma(rng::AbstractRNG, α::Real)
     # For α < 1, sample Gamma(α+1, 1) and multiply by U^(1/α).
@@ -61,16 +59,15 @@ function _rand_gamma(rng::AbstractRNG, α::Real)
     c = one(α_eff) / sqrt(9 * d)
 
     sample = d
-    accepted = false
-    for _ in 1:_GAMMA_RETRIES
+    done = false
+    @trace while !done
         x = randn(rng)
         v = (one(α_eff) + c * x)^3
         u = rand(rng)
         v_safe = ifelse(v > zero(v), v, one(v))
-        ok = (v > zero(v)) & (log(u) < x * x / 2 + d - d * v_safe + d * log(v_safe))
-        take = ok & !accepted
-        sample = ifelse(take, d * v, sample)
-        accepted = accepted | take
+        accept = (v > zero(v)) & (log(u) < x * x / 2 + d - d * v_safe + d * log(v_safe))
+        sample = ifelse(accept, d * v, sample)
+        done = accept
     end
 
     boost_u = rand(rng)
