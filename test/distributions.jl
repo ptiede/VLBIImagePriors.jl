@@ -497,6 +497,30 @@
         @test u_back ≈ u
     end
 
+    @testset "ascube scalar inverse for 0-dim AffineDistribution + VLBITruncated" begin
+        # `inverse(c, ::Number)` for 0-dim distributions used to fail because
+        # HC's `ArrayHC` `inverse_eltype` only matched `Type{<:AbstractArray}`,
+        # and the only `_step_inverse!` method took `::AbstractVector`.
+        scalar_cases = [
+            VLBIGaussian(0.0, 1.0),
+            VLBIUniform(0.0, 1.0),
+            VLBIExponential(2.0),
+            VLBIInverseGamma(2.0, 1.0),
+            VLBITDist(5.0),
+            VLBITruncated(VLBIGaussian(0.0, 1.0), -1.0, 2.0),
+            VLBITruncated(VLBIExponential(1.0), nothing, 3.0),
+            VLBITruncated(VLBIUniform(-2.0, 2.0), -1.0, 1.5),
+            VLBITruncated(VLBIGaussian(0.0, 1.0), 0.5, nothing),
+        ]
+        for d in scalar_cases
+            c = HypercubeTransform.ascube(d)
+            u = rand(HypercubeTransform.dimension(c))
+            x = HypercubeTransform.transform(c, u)
+            @test HypercubeTransform.inverse(c, x) ≈ u       # vector input
+            @test HypercubeTransform.inverse(c, x[1]) ≈ u    # scalar input
+        end
+    end
+
     @testset "ascube round-trip for Std bases and AffineDistributions" begin
         # Every base + shape combination must route through ArrayHC and
         # round-trip via the broadcasting kernel — without this, scalar

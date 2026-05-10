@@ -87,6 +87,8 @@ Dists.quantile(d::StdExponential{T, 0}, p::Number) where {T} = _std_quantile(d, 
 
 HC.asflat(::StdExponential{T, 0}) where {T} = TV.asℝ₊
 HC.asflat(d::StdExponential{T, N}) where {T, N} = TV.as(Array, TV.asℝ₊, size(d)...)
+HC.inverse_eltype(::StdExponential{T}, y::Type) where {T} = promote_type(T, eltype(y))
+
 
 # Force ArrayHC for all dimensions so the round-trip uses the broadcasting
 # kernel — see the comment in distributions.jl for why ScalarHC doesn't work.

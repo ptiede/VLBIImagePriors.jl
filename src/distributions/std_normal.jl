@@ -90,6 +90,7 @@ Dists.quantile(d::StdNormal, p::Number) = _std_quantile(d, p)
 HC.asflat(::StdNormal{T, 0}) where {T} = TV.asℝ
 HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
 HC.ascube(d::StdNormal) = HC.ArrayHC(d)
+HC.inverse_eltype(::StdNormal{T}, y::Type) where {T} = promote_type(T, eltype(y))
 
 function HC._step_transform(h::HC.ArrayHC{<:StdNormal}, p::AbstractVector, index)
     d = h.dist

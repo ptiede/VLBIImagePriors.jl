@@ -298,6 +298,7 @@ end
 HC.ascube(d::AffineDistribution{<:Any, <:Any, <:Any, <:Number}) = HC.ArrayHC(d)
 HC.ascube(d::AffineDistribution{<:Any, <:Any, <:Any, <:AbstractArray}) = HC.ArrayHC(d)
 
+HC.inverse_eltype(d::AffineDistribution, y::Type) = HC.inverse_eltype(d.base, y)
 function HC._step_transform(
         h::HC.ArrayHC{<:AffineDistribution}, p::AbstractVector, index
     )
@@ -310,7 +311,7 @@ function HC._step_transform(
 end
 
 function HC._step_inverse!(
-        x::AbstractVector, index, h::HC.ArrayHC{<:AffineDistribution}, y
+        x::AbstractVector, index, h::HC.ArrayHC{<:AffineDistribution}, y::AbstractArray
     )
     d = h.dist
     n = HC.dimension(h)
@@ -318,6 +319,19 @@ function HC._step_inverse!(
     @views x[index:(index + n - 1)] .= _ascube_p(d.base, z)
     return index + n
 end
+# Scalar-y path: 0-dim AffineDistribution with `inverse(c, ::Number)`.
+# `loc`/`scale` are scalars at this shape, so the affine map is a single
+# arithmetic op and the cdf is one element-wise call.
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:AffineDistribution}, y::Number
+    )
+    d = h.dist
+    z = (y - d.loc) / d.scale
+    x[index] = _ascube_p(d.base, (z,))[1]
+    return index + 1
+end
+
+
 
 
 # ----- product_distribution lifting --------------------------------------

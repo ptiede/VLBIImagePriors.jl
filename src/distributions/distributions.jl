@@ -106,3 +106,21 @@ include("std_tdist.jl")
 include("affine.jl")
 include("constructors.jl")
 include("truncated.jl")
+
+
+# ----- ArrayHC → dist `inverse_eltype` delegation -----------------------
+# `HC.inverse(c, x)` calls `inverse_eltype(c, typeof(x))`. HC's only
+# `ArrayHC` method takes `Type{<:AbstractArray{T}}`, so a scalar input
+# (e.g. 0-dim `AffineDistribution` with `inverse(c, 0.5)`) falls off the
+# dispatch table. We delegate from the `ArrayHC` wrapper to the wrapped
+# distribution so the per-dist methods (in each `std_*.jl`, `affine.jl`,
+# `truncated.jl`) handle the eltype rule. Restricting the second arg to
+# `Type{<:Number}` keeps HC's existing `Type{<:AbstractArray}` method
+# winning for array inputs — no ambiguity, no behavior change there.
+const _AscubeDist = Union{
+    StdNormal, StdExponential, StdUniform, StdInverseGamma, StdTDist,
+    AffineDistribution, VLBITruncated,
+}
+function HC.inverse_eltype(c::HC.ArrayHC{<:_AscubeDist}, ::Type{T}) where {T <: Number}
+    return HC.inverse_eltype(c.dist, T)
+end

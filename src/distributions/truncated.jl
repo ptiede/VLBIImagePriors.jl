@@ -148,3 +148,30 @@ function HC.asflat(d::VLBITruncated{<:Any, Nothing, <:Real})
     return TV.as(Real, -TV.∞, d.upper)
 end
 HC.asflat(::VLBITruncated) = TV.asℝ
+
+HC.inverse_eltype(b::VLBITruncated, y::Type) = HC.inverse_eltype(b.untruncated, y)
+
+# Force ArrayHC for the same reason as the Std bases / AffineDistribution —
+# ScalarHC's `_step_inverse!` only accepts a scalar, but `transform(c, [u])`
+# returns a Vector via `Distributions.quantile`'s broadcast, breaking the
+# round-trip. The branchless `cdf` / `quantile` defined above broadcast
+# through `Ref(d)`.
+HC.ascube(d::VLBITruncated) = HC.ArrayHC(d)
+function HC._step_transform(h::HC.ArrayHC{<:VLBITruncated}, p::AbstractVector, index)
+    out = Dists.quantile.(Ref(h.dist), p)
+    return out, index + HC.dimension(h)
+end
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:VLBITruncated}, y::AbstractVector
+    )
+    x .= Dists.cdf.(Ref(h.dist), y)
+    return index + HC.dimension(h)
+end
+# Scalar-y path: `inverse(c, ::Number)` for the (always 0-dim, univariate)
+# VLBITruncated wrapper.
+function HC._step_inverse!(
+        x::AbstractVector, index, h::HC.ArrayHC{<:VLBITruncated}, y::Number
+    )
+    x[index] = Dists.cdf(h.dist, y)
+    return index + 1
+end
