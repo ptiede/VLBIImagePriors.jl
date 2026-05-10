@@ -9,6 +9,7 @@ using Test
 using ComradeBase
 using Serialization
 using LinearAlgebra
+using Random
 using Enzyme
 using Zygote
 

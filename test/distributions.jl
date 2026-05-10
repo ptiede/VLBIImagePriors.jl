@@ -566,9 +566,10 @@
     @testset "AffineDistribution with Matrix scale (linear operator)" begin
         # `AffineDistribution(μ, A, StdNormal((K,)))` with A::Matrix is the
         # MvNormal(μ, A * A') reparameterisation via Cholesky factor.
+        rng = Random.MersenneTwister(0xc0ffee)
         K = 4
-        μ = randn(K)
-        Σ = let M = randn(K, K)
+        μ = randn(rng, K)
+        Σ = let M = randn(rng, K, K)
             M * M' + I  # positive definite
         end
         L = cholesky(Σ).L
@@ -579,7 +580,7 @@
 
         # logpdf round-trip
         for _ in 1:20
-            x = μ .+ A * randn(K)
+            x = μ .+ A * randn(rng, K)
             @test logpdf(d, x) ≈ logpdf(ref, x) atol = 1.0e-8
             @test logpdf(d, x) ≈ unnormed_logpdf(d, x) + lognorm(d)
         end
@@ -589,21 +590,24 @@
         @test cov(d) ≈ cov(ref)
         @test var(d) ≈ diag(Σ)
 
-        # Sampling — empirical mean/cov over a large sample
-        n = 50_000
-        samples = reduce(hcat, [rand(d) for _ in 1:n])
-        @test isapprox(vec(mean(samples; dims = 2)), μ; atol = 0.05)
+        # Sampling — empirical mean/cov over a large sample. Use elementwise
+        # tolerance: `isapprox` on matrices uses the Frobenius norm, which
+        # accumulates K^2 element-level errors and trips much sooner than
+        # any individual entry would.
+        n = 200_000
+        samples = reduce(hcat, [rand(rng, d) for _ in 1:n])
+        @test maximum(abs, vec(mean(samples; dims = 2)) .- μ) < 0.05
         emp_cov = cov(samples; dims = 2)
-        @test isapprox(emp_cov, Σ; atol = 0.1)
+        @test maximum(abs, emp_cov .- Σ) < 0.2
 
         # insupport — Normal base accepts everything in ℝᴷ
-        @test insupport(d, randn(K))
-        @test !insupport(d, randn(K + 1))   # wrong length
+        @test insupport(d, randn(rng, K))
+        @test !insupport(d, randn(rng, K + 1))   # wrong length
 
         # asflat: 1D unconstrained, dimension == K
         t = asflat(d)
         @test TV.dimension(t) == K
-        x = rand(d)
+        x = rand(rng, d)
         p = HypercubeTransform.inverse(t, x)
         @test HypercubeTransform.transform(t, p) ≈ x
     end
