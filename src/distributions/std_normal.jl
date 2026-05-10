@@ -89,6 +89,13 @@ Dists.quantile(d::StdNormal, p::Number) = _std_quantile(d, p)
 
 HC.asflat(::StdNormal{T, 0}) where {T} = TV.asℝ
 HC.asflat(d::StdNormal) = TV.as(Array, size(d)...)
+# 0-dim goes to ScalarHC (HC's default for univariate); N>=1 goes to
+# ArrayHC. We need an explicit N>=1 override because HC's stock
+# `ascube(::Union{MultivariateDistribution, Matrixvariate})` only catches
+# multivariate (N=1) — its second clause is the variate-form alias rather
+# than `MatrixDistribution`, so N>=2 falls off the dispatch table without
+# this override.
+HC.ascube(d::StdNormal{T, 0}) where {T} = HC.ScalarHC(d)
 HC.ascube(d::StdNormal) = HC.ArrayHC(d)
 HC.inverse_eltype(::StdNormal{T}, y::Type) where {T} = promote_type(T, eltype(y))
 

@@ -174,10 +174,10 @@ end
 
 HC.asflat(::StdTDist{T, <:Number, 0}) where {T} = TV.asℝ
 HC.asflat(d::StdTDist{T, <:Any, N}) where {T, N} = TV.as(Array, TV.asℝ, size(d)...)
-
-HC.ascube(d::StdTDist) = HC.ArrayHC(d)
 HC.inverse_eltype(::StdTDist{T}, y::Type) where {T} = promote_type(T, eltype(y))
 
+HC.ascube(d::StdTDist{T, <:Any, 0}) where {T} = HC.ScalarHC(d)
+HC.ascube(d::StdTDist) = HC.ArrayHC(d)
 
 function HC._step_transform(h::HC.ArrayHC{<:StdTDist}, p::AbstractVector, index)
     out = _ascube_z(h.dist, p)

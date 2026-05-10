@@ -497,16 +497,23 @@
         @test u_back ≈ u
     end
 
-    @testset "ascube scalar inverse for 0-dim AffineDistribution + VLBITruncated" begin
-        # `inverse(c, ::Number)` for 0-dim distributions used to fail because
-        # HC's `ArrayHC` `inverse_eltype` only matched `Type{<:AbstractArray}`,
-        # and the only `_step_inverse!` method took `::AbstractVector`.
+    @testset "ascube routing: 0-dim → ScalarHC, N>=1 → ArrayHC" begin
+        # 0-dim (univariate) distributions must use ScalarHC so the
+        # natural `transform(c, scalar) → scalar` workflow works. N>=1
+        # distributions go to ArrayHC. The matrixvariate (N>=2) override is
+        # required because HC's stock `ascube` Union only catches
+        # multivariate (N=1).
         scalar_cases = [
             VLBIGaussian(0.0, 1.0),
             VLBIUniform(0.0, 1.0),
             VLBIExponential(2.0),
             VLBIInverseGamma(2.0, 1.0),
             VLBITDist(5.0),
+            StdNormal(),
+            StdExponential(),
+            StdUniform(),
+            StdInverseGamma(2.5),
+            StdTDist(5.0),
             VLBITruncated(VLBIGaussian(0.0, 1.0), -1.0, 2.0),
             VLBITruncated(VLBIExponential(1.0), nothing, 3.0),
             VLBITruncated(VLBIUniform(-2.0, 2.0), -1.0, 1.5),
@@ -514,43 +521,49 @@
         ]
         for d in scalar_cases
             c = HypercubeTransform.ascube(d)
+            @test c isa HypercubeTransform.ScalarHC
+            u = rand()
+            x = HypercubeTransform.transform(c, u)
+            @test x isa Number
+            @test HypercubeTransform.inverse(c, x)[1] ≈ u
+        end
+
+        # Matrixvariate cases — used to fall off HC's `ascube` dispatch
+        # table because HC's Union only catches multivariate.
+        matrix_cases = [
+            StdExponential((2, 3)),
+            VLBIGaussian(2.0, 1.5, (3, 4)),
+            VLBIInverseGamma(abs.(randn(2, 3)) .+ 1.5, abs.(randn(2, 3)) .+ 0.5),
+            VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
+        ]
+        for d in matrix_cases
+            c = HypercubeTransform.ascube(d)
+            @test c isa HypercubeTransform.ArrayHC
             u = rand(HypercubeTransform.dimension(c))
             x = HypercubeTransform.transform(c, u)
-            @test HypercubeTransform.inverse(c, x) ≈ u       # vector input
-            @test HypercubeTransform.inverse(c, x[1]) ≈ u    # scalar input
+            @test HypercubeTransform.inverse(c, x) ≈ u
         end
     end
 
-    @testset "ascube round-trip for Std bases and AffineDistributions" begin
-        # Every base + shape combination must route through ArrayHC and
-        # round-trip via the broadcasting kernel — without this, scalar
-        # AffineDistributions land on ScalarHC and `inverse(c, ::Vector)`
-        # errors (the original user-reported bug).
+    @testset "ascube N>=1 round-trip for Std bases and AffineDistributions" begin
+        # N>=1 distributions go through ArrayHC. Includes both multivariate
+        # (N=1) which HC's stock dispatch handles, and matrixvariate (N>=2)
+        # which needs our explicit override (see std_normal.jl comment).
         cases = Any[
-            StdNormal(),
-            StdExponential(),
             StdExponential((6,)),
-            StdUniform(),
             StdUniform((4,)),
-            StdInverseGamma(2.5),
             StdInverseGamma(2.5, (3,)),
             StdInverseGamma(abs.(randn(4)) .+ 1.5),
-            StdTDist(5.0),
             StdTDist(5.0, (3,)),
             StdTDist(abs.(randn(4)) .+ 2.0),
-            VLBIGaussian(0.0, 1.0),
             VLBIGaussian(2.0, 1.5, (3, 4)),
             VLBIGaussian(randn(2, 3), abs.(randn(2, 3)) .+ 0.1),
-            VLBIExponential(2.0),
             VLBIExponential(2.0, (3,)),
             VLBIExponential(abs.(randn(2, 3)) .+ 0.1),
-            VLBIUniform(-1.0, 3.0),
             VLBIUniform(-1.0, 1.0, (3,)),
             VLBIUniform(randn(2, 3), randn(2, 3) .+ 5.0),
-            VLBIInverseGamma(2.0, 1.0),
             VLBIInverseGamma(2.0, 1.0, (3,)),
             VLBIInverseGamma(abs.(randn(2, 3)) .+ 1.5, abs.(randn(2, 3)) .+ 0.5),
-            VLBITDist(5.0, 0.0, 1.0),
             VLBITDist(5.0, 0.0, 1.0, (3,)),
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]

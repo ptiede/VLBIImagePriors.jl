@@ -89,10 +89,11 @@ HC.asflat(::StdExponential{T, 0}) where {T} = TV.asℝ₊
 HC.asflat(d::StdExponential{T, N}) where {T, N} = TV.as(Array, TV.asℝ₊, size(d)...)
 HC.inverse_eltype(::StdExponential{T}, y::Type) where {T} = promote_type(T, eltype(y))
 
-
-# Force ArrayHC for all dimensions so the round-trip uses the broadcasting
-# kernel — see the comment in distributions.jl for why ScalarHC doesn't work.
+# 0-dim → ScalarHC; N>=1 → ArrayHC. See std_normal.jl for the rationale on
+# the N>=1 override (HC's default misses matrixvariate distributions).
+HC.ascube(d::StdExponential{T, 0}) where {T} = HC.ScalarHC(d)
 HC.ascube(d::StdExponential) = HC.ArrayHC(d)
+
 function HC._step_transform(h::HC.ArrayHC{<:StdExponential}, p::AbstractVector, index)
     out = _ascube_z(h.dist, p)
     return out, index + HC.dimension(h)

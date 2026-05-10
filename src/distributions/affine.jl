@@ -284,19 +284,16 @@ end
 
 
 # ----- ascube -------------------------------------------------------------
-# Force ArrayHC for every shape (0-d through N-d), mirroring the per-base
-# ascube overrides. Without this, `AffineDistribution{B, 0, ...}` would fall
-# through to HC's `ascube(::UnivariateDistribution) = ScalarHC(d)` whose
-# `_step_inverse!` only accepts a scalar — but `transform(::ScalarHC, [u])`
-# returns a Vector via `Distributions.quantile`'s broadcast, breaking the
-# round-trip.
-#
+# 0-dim → ScalarHC (univariate workflow: `transform(c, scalar) → scalar`).
+# N>=1  → ArrayHC. We need an explicit N>=1 override because HC's stock
+# `ascube(::Union{MultivariateDistribution, Matrixvariate})` only catches
+# multivariate (N=1) — its second clause is the variate-form alias rather
+# than `MatrixDistribution`, so N>=2 falls off the dispatch table.
 # The matrix-scale variant (`<:AbstractMatrix` scale, 1D base) is excluded:
 # it's a linear-operator transform with no element-wise quantile, so it
 # falls through to HC's default and a clear error.
-
-HC.ascube(d::AffineDistribution{<:Any, <:Any, <:Any, <:Number}) = HC.ArrayHC(d)
-HC.ascube(d::AffineDistribution{<:Any, <:Any, <:Any, <:AbstractArray}) = HC.ArrayHC(d)
+HC.ascube(d::AffineDistribution{<:Any, 0}) = HC.ScalarHC(d)
+HC.ascube(d::AffineDistribution) = HC.ArrayHC(d)
 
 HC.inverse_eltype(d::AffineDistribution, y::Type) = HC.inverse_eltype(d.base, y)
 function HC._step_transform(
@@ -318,17 +315,6 @@ function HC._step_inverse!(
     z = (vec(y) .- _flat_or_scalar(d.loc)) ./ _flat_or_scalar(d.scale)
     @views x[index:(index + n - 1)] .= _ascube_p(d.base, z)
     return index + n
-end
-# Scalar-y path: 0-dim AffineDistribution with `inverse(c, ::Number)`.
-# `loc`/`scale` are scalars at this shape, so the affine map is a single
-# arithmetic op and the cdf is one element-wise call.
-function HC._step_inverse!(
-        x::AbstractVector, index, h::HC.ArrayHC{<:AffineDistribution}, y::Number
-    )
-    d = h.dist
-    z = (y - d.loc) / d.scale
-    x[index] = _ascube_p(d.base, (z,))[1]
-    return index + 1
 end
 
 
