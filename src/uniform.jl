@@ -1,54 +1,15 @@
 export ImageUniform, ImageSphericalUniform
-using FillArrays
 
 """
     ImageUniform(a::Real, b::Real, nx, ny)
+    ImageUniform(nx, ny)
 
-A uniform distribution in image pixels where `a/b` are the
-lower/upper bound for the interval. This then concatenates ny×nx
-uniform distributions together.
+A uniform distribution over an `nx × ny` image where each pixel is
+independently `Uniform(a, b)`. Thin wrapper around `VLBIUniform(a, b, (nx, ny))`
+— see that constructor for the underlying `AffineDistribution{<:StdUniform, 2}`.
 """
-struct ImageUniform{T} <: Dists.ContinuousMatrixDistribution
-    a::T
-    b::T
-    nx::Int
-    ny::Int
-    function ImageUniform(a::Real, b::Real, nx::Integer, ny::Integer)
-        aT, bT = promote(a, b)
-        T = typeof(aT)
-        return new{T}(aT, bT, nx, ny)
-    end
-end
-
-function ImageUniform(nx, ny)
-    return ImageUniform(0.0, 1.0, nx, ny)
-end
-
-Base.size(d::ImageUniform) = (d.nx, d.ny)
-
-Dists.mean(d::ImageUniform) = FillArrays.Fill((d.b - d.a) / 2, size(d)...)
-
-HC.asflat(d::ImageUniform) = TV.as(Matrix, TV.as(Real, d.a, d.b), d.nx, d.ny)
-# HC.ascube(d::ImageUniform) = HC.ArrayHC(Dists.product_distribution(fill(Dists.Uniform(), size(d))), size(d))
-
-function Dists.insupport(d::ImageUniform, x::AbstractMatrix)
-    return (size(d) == size(x)) && !any(x -> (d.a > x)||(x > d.b), x)
-end
-
-function Dists._logpdf(d::ImageUniform, x::AbstractMatrix{<:Real})
-    !Dists.insupport(d, x) && return -Inf
-    return -log(d.b - d.a) * (d.nx * d.ny)
-end
-
-function ChainRulesCore.rrule(::typeof(Dists._logpdf), d::ImageUniform, x::AbstractMatrix{<:Real})
-    return Dists._logpdf(d, x), Δ -> (NoTangent(), NoTangent(), ZeroTangent())
-end
-
-function Dists._rand!(rng::AbstractRNG, d::ImageUniform, x::AbstractMatrix)
-    @assert size(d) == size(x) "Size of input matrix and distribution are not the same"
-    d = Dists.Uniform(d.a, d.b)
-    return rand!(rng, d, x)
-end
+ImageUniform(a::Real, b::Real, nx::Integer, ny::Integer) = VLBIUniform(a, b, (nx, ny))
+ImageUniform(nx::Integer, ny::Integer) = VLBIUniform(0.0, 1.0, (nx, ny))
 
 """
     ImageSphericalUniform(nx, ny)

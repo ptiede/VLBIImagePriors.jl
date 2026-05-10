@@ -16,7 +16,7 @@
 
 export VLBIGaussian, VLBIExponential, VLBIUniform, VLBIInverseGamma, VLBITDist
 export StdNormal, StdExponential, StdUniform, StdInverseGamma, StdTDist
-export AffineDistribution
+export AffineDistribution, VLBITruncated
 export unnormed_logpdf, lognorm
 
 
@@ -82,3 +82,4 @@ include("std_inverse_gamma.jl")
 include("std_tdist.jl")
 include("affine.jl")
 include("constructors.jl")
+include("truncated.jl")

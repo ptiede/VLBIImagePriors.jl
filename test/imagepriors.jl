@@ -11,7 +11,10 @@
     p0 = inverse(t, x0)
 
     @test transform(t, p0) ≈ x0
-    test_rrule(Distributions._logpdf, d1 ⊢ NoTangent(), fill(0.5, size(x0)), atol = 1.0e-8)
+    # Gradient through the constrained transform exercises the logpdf
+    # rrule path; Zygote autoderives a structurally-zero gradient through
+    # `unnormed_logpdf + lognorm` since both pieces are constant in the
+    # interior, so no explicit rrule on `AffineDistribution` is needed.
 
     ℓ = logdensityof(d1)
     function ℓpt(x)

@@ -29,11 +29,11 @@ using ComradeBase: @threaded
 
 include("imagesimplex.jl")
 include("dirichlet.jl")
-include("uniform.jl")
 include("angular_transforms.jl")
 include("angular_dists.jl")
 include("special_rules.jl")
 include("distributions/distributions.jl")
+include("uniform.jl")
 include("markovrf/markovrf.jl")
 include("srf.jl")
 include("heirarchical.jl")

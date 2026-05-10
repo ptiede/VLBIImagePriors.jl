@@ -563,6 +563,143 @@
         @test var(d3) ≈ scale .^ 2
     end
 
+    @testset "product_distribution lifts scalar VLBI* into 1D AffineDistribution" begin
+        # Per family: an array of N scalar VLBI*(...) folds into one 1D
+        # AffineDistribution(<:StdX, 1) of length N with per-element params.
+
+        # Gaussian
+        ds_g = [VLBIGaussian(Float64(i), 0.5 + 0.1 * i) for i in 1:4]
+        p_g = product_distribution(ds_g)
+        @test p_g isa AffineDistribution{<:StdNormal, 1}
+        @test length(p_g) == 4
+        x = randn(4)
+        @test logpdf(p_g, x) ≈ sum(logpdf(d, x[i]) for (i, d) in enumerate(ds_g))
+
+        # Exponential
+        ds_e = [VLBIExponential(0.5 + 0.2 * i) for i in 1:3]
+        p_e = product_distribution(ds_e)
+        @test p_e isa AffineDistribution{<:StdExponential, 1}
+        @test length(p_e) == 3
+        y = abs.(randn(3)) .+ 0.1
+        @test logpdf(p_e, y) ≈ sum(logpdf(d, y[i]) for (i, d) in enumerate(ds_e))
+
+        # Uniform
+        ds_u = [VLBIUniform(-Float64(i), Float64(i + 1)) for i in 1:3]
+        p_u = product_distribution(ds_u)
+        @test p_u isa AffineDistribution{<:StdUniform, 1}
+        @test length(p_u) == 3
+        xu = [0.0, 0.5, 1.0]
+        @test logpdf(p_u, xu) ≈ sum(logpdf(d, xu[i]) for (i, d) in enumerate(ds_u))
+
+        # InverseGamma
+        ds_ig = [VLBIInverseGamma(2.0 + 0.5 * i, 1.0 + 0.1 * i) for i in 1:3]
+        p_ig = product_distribution(ds_ig)
+        @test p_ig isa AffineDistribution{<:StdInverseGamma, 1}
+        @test length(p_ig) == 3
+        xig = abs.(randn(3)) .+ 0.5
+        @test logpdf(p_ig, xig) ≈ sum(logpdf(d, xig[i]) for (i, d) in enumerate(ds_ig))
+
+        # TDist
+        ds_t = [VLBITDist(3.0 + Float64(i), Float64(i), 1.0 + 0.1 * i) for i in 1:3]
+        p_t = product_distribution(ds_t)
+        @test p_t isa AffineDistribution{<:StdTDist, 1}
+        @test length(p_t) == 3
+        xt = randn(3)
+        @test logpdf(p_t, xt) ≈ sum(logpdf(d, xt[i]) for (i, d) in enumerate(ds_t))
+    end
+
+    @testset "VLBITruncated" begin
+        # Truncated normal — compare to Distributions.truncated for cross-check.
+        d_base = VLBIGaussian(0.0, 1.0)
+        lower, upper = -1.5, 2.0
+        d = VLBITruncated(d_base, lower, upper)
+        ref = truncated(Normal(0.0, 1.0), lower, upper)
+
+        # logpdf inside support
+        for x in (-1.0, 0.0, 0.7, 1.5)
+            @test logpdf(d, x) ≈ logpdf(ref, x) atol = 1.0e-10
+            @test logpdf(d, x) ≈ unnormed_logpdf(d, x) + lognorm(d)
+        end
+
+        # Outside support → -Inf
+        @test logpdf(d, lower - 0.1) == -Inf
+        @test logpdf(d, upper + 0.1) == -Inf
+
+        # cdf / quantile inverses
+        for p in (0.05, 0.25, 0.5, 0.75, 0.95)
+            q = quantile(d, p)
+            @test lower <= q <= upper
+            @test cdf(d, q) ≈ p atol = 1.0e-8
+            @test quantile(d, p) ≈ quantile(ref, p) atol = 1.0e-8
+            @test cdf(d, q) ≈ cdf(ref, q) atol = 1.0e-8
+        end
+
+        # cdf clamping at the boundaries
+        @test cdf(d, lower - 1.0) == 0
+        @test cdf(d, upper + 1.0) == 1
+
+        # Sampling stays inside the truncation interval
+        rng = Random.MersenneTwister(42)
+        samples = [rand(rng, d) for _ in 1:5000]
+        @test all(s -> lower <= s <= upper, samples)
+        # And matches Distributions.truncated within sampling noise
+        @test isapprox(mean(samples), mean(ref); atol = 0.05)
+
+        # `lognorm` is data-independent — recompute, must match
+        ln1 = lognorm(d)
+        for _ in 1:5
+            @test lognorm(d) === ln1 || lognorm(d) ≈ ln1
+        end
+
+        # insupport
+        @test insupport(d, 0.0)
+        @test !insupport(d, lower - 0.5)
+        @test !insupport(d, upper + 0.5)
+
+        # asflat: bounded interval transform
+        t = asflat(d)
+        @test t isa TV.AbstractTransform
+        for _ in 1:5
+            x = rand(rng, d)
+            p = HypercubeTransform.inverse(t, x)
+            @test HypercubeTransform.transform(t, p) ≈ x
+        end
+
+        # Truncated exponential — non-symmetric base
+        d2 = VLBITruncated(VLBIExponential(2.0), 0.5, 5.0)
+        ref2 = truncated(Distributions.Exponential(2.0), 0.5, 5.0)
+        for x in (0.6, 1.0, 2.0, 4.0)
+            @test logpdf(d2, x) ≈ logpdf(ref2, x) atol = 1.0e-10
+        end
+
+        # Keyword API — matches Distributions.truncated
+        @test logpdf(VLBITruncated(d_base; lower = -1.0, upper = 1.0), 0.0) ≈
+            logpdf(truncated(Normal(0, 1); lower = -1.0, upper = 1.0), 0.0)
+
+        # One-sided: left-truncated only (X >= lower)
+        dl = VLBITruncated(d_base; lower = 0.0)
+        refl = truncated(Normal(0.0, 1.0); lower = 0.0)
+        for x in (0.1, 0.5, 1.5, 3.0)
+            @test logpdf(dl, x) ≈ logpdf(refl, x) atol = 1.0e-10
+        end
+        @test logpdf(dl, -0.5) == -Inf
+        @test cdf(dl, 0.0) ≈ 0
+        @test cdf(dl, 1.0e6) ≈ 1
+        # Sampling stays >= lower
+        @test all(s -> s >= 0.0, [rand(rng, dl) for _ in 1:1000])
+
+        # One-sided: right-truncated only (X <= upper)
+        dr = VLBITruncated(d_base; upper = 0.0)
+        refr = truncated(Normal(0.0, 1.0); upper = 0.0)
+        for x in (-3.0, -1.0, -0.5, -0.1)
+            @test logpdf(dr, x) ≈ logpdf(refr, x) atol = 1.0e-10
+        end
+        @test logpdf(dr, 0.5) == -Inf
+        @test cdf(dr, -1.0e6) ≈ 0
+        @test cdf(dr, 0.0) ≈ 1
+        @test all(s -> s <= 0.0, [rand(rng, dr) for _ in 1:1000])
+    end
+
     @testset "AffineDistribution with Matrix scale (linear operator)" begin
         # `AffineDistribution(μ, A, StdNormal((K,)))` with A::Matrix is the
         # MvNormal(μ, A * A') reparameterisation via Cholesky factor.

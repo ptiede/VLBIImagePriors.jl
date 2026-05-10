@@ -275,9 +275,65 @@ function HC.asflat(d::AffineDistribution{<:StdInverseGamma, N}) where {N}
 end
 function HC.asflat(d::AffineDistribution{<:StdUniform, N, <:Real, <:Real}) where {N}
     return TV.as(
-        Array, TV.as(Real, Float64(d.loc), Float64(d.loc) + Float64(d.scale)), size(d)...
+        Array, TV.as(Real, d.loc, d.loc + d.scale), size(d)...
     )
 end
 function HC.asflat(d::AffineDistribution{<:StdUniform, N}) where {N}
     return TV.as(Array, TV.asℝ, size(d)...)
+end
+
+
+# ----- product_distribution lifting --------------------------------------
+# Mirrors the `DiagonalVonMises` pattern: an `AbstractVector` of scalar
+# `AffineDistribution`s with the same Std base folds into one 1D
+# `AffineDistribution` with concatenated per-element parameters, preserving
+# the affine structure (and the cached `lognorm` split).
+
+function Dists.product_distribution(
+        dists::AbstractVector{<:AffineDistribution{<:StdNormal, 0}}
+    )
+    locs = [d.loc for d in dists]
+    scales = [d.scale for d in dists]
+    T = promote_type(eltype(locs), eltype(scales))
+    return AffineDistribution(locs, scales, StdNormal{T, 1}((length(dists),)))
+end
+
+function Dists.product_distribution(
+        dists::AbstractVector{<:AffineDistribution{<:StdExponential, 0}}
+    )
+    scales = [d.scale for d in dists]
+    T = promote_type(eltype(scales))
+    return AffineDistribution(
+        zero(eltype(scales)), scales, StdExponential{T, 1}((length(dists),))
+    )
+end
+
+function Dists.product_distribution(
+        dists::AbstractVector{<:AffineDistribution{<:StdUniform, 0}}
+    )
+    locs = [d.loc for d in dists]
+    scales = [d.scale for d in dists]
+    T = promote_type(eltype(locs), eltype(scales))
+    return AffineDistribution(locs, scales, StdUniform{T, 1}((length(dists),)))
+end
+
+function Dists.product_distribution(
+        dists::AbstractVector{<:AffineDistribution{<:StdInverseGamma, 0}}
+    )
+    scales = [d.scale for d in dists]
+    αs = [d.base.α for d in dists]
+    T = promote_type(eltype(αs), eltype(scales))
+    base = StdInverseGamma{T, typeof(αs), 1}(αs, (length(dists),))
+    return AffineDistribution(zero(eltype(scales)), scales, base)
+end
+
+function Dists.product_distribution(
+        dists::AbstractVector{<:AffineDistribution{<:StdTDist, 0}}
+    )
+    locs = [d.loc for d in dists]
+    scales = [d.scale for d in dists]
+    νs = [d.base.ν for d in dists]
+    T = promote_type(eltype(νs), eltype(locs), eltype(scales))
+    base = StdTDist{T, typeof(νs), 1}(νs, (length(dists),))
+    return AffineDistribution(locs, scales, base)
 end

@@ -158,7 +158,7 @@ end
 
 function WrappedUniform(p::Real, n::Int)
     p > 0 && ArgumentError("Period `p` must be positive")
-    pvec = Fill(p, n)
+    pvec = FillArrays.Fill(p, n)
     return WrappedUniform(pvec, n * log(p))
 end
 
