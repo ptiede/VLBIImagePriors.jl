@@ -703,7 +703,7 @@
     @testset "AffineDistribution with Matrix scale (linear operator)" begin
         # `AffineDistribution(μ, A, StdNormal((K,)))` with A::Matrix is the
         # MvNormal(μ, A * A') reparameterisation via Cholesky factor.
-        rng = Random.MersenneTwister(0xc0ffee)
+        rng = Random.MersenneTwister(0x00c0ffee)
         K = 4
         μ = randn(rng, K)
         Σ = let M = randn(rng, K, K)
