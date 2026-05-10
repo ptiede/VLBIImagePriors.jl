@@ -332,8 +332,6 @@ function HC._step_inverse!(
 end
 
 
-
-
 # ----- product_distribution lifting --------------------------------------
 # Mirrors the `DiagonalVonMises` pattern: an `AbstractVector` of scalar
 # `AffineDistribution`s with the same Std base folds into one 1D
