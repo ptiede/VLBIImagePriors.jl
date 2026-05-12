@@ -32,6 +32,20 @@ using Test
         @test @jit(f2(plr, xr, ρsr)) ≈ f2(pl, x, ρs)
     end
 
+    @testset "Logratio transforms" begin
+        tc = CenteredLR()
+        ta = AdditiveLR()
+        x = randn(10)
+        xr = Reactant.to_rarray(x)
+        @test @jit(to_simplex(tc, xr)) ≈ to_simplex(tc, x)
+        @test @jit(to_simplex(ta, xr)) ≈ to_simplex(ta, x)
+        xcr = @jit(to_real(tc, to_simplex(tc, xr)))
+        xar = @jit(to_real(ta, to_simplex(ta, xr)))
+
+        @test xcr .- xcr[1] ≈ x .- x[1]
+        @test xar[1:(end - 1)] ≈ x[1:(end - 1)]
+    end
+
     @testset "Transforms" begin
         d1 = DiagonalVonMises([0.5, 0.1], [inv(0.1), inv(π^2)])
         t = asflat(d1)

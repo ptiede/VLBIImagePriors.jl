@@ -171,7 +171,7 @@ EnzymeRules.inactive(::typeof(_noadmaximum), args...) = nothing
 
 @inline function _fastsum(x)
     tot = zero(eltype(x))
-    @simd for i in eachindex(x)
+    @trace for i in eachindex(x)
         tot += x[i]
     end
     return tot
