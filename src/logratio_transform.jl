@@ -172,7 +172,7 @@ EnzymeRules.inactive(::typeof(_noadmaximum), args...) = nothing
 @inline function _fastsum(x)
     tot = zero(eltype(x))
     @trace for i in eachindex(x)
-        tot += x[i]
+        tot += rgetindex(x, i)
     end
     return tot
 end
@@ -203,7 +203,6 @@ function alrinv!(x, y)
 end
 
 
-checkx(x) = @argcheck sum(x) ≈ 1
 EnzymeRules.inactive(::typeof(checkx), args...) = nothing
 
 """
@@ -212,8 +211,8 @@ EnzymeRules.inactive(::typeof(checkx), args...) = nothing
 Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in Δⁿ
 """
 function clr!(x, y)
-    checkx(y)
-    x .= log.(y)
+    # checkx(y)
+    x .= log.(y./sum(y))
     x .= x .- sum(x) / length(x)
     return nothing
 end
@@ -224,8 +223,9 @@ end
 Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in Δⁿ
 """
 function alr!(x, y)
-    checkx(y)
-    x[begin:(end - 1)] .= log.(@view y[begin:(end - 1)]) .- log(y[end])
+    # checkx(y)
+    sy = sum(y)
+    x[begin:(end - 1)] .= log.(@view y[begin:(end - 1)])./sy .- log(y[end]/sy)
     x[end] = 0
     return nothing
 end
