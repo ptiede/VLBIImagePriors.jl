@@ -203,7 +203,7 @@ function alrinv!(x, y)
 end
 
 
-EnzymeRules.inactive(::typeof(checkx), args...) = nothing
+# EnzymeRules.inactive(::typeof(checkx), args...) = nothing
 
 """
     clr!(x, y)
