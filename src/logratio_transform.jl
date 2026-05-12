@@ -193,7 +193,7 @@ and the Gaussian prior should ensure it is easy to sample from.
 
 """
 function alrinv!(x, y)
-    x[end] = 1
+    rsetindex!(x, lastindex(x), 1)
     # Skip the last element
     x[begin:(end - 1)] .= exp.(@view y[begin:(end - 1)])
     tot = sum(x)
