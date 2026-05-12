@@ -212,7 +212,7 @@ Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in
 """
 function clr!(x, y)
     # checkx(y)
-    x .= log.(y./sum(y))
+    x .= log.(y ./ sum(y))
     x .= x .- sum(x) / length(x)
     return nothing
 end
@@ -225,7 +225,7 @@ Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in
 function alr!(x, y)
     # checkx(y)
     sy = sum(y)
-    x[begin:(end - 1)] .= log.(@view y[begin:(end - 1)])./sy .- log(y[end]/sy)
+    x[begin:(end - 1)] .= log.(@view y[begin:(end - 1)]) ./ sy .- log(y[end] / sy)
     x[end] = 0
     return nothing
 end
