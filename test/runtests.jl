@@ -12,6 +12,7 @@ using LinearAlgebra
 using Random
 using Enzyme
 using Zygote
+using Reactant
 
 
 @testset "VLBIImagePriors.jl" begin

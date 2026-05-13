@@ -141,7 +141,7 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Sphe
 end
 # Create the separate function so Reactant doesn't try to make M traced
 function set_output!(out::NTuple{M}, x, i) where {M}
-    ntuple(Val(M)) do n
+    return ntuple(Val(M)) do n
         rsetindex!(out[n], rgetindex(x, n), i)
     end
 end
