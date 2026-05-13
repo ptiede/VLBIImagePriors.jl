@@ -1,5 +1,7 @@
 using Reactant, ComradeBase, VLBIImagePriors, Distributions
 using Test
+using TransformVariables
+using HypercubeTransform
 
 @testset "Reactant Ext" begin
     @testset "GMRF" begin
@@ -59,7 +61,11 @@ using Test
         xs = randn(dimension(ts))
         xrs = Reactant.to_rarray(xs)
         # Broken in Reactant currently
-        # @test @jit(transform(ts, xrs)) ≈ transform(ts, xs)
+        @test @jit(transform(ts, xrs)) ≈ transform(ts, xs)
+
+        flg = TransformVariables.LogJac()
+        outr = @jit TV.transform_with(flg, ts, xrs, 1)
+        out = TV.transform_with(flg, ts, xs, 1)
 
     end
 
