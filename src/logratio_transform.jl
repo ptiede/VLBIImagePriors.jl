@@ -159,7 +159,7 @@ This function is mainly to transform the GaussMarkovRandomField to live on the s
 @inline @fastmath function clrinv!(x, y)
     maxx = _noadmaximum(y) # We don't need to AD since the gradient is independent of this
     x .= exp.(y .- maxx) # This is for numerical stability. Prevents overflow
-    tot = _fastsum(x)
+    tot = sum(x)
     x .= x ./ tot
     nothing
 end
@@ -169,13 +169,6 @@ end
 end
 EnzymeRules.inactive(::typeof(_noadmaximum), args...) = nothing
 
-@inline function _fastsum(x)
-    tot = zero(eltype(x))
-    @trace for i in eachindex(x)
-        tot += rgetindex(x, i)
-    end
-    return tot
-end
 
 """
     alrinv!(x, y)
@@ -193,7 +186,7 @@ and the Gaussian prior should ensure it is easy to sample from.
 
 """
 function alrinv!(x, y)
-    rsetindex!(x, lastindex(x), 1)
+    rsetindex!(x, oneunit(eltype(x)), lastindex(x))
     # Skip the last element
     x[begin:(end - 1)] .= exp.(@view y[begin:(end - 1)])
     tot = sum(x)
@@ -225,7 +218,7 @@ Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in
 function alr!(x, y)
     # checkx(y)
     sy = sum(y)
-    x[begin:(end - 1)] .= log.(@view y[begin:(end - 1)]) ./ sy .- log(y[end] / sy)
-    x[end] = 0
+    x[begin:(end - 1)] .= log.(@view(y[begin:(end - 1)])./sy) .- log(y[end] / sy)
+    rsetindex!(x, zero(eltype(x)), lastindex(x))
     return nothing
 end

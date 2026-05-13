@@ -69,8 +69,8 @@ end
     # test_rrule(to_real, AdditiveLR(), yal)
     # test_rrule(to_real, CenteredLR(), ycl)
 
-    x0al = to_real(AdditiveLR(), yal)
-    x0cl = to_real(CenteredLR(), ycl)
+    x0al = @jit to_real(AdditiveLR(), yal)
+    x0cl = @jit to_real(CenteredLR(), ycl)
     @test x0al[1:(end - 1)] ≈ x[1:(end - 1)]
     @test x0cl .- x0cl[1] ≈ x .- x[1]
 end
