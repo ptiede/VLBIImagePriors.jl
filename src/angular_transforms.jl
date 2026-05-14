@@ -32,13 +32,14 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Angl
     T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = similar(y, dims)
+    index0 = index
     @trace for i in eachindex(out)
-        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
-        index = index2
+        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index0)
+        index0 = index2
         ℓ += ℓi
         rsetindex!(out, θ, i)
     end
-    return out, ℓ, index
+    return out, ℓ, index + TV.dimension(inner_transformation) * length(out)
 end
 
 
@@ -129,16 +130,20 @@ function TV.transform_with(flag::TV.LogJacFlag, t::TV.ArrayTransformation{<:Sphe
     T = eltype(y)
     ℓ = TV.logjac_zero(flag, T)
     out = ntuple(_ -> similar(y, dims), Val(N + 1))
-    M = N + 1 # rename because scope issues with Reactant
+    index0 = index
     @trace for i in eachindex(out...)
-        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index)
+        θ, ℓi, index2 = TV.transform_with(flag, inner_transformation, y, index0)
         ℓ += ℓi
-        index = index2
-        ntuple(Val(M)) do n
-            rsetindex!(out[n], rgetindex(θ, n), i)
-        end
+        index0 = index2
+        set_output!(out, θ, i)
     end
-    return out, ℓ, index
+    return out, ℓ, index + TV.dimension(inner_transformation) * length(out[1])
+end
+# Create the separate function so Reactant doesn't try to make M traced
+function set_output!(out::NTuple{M}, x, i) where {M}
+    return ntuple(Val(M)) do n
+        rsetindex!(out[n], rgetindex(x, n), i)
+    end
 end
 
 
