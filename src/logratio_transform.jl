@@ -218,7 +218,7 @@ Compute the inverse alr transform. That is `x` lives in ℜⁿ and `y`, lives in
 function alr!(x, y)
     # checkx(y)
     sy = sum(y)
-    x[begin:(end - 1)] .= log.(@view(y[begin:(end - 1)]) ./ sy) .- log(y[end] / sy)
+    x[begin:(end - 1)] .= log.(@view(y[begin:(end - 1)]) ./ sy) .- log(rgetindex(y, lastindex(y)) / sy)
     rsetindex!(x, zero(eltype(x)), lastindex(x))
     return nothing
 end
