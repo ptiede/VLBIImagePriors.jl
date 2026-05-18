@@ -253,7 +253,7 @@ end
     @trace for iy in yitr_inner
         @trace for ix in xitr_inner
             Ic = rgetindex(I, ix, iy)
-            qv  = c * Ic
+            qv = c * Ic
             qv -= rgetindex(I, ix + 1, iy)
             qv -= rgetindex(I, ix - 1, iy)
             qv -= rgetindex(I, ix, iy + 1)
@@ -265,7 +265,7 @@ end
     # Top edge (iy = 1)
     @trace for ix in xitr_inner
         Ic = rgetindex(I, ix, 1)
-        qv  = c * Ic
+        qv = c * Ic
         qv -= rgetindex(I, ix + 1, 1)
         qv -= rgetindex(I, ix - 1, 1)
         qv -= rgetindex(I, ix, 2)
@@ -275,7 +275,7 @@ end
     # Bottom edge (iy = ny)
     @trace for ix in xitr_inner
         Ic = rgetindex(I, ix, ny)
-        qv  = c * Ic
+        qv = c * Ic
         qv -= rgetindex(I, ix + 1, ny)
         qv -= rgetindex(I, ix - 1, ny)
         qv -= rgetindex(I, ix, ny - 1)
@@ -285,7 +285,7 @@ end
     # Left edge (ix = 1)
     @trace for iy in yitr_inner
         Ic = rgetindex(I, 1, iy)
-        qv  = c * Ic
+        qv = c * Ic
         qv -= rgetindex(I, 2, iy)
         qv -= rgetindex(I, 1, iy + 1)
         qv -= rgetindex(I, 1, iy - 1)
@@ -295,7 +295,7 @@ end
     # Right edge (ix = nx)
     @trace for iy in yitr_inner
         Ic = rgetindex(I, nx, iy)
-        qv  = c * Ic
+        qv = c * Ic
         qv -= rgetindex(I, nx - 1, iy)
         qv -= rgetindex(I, nx, iy + 1)
         qv -= rgetindex(I, nx, iy - 1)
@@ -304,25 +304,25 @@ end
 
     # Four corners
     Ic = rgetindex(I, 1, 1)
-    qv  = c * Ic
+    qv = c * Ic
     qv -= rgetindex(I, 2, 1)
     qv -= rgetindex(I, 1, 2)
     value += f(qv, Ic)
 
     Ic = rgetindex(I, nx, 1)
-    qv  = c * Ic
+    qv = c * Ic
     qv -= rgetindex(I, nx - 1, 1)
     qv -= rgetindex(I, nx, 2)
     value += f(qv, Ic)
 
     Ic = rgetindex(I, 1, ny)
-    qv  = c * Ic
+    qv = c * Ic
     qv -= rgetindex(I, 2, ny)
     qv -= rgetindex(I, 1, ny - 1)
     value += f(qv, Ic)
 
     Ic = rgetindex(I, nx, ny)
-    qv  = c * Ic
+    qv = c * Ic
     qv -= rgetindex(I, nx - 1, ny)
     qv -= rgetindex(I, nx, ny - 1)
     value += f(qv, Ic)
