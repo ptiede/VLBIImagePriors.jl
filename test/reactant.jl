@@ -41,8 +41,8 @@ using HypercubeTransform
         xr = Reactant.to_rarray(x)
         @test @jit(to_simplex(tc, xr)) ≈ to_simplex(tc, x)
         @test @jit(to_simplex(ta, xr)) ≈ to_simplex(ta, x)
-        xcr = @jit(to_real(tc, to_simplex(tc, xr)))
-        xar = @jit(to_real(ta, to_simplex(ta, xr)))
+        xcr = Array(@jit(to_real(tc, to_simplex(tc, xr))))
+        xar = Array(@jit(to_real(ta, to_simplex(ta, xr))))
 
         @test xcr .- xcr[1] ≈ x .- x[1]
         @test xar[1:(end - 1)] ≈ x[1:(end - 1)]

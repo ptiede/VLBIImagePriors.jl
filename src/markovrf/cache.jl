@@ -237,28 +237,106 @@ function build_q1d(T, n)
 end
 
 
-# computes the intrinsic gaussian process of a 1-neighbor method
-# this is equivalent to TSV regularizer
-function igmrf_1n(I::AbstractMatrix, κ², ::Any)
+# Walks the grid in 9 unconditional regions (interior + 4 edges + 4 corners),
+# computing the per-cell qv with the right number of in-bounds neighbors, and
+# accumulating `f(qv, Ic)`. Used by both igmrf_1n (f = qv*Ic) and igmrf_2n
+# (f = qv*qv). No `@trace if` anywhere; all iterators are plain `UnitRange{Int}`
+# bound before the loops.
+@inline function _igmrf_walk(I::AbstractMatrix, κ², f::F) where {F}
+    c = 4 + κ²
+    nx, ny = size(I)
+    xitr_inner = 2:(nx - 1)
+    yitr_inner = 2:(ny - 1)
     value = zero(eltype(I))
-    @trace for iy in axes(I, 2)
-        @trace for ix in axes(I, 1)
-            value += igmrf_qv(I, κ², ix, iy) * rgetindex(I, ix, iy)
+
+    # Interior — 4 neighbors
+    @trace for iy in yitr_inner
+        @trace for ix in xitr_inner
+            Ic = rgetindex(I, ix, iy)
+            qv  = c * Ic
+            qv -= rgetindex(I, ix + 1, iy)
+            qv -= rgetindex(I, ix - 1, iy)
+            qv -= rgetindex(I, ix, iy + 1)
+            qv -= rgetindex(I, ix, iy - 1)
+            value += f(qv, Ic)
         end
     end
+
+    # Top edge (iy = 1)
+    @trace for ix in xitr_inner
+        Ic = rgetindex(I, ix, 1)
+        qv  = c * Ic
+        qv -= rgetindex(I, ix + 1, 1)
+        qv -= rgetindex(I, ix - 1, 1)
+        qv -= rgetindex(I, ix, 2)
+        value += f(qv, Ic)
+    end
+
+    # Bottom edge (iy = ny)
+    @trace for ix in xitr_inner
+        Ic = rgetindex(I, ix, ny)
+        qv  = c * Ic
+        qv -= rgetindex(I, ix + 1, ny)
+        qv -= rgetindex(I, ix - 1, ny)
+        qv -= rgetindex(I, ix, ny - 1)
+        value += f(qv, Ic)
+    end
+
+    # Left edge (ix = 1)
+    @trace for iy in yitr_inner
+        Ic = rgetindex(I, 1, iy)
+        qv  = c * Ic
+        qv -= rgetindex(I, 2, iy)
+        qv -= rgetindex(I, 1, iy + 1)
+        qv -= rgetindex(I, 1, iy - 1)
+        value += f(qv, Ic)
+    end
+
+    # Right edge (ix = nx)
+    @trace for iy in yitr_inner
+        Ic = rgetindex(I, nx, iy)
+        qv  = c * Ic
+        qv -= rgetindex(I, nx - 1, iy)
+        qv -= rgetindex(I, nx, iy + 1)
+        qv -= rgetindex(I, nx, iy - 1)
+        value += f(qv, Ic)
+    end
+
+    # Four corners
+    Ic = rgetindex(I, 1, 1)
+    qv  = c * Ic
+    qv -= rgetindex(I, 2, 1)
+    qv -= rgetindex(I, 1, 2)
+    value += f(qv, Ic)
+
+    Ic = rgetindex(I, nx, 1)
+    qv  = c * Ic
+    qv -= rgetindex(I, nx - 1, 1)
+    qv -= rgetindex(I, nx, 2)
+    value += f(qv, Ic)
+
+    Ic = rgetindex(I, 1, ny)
+    qv  = c * Ic
+    qv -= rgetindex(I, 2, ny)
+    qv -= rgetindex(I, 1, ny - 1)
+    value += f(qv, Ic)
+
+    Ic = rgetindex(I, nx, ny)
+    qv  = c * Ic
+    qv -= rgetindex(I, nx - 1, ny)
+    qv -= rgetindex(I, nx, ny - 1)
+    value += f(qv, Ic)
+
     return value
 end
 
-function igmrf_2n(I::AbstractMatrix, κ², ::Any)
-    value = zero(eltype(I))
+# 1-neighbor: Σ qv · I  (TSV regularizer)
+_red1n(qv, Ic) = qv * Ic
+igmrf_1n(I::AbstractMatrix, κ², ::Any) = _igmrf_walk(I, κ², _red1n)
 
-    @trace for iy in axes(I, 2)
-        @trace for ix in axes(I, 1)
-            value += igmrf_qv(I, κ², ix, iy)^2
-        end
-    end
-    return value
-end
+# 2-neighbor: Σ qv²
+_red2n(qv, _) = qv * qv
+igmrf_2n(I::AbstractMatrix, κ², ::Any) = _igmrf_walk(I, κ², _red2n)
 
 
 @inline function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
