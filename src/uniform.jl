@@ -28,7 +28,7 @@ end
 
 ImageSphericalUniform(nx::Int, ny::Int) = ImageSphericalUniform{Float64}(nx, ny)
 
-HC.asflat(d::VLBIImagePriors.ImageSphericalUniform) = TV.as(Matrix, SphericalUnitVector{2}(), d.nx, d.ny)
+transport_node(d::ImageSphericalUniform, ::StdFlat) = TV.as(Matrix, spherical_unit_vector(2), d.nx, d.ny)
 
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)
@@ -118,10 +118,4 @@ end
 # #     return R
 # # end
 # #
-function ChainRulesCore.rrule(::typeof(Dists.logpdf), d::ImageSphericalUniform, x::NTuple{3, <:AbstractMatrix{S}}) where {S <: Number}
-    lp = Dists.logpdf(d, x)
-    function _spherical_uniform_pullback(Δ)
-        return (NoTangent(), NoTangent(), ZeroTangent())
-    end
-    return lp, _spherical_uniform_pullback
-end
+# (ChainRules rrule removed — the log-density is constant; Enzyme/Reactant handle it.)

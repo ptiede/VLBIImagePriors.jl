@@ -25,7 +25,7 @@ function ImageSimplex(nx::Int, ny::Int)
     return ImageSimplex((nx, ny))
 end
 
-HC.dimension(t::ImageSimplex) = t.n - 1
+TV.dimension(t::ImageSimplex) = t.n - 1
 
 function simplex_fwd(flag::TV.LogJacFlag, t::ImageSimplex, y::AbstractArray)
     x = similar(y, t.n + 1)

@@ -249,73 +249,20 @@ function Dists.quantile(
 end
 
 
-# ----- asflat -------------------------------------------------------------
-# Dispatched on the base type. For non-`Real` params (Reactant traced) we
-# fall back to unconstrained transforms and let `logpdf` enforce support.
-HC.asflat(::AffineDistribution{<:StdNormal, 0, <:Number, <:Number}) = TV.asℝ
-HC.asflat(::AffineDistribution{<:StdTDist, 0, <:Number, <:Number}) = TV.asℝ
-HC.asflat(::AffineDistribution{<:StdExponential, 0, <:Number, <:Number}) = TV.asℝ₊
-HC.asflat(::AffineDistribution{<:StdInverseGamma, 0, <:Number, <:Number}) = TV.asℝ₊
-function HC.asflat(d::AffineDistribution{<:StdUniform, 0, <:Real, <:Real})
-    return TV.as(Real, d.loc, d.loc + d.scale)
-end
-HC.asflat(::AffineDistribution{<:StdUniform, 0, <:Number, <:Number}) = TV.asℝ
-
-function HC.asflat(d::AffineDistribution{<:StdNormal, N}) where {N}
-    return TV.as(Array, TV.asℝ, size(d)...)
-end
-function HC.asflat(d::AffineDistribution{<:StdTDist, N}) where {N}
-    return TV.as(Array, TV.asℝ, size(d)...)
-end
-function HC.asflat(d::AffineDistribution{<:StdExponential, N}) where {N}
-    return TV.as(Array, TV.asℝ₊, size(d)...)
-end
-function HC.asflat(d::AffineDistribution{<:StdInverseGamma, N}) where {N}
-    return TV.as(Array, TV.asℝ₊, size(d)...)
-end
-function HC.asflat(d::AffineDistribution{<:StdUniform, N, <:Real, <:Real}) where {N}
-    return TV.as(
-        Array, TV.as(Real, d.loc, d.loc + d.scale), size(d)...
-    )
-end
-function HC.asflat(d::AffineDistribution{<:StdUniform, N}) where {N}
-    return TV.as(Array, TV.asℝ, size(d)...)
-end
-
-
-# ----- ascube -------------------------------------------------------------
-# 0-dim → ScalarHC (univariate workflow: `transform(c, scalar) → scalar`).
-# N>=1  → ArrayHC. We need an explicit N>=1 override because HC's stock
-# `ascube(::Union{MultivariateDistribution, Matrixvariate})` only catches
-# multivariate (N=1) — its second clause is the variate-form alias rather
-# than `MatrixDistribution`, so N>=2 falls off the dispatch table.
-# The matrix-scale variant (`<:AbstractMatrix` scale, 1D base) is excluded:
-# it's a linear-operator transform with no element-wise quantile, so it
-# falls through to HC's default and a clear error.
-HC.ascube(d::AffineDistribution{<:Any, 0}) = HC.ScalarHC(d)
-HC.ascube(d::AffineDistribution) = HC.ArrayHC(d)
-
-HC.inverse_eltype(d::AffineDistribution, y::Type) = HC.inverse_eltype(d.base, y)
-function HC._step_transform(
-        h::HC.ArrayHC{<:AffineDistribution}, p::AbstractVector, index
-    )
-    d = h.dist
-    n = HC.dimension(h)
-    pslice = view(p, index:(index + n - 1))
-    z = _ascube_z(d.base, pslice)
-    out = _flat_or_scalar(d.loc) .+ _flat_or_scalar(d.scale) .* z
-    return out, index + n
-end
-
-function HC._step_inverse!(
-        x::AbstractVector, index, h::HC.ArrayHC{<:AffineDistribution}, y::AbstractArray
-    )
-    d = h.dist
-    n = HC.dimension(h)
-    z = (vec(y) .- _flat_or_scalar(d.loc)) ./ _flat_or_scalar(d.scale)
-    @views x[index:(index + n - 1)] .= _ascube_p(d.base, z)
-    return index + n
-end
+# ----- transport ----------------------------------------------------------
+# An affine distribution is `loc + scale .* base`, so its transport is the
+# affine pushforward of the base's transport — reusing ProbabilityTransports'
+# `AffineTransform` (scalar / array / matrix scale) and `PushforwardTransport`.
+# This replaces the whole HypercubeTransform `asflat`/`ascube`/`_step_*` stack.
+# element-wise scalar/array scale (`x = loc .+ scale .* z`)
+_affine_node(d::AffineDistribution, space) =
+    PushforwardTransport(ScaleShift(d.loc, d.scale), transport_node(d.base, space))
+# matrix scale on a 1D base is a genuine linear operator (`x = loc .+ A * z`)
+_affine_node(d::AffineDistribution{<:Any, 1, <:Any, <:AbstractMatrix}, space) =
+    PushforwardTransport(AffineTransform(d.loc, d.scale), transport_node(d.base, space))
+transport_node(d::AffineDistribution, space) = _affine_node(d, space)
+# disambiguate the 0-dim case (also a ContinuousUnivariateDistribution) for the flat space
+transport_node(d::AffineDistribution, space::StdFlat) = _affine_node(d, space)
 
 
 # ----- product_distribution lifting --------------------------------------

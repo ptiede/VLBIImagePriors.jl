@@ -94,7 +94,7 @@ which is the distance from the origin to `x` using the metric `Q`.
 @inline scalematrix(m::MarkovRandomField) = scalematrix(graph(m), corrparam(m))
 
 # Assume that the distribution support is Rᴺ
-HC.asflat(d::MarkovRandomField) = TV.as(Matrix, size(d)...)
+transport_node(d::MarkovRandomField, ::StdFlat) = TV.as(Matrix, size(d)...)
 
 Dists.insupport(::MarkovRandomField, x::AbstractMatrix) = true
 
