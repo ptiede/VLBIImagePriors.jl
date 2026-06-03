@@ -110,10 +110,10 @@
                 VLBIGaussian(0.0, 1.0), VLBIExponential(2.0), VLBIUniform(-1.0, 1.0),
                 VLBIInverseGamma(2.0, 1.0), VLBITDist(5.0), VLBITDist(5.0, 0.3, 1.2),
             )
-            t = asflat(d)
+            t = transport_to(d, StdFlat())
             x = rand(d)
-            p = HypercubeTransform.inverse(t, x)
-            @test HypercubeTransform.transform(t, p) ≈ x
+            p = pullback(t, x)
+            @test transport(t, p) ≈ x
         end
     end
 
@@ -125,9 +125,9 @@
         y = rand(d)
         @test size(y) == (3, 4)
 
-        t = asflat(d)
-        p = HypercubeTransform.inverse(t, y)
-        @test HypercubeTransform.transform(t, p) ≈ y
+        t = transport_to(d, StdFlat())
+        p = pullback(t, y)
+        @test transport(t, p) ≈ y
     end
 
     @testset "per-element parameters (same family across grid)" begin
@@ -137,9 +137,9 @@
         x = μ .+ σ .* randn(3, 4)
         @test logpdf(d, x) ≈ sum(logpdf.(Normal.(μ, σ), x))
 
-        t = asflat(d)
-        p = HypercubeTransform.inverse(t, x)
-        @test HypercubeTransform.transform(t, p) ≈ x
+        t = transport_to(d, StdFlat())
+        p = pullback(t, x)
+        @test transport(t, p) ≈ x
 
         # InverseGamma per-element
         α = abs.(randn(2, 3)) .+ 1.5
@@ -188,9 +188,9 @@
             z = rand(b)
             @test size(z) == (3, 4)
             @test isfinite(logpdf(b, z))
-            t = asflat(b)
-            p = HypercubeTransform.inverse(t, z)
-            @test HypercubeTransform.transform(t, p) ≈ z
+            t = transport_to(b, StdFlat())
+            p = pullback(t, z)
+            @test transport(t, p) ≈ z
         end
 
         # scalar bases
@@ -200,7 +200,7 @@
             )
             z = rand(b)
             @test isfinite(logpdf(b, z))
-            t = asflat(b)
+            t = transport_node(b, StdFlat())
             @test t isa TV.AbstractTransform
         end
     end
@@ -211,9 +211,9 @@
         @test x isa NamedTuple
         @test isfinite(logpdf(h, x))
 
-        t = asflat(h)
-        y = randn(TV.dimension(t))
-        xback = HypercubeTransform.transform(t, y)
+        t = transport_to(h, StdFlat())
+        y = randn(dimension(t))
+        xback = transport(t, y)
         @test keys(xback) == (:params, :hyperparams)
         @test size(xback.params) == (3, 4)
     end
@@ -228,9 +228,8 @@
             x -> logpdf(d, x)
         end
 
-        s = central_fdm(5, 1)
-        g_fd = first(FiniteDifferences.grad(s, f, x))
-        g_en = Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(f), x)[1]
+        g_fd = fdm_grad(f, x)
+        g_en = enzyme_grad(f, x)
         @test isapprox(g_fd, g_en; atol = 1.0e-6)
     end
 
@@ -489,20 +488,18 @@
 
     @testset "StdNormal ascube round-trip" begin
         sn = StdNormal((6,))
-        c = HypercubeTransform.ascube(sn)
-        @test HypercubeTransform.dimension(c) == 6
-        u = rand(HypercubeTransform.dimension(c))
-        x = HypercubeTransform.transform(c, u)
-        u_back = HypercubeTransform.inverse(c, x)
+        c = transport_to(sn, StdUniform())
+        @test dimension(c) == 6
+        u = rand(dimension(c))
+        x = transport(c, u)
+        u_back = pullback(c, x)
         @test u_back ≈ u
     end
 
-    @testset "ascube routing: 0-dim → ScalarHC, N>=1 → ArrayHC" begin
-        # 0-dim (univariate) distributions must use ScalarHC so the
-        # natural `transform(c, scalar) → scalar` workflow works. N>=1
-        # distributions go to ArrayHC. The matrixvariate (N>=2) override is
-        # required because HC's stock `ascube` Union only catches
-        # multivariate (N=1).
+    @testset "StdUniform routing: 0-dim → scalar value, N>=1 → array value" begin
+        # 0-dim (univariate) distributions transport a length-1 latent to a
+        # scalar value; N>=1 distributions transport to an array of the
+        # distribution's shape.
         scalar_cases = [
             VLBIGaussian(0.0, 1.0),
             VLBIUniform(0.0, 1.0),
@@ -520,12 +517,12 @@
             VLBITruncated(VLBIGaussian(0.0, 1.0), 0.5, nothing),
         ]
         for d in scalar_cases
-            c = HypercubeTransform.ascube(d)
-            @test c isa HypercubeTransform.ScalarHC
-            u = rand()
-            x = HypercubeTransform.transform(c, u)
+            c = transport_to(d, StdUniform())
+            @test dimension(c) == 1
+            u = rand(1)
+            x = transport(c, u)
             @test x isa Number
-            @test HypercubeTransform.inverse(c, x)[1] ≈ u
+            @test pullback(c, x) ≈ u
         end
 
         # Matrixvariate cases — used to fall off HC's `ascube` dispatch
@@ -537,11 +534,11 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in matrix_cases
-            c = HypercubeTransform.ascube(d)
-            @test c isa HypercubeTransform.ArrayHC
-            u = rand(HypercubeTransform.dimension(c))
-            x = HypercubeTransform.transform(c, u)
-            @test HypercubeTransform.inverse(c, x) ≈ u
+            c = transport_to(d, StdUniform())
+            u = rand(dimension(c))
+            x = transport(c, u)
+            @test size(x) == size(d)
+            @test pullback(c, x) ≈ u
         end
     end
 
@@ -568,10 +565,10 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in cases
-            c = HypercubeTransform.ascube(d)
-            u = rand(HypercubeTransform.dimension(c))
-            x = HypercubeTransform.transform(c, u)
-            u_back = HypercubeTransform.inverse(c, x)
+            c = transport_to(d, StdUniform())
+            u = rand(dimension(c))
+            x = transport(c, u)
+            u_back = pullback(c, x)
             @test u_back ≈ u
         end
     end
@@ -593,11 +590,11 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in cases
-            t = asflat(d)
-            @test TV.dimension(t) == length(d)
+            t = transport_to(d, StdFlat())
+            @test dimension(t) == length(d)
             x = rand(d)
-            p = HypercubeTransform.inverse(t, x)
-            @test HypercubeTransform.transform(t, p) ≈ x
+            p = pullback(t, x)
+            @test transport(t, p) ≈ x
         end
     end
 
@@ -611,11 +608,11 @@
                 StdTDist(5.0, (2, 3)),
                 StdTDist(abs.(randn(2, 3)) .+ 2.0),
             )
-            t = asflat(b)
-            @test TV.dimension(t) == length(b)
+            t = transport_to(b, StdFlat())
+            @test dimension(t) == length(b)
             z = rand(b)
-            p = HypercubeTransform.inverse(t, z)
-            @test HypercubeTransform.transform(t, p) ≈ z
+            p = pullback(t, z)
+            @test transport(t, p) ≈ z
         end
     end
 
@@ -735,13 +732,13 @@
         @test !insupport(d, lower - 0.5)
         @test !insupport(d, upper + 0.5)
 
-        # asflat: bounded interval transform
-        t = asflat(d)
+        # flat: bounded interval transform
+        t = transport_node(d, StdFlat())
         @test t isa TV.AbstractTransform
         for _ in 1:5
             x = rand(rng, d)
-            p = HypercubeTransform.inverse(t, x)
-            @test HypercubeTransform.transform(t, p) ≈ x
+            p = pullback(t, x)
+            @test transport(t, p) ≈ x
         end
 
         # Truncated exponential — non-symmetric base
@@ -821,11 +818,11 @@
         @test !insupport(d, randn(rng, K + 1))   # wrong length
 
         # asflat: 1D unconstrained, dimension == K
-        t = asflat(d)
-        @test TV.dimension(t) == K
+        t = transport_to(d, StdFlat())
+        @test dimension(t) == K
         x = rand(rng, d)
-        p = HypercubeTransform.inverse(t, x)
-        @test HypercubeTransform.transform(t, p) ≈ x
+        p = pullback(t, x)
+        @test transport(t, p) ≈ x
     end
 
 end
