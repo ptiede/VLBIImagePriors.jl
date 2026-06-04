@@ -343,7 +343,7 @@
             io = IOBuffer()
             show(io, d)
             s = String(take!(io))
-            @test occursin("AffineDistribution(", s)
+            @test occursin("PushforwardDistribution(", s)
             @test occursin("size=", s)
         end
 
@@ -352,12 +352,13 @@
         show(io, VLBIGaussian(0.0, 1.0))
         @test !occursin("size=", String(take!(io)))
 
-        # Array params — eltype/shape summary path.
+        # Array params — base/shape summary path.
         io = IOBuffer()
         μ = randn(2, 3)
         show(io, VLBIGaussian(μ, 1.0))
         s = String(take!(io))
-        @test occursin("Float64", s)
+        @test occursin("StdNormal", s)
+        @test occursin("size=(2, 3)", s)
     end
 
     @testset "params for non-Normal AffineDistribution bases" begin
@@ -646,7 +647,7 @@
         # Gaussian
         ds_g = [VLBIGaussian(Float64(i), 0.5 + 0.1 * i) for i in 1:4]
         p_g = product_distribution(ds_g)
-        @test p_g isa AffineDistribution{<:StdNormal, 1}
+        @test p_g isa PushforwardDistribution{<:Any, <:StdNormal, 1}
         @test length(p_g) == 4
         x = randn(4)
         @test logpdf(p_g, x) ≈ sum(logpdf(d, x[i]) for (i, d) in enumerate(ds_g))
@@ -654,7 +655,7 @@
         # Exponential
         ds_e = [VLBIExponential(0.5 + 0.2 * i) for i in 1:3]
         p_e = product_distribution(ds_e)
-        @test p_e isa AffineDistribution{<:StdExponential, 1}
+        @test p_e isa PushforwardDistribution{<:Any, <:StdExponential, 1}
         @test length(p_e) == 3
         y = abs.(randn(3)) .+ 0.1
         @test logpdf(p_e, y) ≈ sum(logpdf(d, y[i]) for (i, d) in enumerate(ds_e))
@@ -662,7 +663,7 @@
         # Uniform
         ds_u = [VLBIUniform(-Float64(i), Float64(i + 1)) for i in 1:3]
         p_u = product_distribution(ds_u)
-        @test p_u isa AffineDistribution{<:StdUniform, 1}
+        @test p_u isa PushforwardDistribution{<:Any, <:StdUniform, 1}
         @test length(p_u) == 3
         xu = [0.0, 0.5, 1.0]
         @test logpdf(p_u, xu) ≈ sum(logpdf(d, xu[i]) for (i, d) in enumerate(ds_u))
@@ -670,7 +671,7 @@
         # InverseGamma
         ds_ig = [VLBIInverseGamma(2.0 + 0.5 * i, 1.0 + 0.1 * i) for i in 1:3]
         p_ig = product_distribution(ds_ig)
-        @test p_ig isa AffineDistribution{<:StdInverseGamma, 1}
+        @test p_ig isa PushforwardDistribution{<:Any, <:StdInverseGamma, 1}
         @test length(p_ig) == 3
         xig = abs.(randn(3)) .+ 0.5
         @test logpdf(p_ig, xig) ≈ sum(logpdf(d, xig[i]) for (i, d) in enumerate(ds_ig))
@@ -678,7 +679,7 @@
         # TDist
         ds_t = [VLBITDist(3.0 + Float64(i), Float64(i), 1.0 + 0.1 * i) for i in 1:3]
         p_t = product_distribution(ds_t)
-        @test p_t isa AffineDistribution{<:StdTDist, 1}
+        @test p_t isa PushforwardDistribution{<:Any, <:StdTDist, 1}
         @test length(p_t) == 3
         xt = randn(3)
         @test logpdf(p_t, xt) ≈ sum(logpdf(d, xt[i]) for (i, d) in enumerate(ds_t))
