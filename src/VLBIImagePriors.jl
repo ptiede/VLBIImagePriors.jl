@@ -46,6 +46,7 @@ include("markovrf/markovrf.jl")
 include("srf.jl")
 include("heirarchical.jl")
 include("logratio_transform.jl")
+include("hypercube_compat.jl")
 
 
 end

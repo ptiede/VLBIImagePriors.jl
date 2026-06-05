@@ -22,6 +22,42 @@ The distribution of `loc + scale .* z` (or `loc + A z` for a 1-D base with a mat
 AffineDistribution(loc, scale, base) = PushforwardDistribution(_affine_map(loc, scale, base), base)
 
 
+# ----- asflat (StdFlat transport): centered parametrization ----------------
+# PT's generic pushforward flat node wraps `ScaleShift` around the base's flat
+# transform, i.e. `transform(t, y) = loc .+ scale .* (base-flat)(y)` — a
+# *non-centered* map that applies loc/scale in the transport (and so allocates an
+# extra intermediate array). The legacy HypercubeTransform behavior was *centered*:
+# the unconstrained coordinates ARE the parameter, loc/scale enter only through
+# `logpdf`, and the flat transport is just the base support's TV transform. We
+# restore that here for the element-wise (`ScaleShift`) families — identical
+# allocations and sampling geometry to the old API. A matrix-scale `AffineTransform`
+# (a genuine linear operator, e.g. MvNormal whitening) keeps PT's pushforward node.
+
+# loc/scale-independent support blocks (the affine map lives in `logpdf`).
+_flat_block(::StdNormal) = TV.asℝ
+_flat_block(::StdTDist) = TV.asℝ
+_flat_block(::StdExponential) = TV.asℝ₊
+_flat_block(::StdInverseGamma) = TV.asℝ₊
+
+const _CenteredBase = Union{StdNormal, StdTDist, StdExponential, StdInverseGamma}
+
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, 0}, ::StdFlat) =
+    _flat_block(d.base)
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, N}, ::StdFlat) where {N} =
+    TV.as(Array, _flat_block(d.base), size(d)...)
+
+# StdUniform: the support is the bounded interval [loc, loc+scale]; the flat
+# transform maps ℝ onto it. Real bounds only — traced/array bounds fall back to ℝ
+# and let `logpdf` enforce support (matching the old `asflat` dispatch).
+_uniform_flat(lo::Real, hi::Real) = TV.as(Real, lo, hi)
+_uniform_flat(::Any, ::Any) = TV.asℝ
+
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:StdUniform, 0}, ::StdFlat) =
+    _uniform_flat(d.f.μ, d.f.μ + d.f.s)
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:StdUniform, N}, ::StdFlat) where {N} =
+    TV.as(Array, _uniform_flat(d.f.μ, d.f.μ + d.f.s), size(d)...)
+
+
 # ----- params -------------------------------------------------------------
 # The user-visible parameter tuple in the order each user-facing VLBI* constructor
 # accepts (loc/scale read off the `ScaleShift` map; shape params off the base).
