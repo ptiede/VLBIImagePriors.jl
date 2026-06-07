@@ -218,17 +218,17 @@ using HypercubeTransform
     end
 
     @testset "VLBIBeta" begin
-        α = rand(3)*5.0
-        β = rand(3)*5.0
+        α = rand(3) * 5.0
+        β = rand(3) * 5.0
         x = rand(3)
 
-        αs = rand()*5.0
-        βs = rand()*5.0
+        αs = rand() * 5.0
+        βs = rand() * 5.0
         xs = rand()
 
         fs(α, β, x) = logpdf(VLBIBeta(α, β), x)
 
-        @test @jit(fs(ConcreteRNumber(αs), ConcreteRNumber(βs), ConcreteRNumber(xs))) ≈ 
+        @test @jit(fs(ConcreteRNumber(αs), ConcreteRNumber(βs), ConcreteRNumber(xs))) ≈
             fs(αs, βs, xs)
 
 

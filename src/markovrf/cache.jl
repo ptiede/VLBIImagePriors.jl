@@ -250,8 +250,8 @@ end
     value = zero(eltype(I))
 
     # Interior — 4 neighbors
-    @trace track_numbers=false for iy in yitr_inner
-        @trace track_numbers=false for ix in xitr_inner
+    @trace track_numbers = false for iy in yitr_inner
+        @trace track_numbers = false for ix in xitr_inner
             Ic = rgetindex(I, ix, iy)
             qv = c * Ic
             qv -= rgetindex(I, ix + 1, iy)
@@ -263,7 +263,7 @@ end
     end
 
     # Top edge (iy = 1)
-    @trace track_numbers=false for ix in xitr_inner
+    @trace track_numbers = false for ix in xitr_inner
         Ic = rgetindex(I, ix, 1)
         qv = c * Ic
         qv -= rgetindex(I, ix + 1, 1)
@@ -273,7 +273,7 @@ end
     end
 
     # Bottom edge (iy = ny)
-    @trace track_numbers=false for ix in xitr_inner
+    @trace track_numbers = false for ix in xitr_inner
         Ic = rgetindex(I, ix, ny)
         qv = c * Ic
         qv -= rgetindex(I, ix + 1, ny)
@@ -283,7 +283,7 @@ end
     end
 
     # Left edge (ix = 1)
-    @trace track_numbers=false for iy in yitr_inner
+    @trace track_numbers = false for iy in yitr_inner
         Ic = rgetindex(I, 1, iy)
         qv = c * Ic
         qv -= rgetindex(I, 2, iy)
@@ -293,7 +293,7 @@ end
     end
 
     # Right edge (ix = nx)
-    @trace track_numbers=false for iy in yitr_inner
+    @trace track_numbers = false for iy in yitr_inner
         Ic = rgetindex(I, nx, iy)
         qv = c * Ic
         qv -= rgetindex(I, nx - 1, iy)
@@ -341,19 +341,19 @@ igmrf_2n(I::AbstractMatrix, κ², ::Any) = _igmrf_walk(I, κ², _red2n)
 
 @inline function igmrf_qv(I::AbstractMatrix, κ², ix, iy)
     value = (4 + κ²) * rgetindex(I, ix, iy)
-    @trace track_numbers=false if ix < lastindex(I, 1)
+    @trace track_numbers = false if ix < lastindex(I, 1)
         value -= rgetindex(I, ix + 1, iy)
     end
 
-    @trace track_numbers=false if iy < lastindex(I, 2)
+    @trace track_numbers = false if iy < lastindex(I, 2)
         value -= rgetindex(I, ix, iy + 1)
     end
 
-    @trace track_numbers=false if ix > firstindex(I, 1)
+    @trace track_numbers = false if ix > firstindex(I, 1)
         value -= rgetindex(I, ix - 1, iy)
     end
 
-    @trace track_numbers=false if iy > firstindex(I, 2)
+    @trace track_numbers = false if iy > firstindex(I, 2)
         value -= rgetindex(I, ix, iy - 1)
     end
 
