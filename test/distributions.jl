@@ -828,4 +828,84 @@
         @test HypercubeTransform.transform(t, p) ≈ x
     end
 
+    @testset "VLBIBeta" begin
+        rng = Random.MersenneTwister(0xbe7a)
+
+        @testset "interface (length / eltype / insupport)" begin
+            ds = VLBIBeta(2.0, 5.0)
+            @test length(ds) == 1
+            @test eltype(ds) == Float64
+
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            @test length(dv) == 3
+            @test eltype(dv) == Float64
+
+            @test insupport(dv, [0.2, 0.7, 0.4])
+            @test !insupport(dv, [0.2, 1.3, 0.4])    # > 1
+            @test !insupport(dv, [-0.1, 0.7, 0.4])   # < 0
+        end
+
+        @testset "logpdf matches Distributions.Beta" begin
+            # scalar params (against the scalar logpdf method)
+            ds = VLBIBeta(2.0, 5.0)
+            rb = Beta(2.0, 5.0)
+            for x in 0.05:0.1:0.95
+                @test logpdf(ds, x) ≈ logpdf(rb, x) atol = 1.0e-10
+            end
+            # out of support → -Inf
+            @test logpdf(ds, -0.1) == -Inf
+            @test logpdf(ds, 1.1) == -Inf
+
+            # vector params == sum of independent marginals
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            for _ in 1:10
+                x = rand(rng, 3)
+                @test logpdf(dv, x) ≈ sum(logpdf.(Beta.(α, β), x)) atol = 1.0e-10
+            end
+            # any pixel out of support drags the whole density to -Inf
+            @test logpdf(dv, [0.2, 1.5, 0.4]) == -Inf
+        end
+
+        @testset "unnormed_logpdf + lognorm == logpdf" begin
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            ln = lognorm(dv)
+            for _ in 1:5
+                x = rand(rng, 3)
+                @test logpdf(dv, x) ≈ unnormed_logpdf(dv, x) + ln
+            end
+            # scalar form
+            ds = VLBIBeta(2.0, 5.0)
+            @test logpdf(ds, 0.3) ≈ unnormed_logpdf(ds, 0.3) + lognorm(ds)
+        end
+
+        @testset "sampler moments match Distributions.Beta" begin
+            n = 200_000
+            # scalar params: rand returns a length-1 vector
+            ds = VLBIBeta(2.0, 5.0)
+            rb = Beta(2.0, 5.0)
+            ss = reduce(vcat, [rand(rng, ds) for _ in 1:n])
+            @test all(0 .<= ss .<= 1)
+            @test isapprox(mean(ss), mean(rb); atol = 5.0e-3)
+            @test isapprox(var(ss), var(rb); atol = 5.0e-3)
+
+            # vector params: per-component moments
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            mat = reduce(hcat, [rand(rng, dv) for _ in 1:n])
+            @test all(0 .<= mat .<= 1)
+            for k in 1:3
+                rbk = Beta(α[k], β[k])
+                @test isapprox(mean(mat[k, :]), mean(rbk); atol = 5.0e-3)
+                @test isapprox(var(mat[k, :]), var(rbk); atol = 5.0e-3)
+            end
+        end
+    end
+
 end

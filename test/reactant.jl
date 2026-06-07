@@ -8,8 +8,11 @@ using HypercubeTransform
         d = GMRF(10.0, (6, 6))
         x = rand(d)
         xr = Reactant.to_rarray(x)
+        vx = randn(36)
+        rxr = reshape(Reactant.to_rarray(vx), size(x))
 
         @test @jit(logpdf(d, xr)) ≈ logpdf(d, x)
+        @test @jit(logpdf(d, rxr)) ≈ logpdf(d, reshape(vx, size(x)))
 
         cm = ConditionalMarkov(GMRF, (8, 8))
         f(cm, ρ, x) = logpdf(cm(ρ), x)
@@ -41,8 +44,8 @@ using HypercubeTransform
         xr = Reactant.to_rarray(x)
         @test @jit(to_simplex(tc, xr)) ≈ to_simplex(tc, x)
         @test @jit(to_simplex(ta, xr)) ≈ to_simplex(ta, x)
-        xcr = Array(@jit(to_real(tc, to_simplex(tc, xr))))
-        xar = Array(@jit(to_real(ta, to_simplex(ta, xr))))
+        xcr = Array(@jit(to_real(tc, @jit(to_simplex(tc, xr)))))
+        xar = Array(@jit(to_real(ta, @jit(to_simplex(ta, xr)))))
 
         @test xcr .- xcr[1] ≈ x .- x[1]
         @test xar[1:(end - 1)] ≈ x[1:(end - 1)]
@@ -212,6 +215,49 @@ using HypercubeTransform
         σsr = Reactant.to_rarray(σs)
         xr = Reactant.to_rarray(x)
         @test_skip @jit(f_pd(μsr, σsr, xr)) ≈ f_pd(μs, σs, x)
+    end
+
+    @testset "VLBIBeta" begin
+        α = rand(3)*5.0
+        β = rand(3)*5.0
+        x = rand(3)
+
+        αs = rand()*5.0
+        βs = rand()*5.0
+        xs = rand()
+
+        fs(α, β, x) = logpdf(VLBIBeta(α, β), x)
+
+        @test @jit(fs(ConcreteRNumber(αs), ConcreteRNumber(βs), ConcreteRNumber(xs))) ≈ 
+            fs(αs, βs, xs)
+
+
+        # per-element params: traced parameter arrays + traced input
+        f_v(a, b, y) = logpdf(VLBIBeta(a, b), y)
+        αr = Reactant.to_rarray(α)
+        βr = Reactant.to_rarray(β)
+        xr = Reactant.to_rarray(x)
+        @test @jit(f_v(αr, βr, xr)) ≈ f_v(α, β, x)
+
+        # unnormed_logpdf + lognorm split traces (the caching pathway)
+        f_split(a, b, y) = unnormed_logpdf(VLBIBeta(a, b), y) + lognorm(VLBIBeta(a, b))
+        @test @jit(f_split(αr, βr, xr)) ≈ f_split(α, β, x)
+
+        # sampling: `_rand!` traces with an explicit ReactantRNG and gives
+        # independent in-[0, 1] draws (the @trace for + rgetindex/rsetindex! path).
+        rng = Reactant.ReactantRNG(Reactant.to_rarray(UInt64[0x1234, 0x5678]))
+
+        # per-element params
+        samp_vec(rng, out, a, b) = (Distributions._rand!(rng, VLBIBeta(a, b), out); out)
+        ov = Array(@jit(samp_vec(rng, Reactant.to_rarray(zeros(3)), αr, βr)))
+        @test all(0 .<= ov .<= 1)
+        @test length(unique(round.(ov; digits = 8))) == 3   # independent per pixel
+
+        # scalar params, length-N output
+        samp_scalar(rng, out) = (Distributions._rand!(rng, VLBIBeta(2.0, 5.0), out); out)
+        os = Array(@jit(samp_scalar(rng, Reactant.to_rarray(zeros(6)))))
+        @test all(0 .<= os .<= 1)
+        @test length(unique(round.(os; digits = 8))) == 6
     end
 
 end

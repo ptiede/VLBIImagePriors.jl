@@ -1,4 +1,5 @@
 using VLBIImagePriors
+using VLBIImagePriors: unnormed_logpdf, lognorm
 using ChainRulesCore
 using ChainRulesTestUtils
 using Distributions
