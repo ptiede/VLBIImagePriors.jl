@@ -16,8 +16,7 @@
 
 export VLBIGaussian, VLBIExponential, VLBIUniform, VLBIInverseGamma, VLBITDist
 export StdNormal, StdExponential, StdUniform, StdInverseGamma, StdTDist
-export AffineDistribution, VLBITruncated
-export unnormed_logpdf, lognorm
+export AffineDistribution, VLBITruncated, VLBIBeta
 
 
 # ----- public unnormed_logpdf / lognorm interface -------------------------
@@ -75,26 +74,43 @@ function lognorm end
 
 
 function _rand_gamma(rng::AbstractRNG, α::Number)
-    # For α < 1, sample Gamma(α+1, 1) and multiply by U^(1/α).
-    boost = α < one(α)
-    α_eff = ifelse(boost, α + one(α), α)
-    d = α_eff - one(α_eff) / 3
-    c = one(α_eff) / sqrt(9 * d)
+    # Promote the shape to a traced number while compiling under Reactant so the
+    # loop-carried `dv` below is traced from the start — otherwise a `@trace
+    # while` nested inside a sampler's `@trace for` fails with "arguments should
+    # be traced but were not". See ProbabilityTransports' `_rand_gamma`.
+    af = float(α)
+    a = within_compile() ? promote_to_traced(af) : af
+    T = typeof(a)
 
-    sample = d
-    done = false
-    @trace while !done
-        x = randn(rng)
-        v = (one(α_eff) + c * x)^3
-        u = rand(rng)
-        v_safe = ifelse(v > zero(v), v, one(v))
-        accept = (v > zero(v)) & (log(u) < x * x / 2 + d - d * v_safe + d * log(v_safe))
-        sample = ifelse(accept, d * v, sample)
-        done = accept
+    # shape < 1 via the boost identity `Gamma(a) = Gamma(a+1) · U^(1/a)`.
+    tmp = rand(rng, T)^inv(a)
+    @trace if a < one(T)
+        boost = tmp
+        a += 1
+    else
+        boost = one(T)
     end
 
-    boost_u = rand(rng)
-    return ifelse(boost, sample * boost_u^(one(α) / α), sample)
+
+    d = a - one(T) / 3
+    c = inv(sqrt(9 * d))
+
+    # `dv` starts at 0 and the loop runs until the first accepted draw makes it
+    # nonzero; `i < 32` gives XLA the statically-bounded `while` it needs (the
+    # acceptance rate for shape ≥ 1 makes hitting the bound astronomically rare).
+    dv = zero(T)
+    i = 0
+    @trace while (dv == zero(dv)) & (i < 32)
+        x = randn(rng, T)
+        v = (one(T) + c * x)^3
+        u = rand(rng, T)
+        vpos = v > zero(T)
+        vsafe = ifelse(vpos, v, one(T))                # keep `log(vsafe)` finite when v <= 0
+        cand = vpos & (log(u) < x * x / 2 + d - d * vsafe + d * log(vsafe))
+        dv = ifelse(cand, d * vsafe, dv)               # keep the first accepted draw
+        i = i + 1
+    end
+    return boost * dv
 end
 
 
@@ -106,3 +122,4 @@ include("std_tdist.jl")
 include("affine.jl")
 include("constructors.jl")
 include("truncated.jl")
+include("beta.jl")

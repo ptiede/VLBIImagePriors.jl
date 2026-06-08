@@ -20,6 +20,7 @@ import TransformVariables as TV
 import HypercubeTransform as HC
 using HypercubeTransform: DeltaDist
 using ReactantCore
+using ReactantCore: within_compile, promote_to_traced
 using ComradeBase: rgetindex, rsetindex!
 
 export DeltaDist
