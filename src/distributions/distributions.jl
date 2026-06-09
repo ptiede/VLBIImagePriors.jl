@@ -83,21 +83,13 @@ function _rand_gamma(rng::AbstractRNG, α::Number)
     T = typeof(a)
 
     # shape < 1 via the boost identity `Gamma(a) = Gamma(a+1) · U^(1/a)`.
-    tmp = rand(rng, T)^inv(a)
-    @trace if a < one(T)
-        boost = tmp
-        a += 1
-    else
-        boost = one(T)
-    end
-
+    cond = a < one(T)
+    boost = ifelse(cond, rand(rng, T)^inv(a), one(T))
+    a = ifelse(cond, a + one(T), a)
 
     d = a - one(T) / 3
     c = inv(sqrt(9 * d))
 
-    # `dv` starts at 0 and the loop runs until the first accepted draw makes it
-    # nonzero; `i < 32` gives XLA the statically-bounded `while` it needs (the
-    # acceptance rate for shape ≥ 1 makes hitting the bound astronomically rare).
     dv = zero(T)
     i = 0
     @trace while (dv == zero(dv)) & (i < 32)
