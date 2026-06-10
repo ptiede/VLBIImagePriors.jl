@@ -2,7 +2,7 @@
     @testset "DiagonalVonMises" begin
         d0 = DiagonalVonMises(0.0, 0.5)
 
-        t0 = transport_to(d0, StdFlat())
+        t0 = transport_to(d0, TVFlat())
         @test transport(t0, pullback(t0, π / 4)) ≈ π / 4
 
         x = rand(d0)
@@ -30,7 +30,7 @@
         @test logdensityof(d1, x) ≈ logdensityof(d2, x)
         @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ 2π)
 
-        t = transport_to(d1, StdFlat())
+        t = transport_to(d1, TVFlat())
         px = pullback(t, x)
         x2 = transport(t, px)
 
@@ -38,8 +38,8 @@
         @test cos.(x2) ≈ cos.(x)
 
         function f(x)
-            y, lj = transport_and_logjac(t, x)
-            return logdensityof(d1, y) + lj
+            _, ld = transport_and_logdensity(t, x)
+            return ld
         end
         @test isapprox(enzyme_grad(f, px), fdm_grad(f, px); atol = 1.0e-6)
     end
@@ -57,7 +57,7 @@
         @test d2 isa WrappedUniform
         @test length(d2) == length(periods) * 2
 
-        t = transport_to(d1, StdFlat())
+        t = transport_to(d1, TVFlat())
         px = pullback(t, xx)
         @test sin.(transport(t, px)) ≈ sin.(xx)
         @test cos.(transport(t, px)) ≈ cos.(xx)
@@ -65,7 +65,7 @@
         d0 = WrappedUniform(2π)
         @test 0 ≤ rand(d0) ≤ 2π
         @test logpdf(d0, 0.0) == logpdf(d0, 1.0)
-        @test transport_node(d0, StdFlat()) === angle_transform()
+        @test transport_node(d0, TVFlat()) === angle_transform()
         @test insupport(d0, 0.0)
     end
 

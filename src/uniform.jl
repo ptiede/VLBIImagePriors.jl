@@ -28,7 +28,7 @@ end
 
 ImageSphericalUniform(nx::Int, ny::Int) = ImageSphericalUniform{Float64}(nx, ny)
 
-transport_node(d::ImageSphericalUniform, ::StdFlat) = TV.as(Matrix, spherical_unit_vector(2), d.nx, d.ny)
+transport_node(d::ImageSphericalUniform, ::TVFlat) = TV.as(Matrix, spherical_unit_vector(2), d.nx, d.ny)
 
 
 Base.size(d::ImageSphericalUniform) = (d.nx, d.ny)

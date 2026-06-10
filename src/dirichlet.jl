@@ -33,7 +33,7 @@ Base.size(d::ImageDirichlet) = size(d.α)
 
 Dists.mean(d::ImageDirichlet) = d.α .* inv(d.α0)
 
-transport_node(d::ImageDirichlet, ::StdFlat) = ImageSimplex(size(d))
+transport_node(d::ImageDirichlet, ::TVFlat) = ImageSimplex(size(d))
 
 function Dists.insupport(d::ImageDirichlet, x::AbstractMatrix)
     return (size(d.α) == size(x)) & !any(<(zero(eltype(x))), x) & isapprox(sum(x), one(eltype(x)))

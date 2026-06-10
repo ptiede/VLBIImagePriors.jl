@@ -110,7 +110,7 @@
                 VLBIGaussian(0.0, 1.0), VLBIExponential(2.0), VLBIUniform(-1.0, 1.0),
                 VLBIInverseGamma(2.0, 1.0), VLBITDist(5.0), VLBITDist(5.0, 0.3, 1.2),
             )
-            t = transport_to(d, StdFlat())
+            t = transport_to(d, TVFlat())
             x = rand(d)
             p = pullback(t, x)
             @test transport(t, p) ≈ x
@@ -125,7 +125,7 @@
         y = rand(d)
         @test size(y) == (3, 4)
 
-        t = transport_to(d, StdFlat())
+        t = transport_to(d, TVFlat())
         p = pullback(t, y)
         @test transport(t, p) ≈ y
     end
@@ -137,7 +137,7 @@
         x = μ .+ σ .* randn(3, 4)
         @test logpdf(d, x) ≈ sum(logpdf.(Normal.(μ, σ), x))
 
-        t = transport_to(d, StdFlat())
+        t = transport_to(d, TVFlat())
         p = pullback(t, x)
         @test transport(t, p) ≈ x
 
@@ -188,7 +188,7 @@
             z = rand(b)
             @test size(z) == (3, 4)
             @test isfinite(logpdf(b, z))
-            t = transport_to(b, StdFlat())
+            t = transport_to(b, TVFlat())
             p = pullback(t, z)
             @test transport(t, p) ≈ z
         end
@@ -200,7 +200,7 @@
             )
             z = rand(b)
             @test isfinite(logpdf(b, z))
-            t = transport_node(b, StdFlat())
+            t = transport_node(b, TVFlat())
             @test t isa TV.AbstractTransform
         end
     end
@@ -211,7 +211,7 @@
         @test x isa NamedTuple
         @test isfinite(logpdf(h, x))
 
-        t = transport_to(h, StdFlat())
+        t = transport_to(h, TVFlat())
         y = randn(dimension(t))
         xback = transport(t, y)
         @test keys(xback) == (:params, :hyperparams)
@@ -591,7 +591,7 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in cases
-            t = transport_to(d, StdFlat())
+            t = transport_to(d, TVFlat())
             @test dimension(t) == length(d)
             x = rand(d)
             p = pullback(t, x)
@@ -609,7 +609,7 @@
                 StdTDist(5.0, (2, 3)),
                 StdTDist(abs.(randn(2, 3)) .+ 2.0),
             )
-            t = transport_to(b, StdFlat())
+            t = transport_to(b, TVFlat())
             @test dimension(t) == length(b)
             z = rand(b)
             p = pullback(t, z)
@@ -734,7 +734,7 @@
         @test !insupport(d, upper + 0.5)
 
         # flat: bounded interval transform
-        t = transport_node(d, StdFlat())
+        t = transport_node(d, TVFlat())
         @test t isa TV.AbstractTransform
         for _ in 1:5
             x = rand(rng, d)
@@ -819,7 +819,7 @@
         @test !insupport(d, randn(rng, K + 1))   # wrong length
 
         # asflat: 1D unconstrained, dimension == K
-        t = transport_to(d, StdFlat())
+        t = transport_to(d, TVFlat())
         @test dimension(t) == K
         x = rand(rng, d)
         p = pullback(t, x)

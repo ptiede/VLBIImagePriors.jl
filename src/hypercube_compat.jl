@@ -22,17 +22,17 @@
 # Scalar vs array routing is handled inside PT (a 0-dim distribution maps through a
 # scalar node), so these wrappers stay distribution-agnostic.
 
-import TransformVariables: transform, inverse
+import TransformVariables: transform, inverse, dimension
 
-export asflat, ascube, transform, inverse
+export asflat, ascube, transform, inverse, dimension
 
 """
     asflat(d)
 
-Return the transport from the unconstrained real space (`StdFlat`) to the support of
-`d`. Backwards-compatible alias for `transport_to(d, StdFlat())`.
+Return the transport from the unconstrained real space (`TVFlat`) to the support of
+`d`. Backwards-compatible alias for `transport_to(d, TVFlat())`.
 """
-asflat(d) = transport_to(d, StdFlat())
+asflat(d) = transport_to(d, TVFlat())
 
 """
     ascube(d)
@@ -61,3 +61,12 @@ transform(t::TransportedDistribution, y) = transport(t, y)
 Map `x` back to a canonical latent point. Alias for `pullback(t, x)`.
 """
 inverse(t::TransportedDistribution, x) = pullback(t, x)
+
+"""
+    dimension(t::TransportedDistribution)
+
+Number of latent coordinates `t` consumes. Extends `TransformVariables.dimension`
+onto `TransportedDistribution` so old call sites (which used the TV generic) keep
+working; delegates to `ProbabilityTransports.dimension`.
+"""
+dimension(t::TransportedDistribution) = ProbabilityTransports.dimension(t)

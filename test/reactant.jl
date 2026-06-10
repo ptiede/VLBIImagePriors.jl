@@ -51,7 +51,7 @@ using TransformVariables
 
     @testset "Transforms" begin
         d1 = DiagonalVonMises([0.5, 0.1], [inv(0.1), inv(π^2)])
-        t = transport_node(d1, StdFlat())
+        t = transport_node(d1, TVFlat())
 
         x = randn(TransformVariables.dimension(t))
         xr = Reactant.to_rarray(x)
@@ -63,7 +63,7 @@ using TransformVariables
 
 
         ds = ImageSphericalUniform(4, 4)
-        ts = transport_node(ds, StdFlat())
+        ts = transport_node(ds, TVFlat())
         xs = randn(TransformVariables.dimension(ts))
         xrs = Reactant.to_rarray(xs)
 

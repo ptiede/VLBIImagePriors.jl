@@ -27,7 +27,7 @@ using ComradeBase: rgetindex, rsetindex!
 const PT = ProbabilityTransports
 import ProbabilityTransports: transport_node, unnormed_logpdf, lognorm
 using ProbabilityTransports: StdNormal, StdExponential, StdUniform, StdInverseGamma, StdTDist,
-    StdFlat, AffineTransform, ScaleShift, PushforwardTransport, PushforwardDistribution,
+    TVFlat, AffineTransform, ScaleShift, PushforwardTransport, PushforwardDistribution,
     spherical_unit_vector, _std_cdf, _std_quantile
 
 # Backwards-compatible alias for the truncated wrapper.

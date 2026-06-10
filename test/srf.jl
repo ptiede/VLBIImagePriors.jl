@@ -112,7 +112,7 @@ using VLBIImagePriors: StdNormal
     @test eltype(d) == eltype(d2)
     @test mean(d) ≈ mean(d2)
     @test cov(d) ≈ cov(d2)
-    transport_to(d, StdFlat())
+    transport_to(d, TVFlat())
 
     @test Distributions.insupport(d, rand(d))
 

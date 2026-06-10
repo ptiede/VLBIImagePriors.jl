@@ -16,7 +16,7 @@ function test_interface(d::VLBIImagePriors.MarkovRandomField)
     @inferred scalematrix(d)
     c = ConditionalMarkov(typeof(d), Float64, size(d))
     show(c)
-    transport_to(d, StdFlat())
+    transport_to(d, TVFlat())
     return @inferred logdet(d)
 end
 
@@ -362,7 +362,7 @@ end
 
     x0s = rand(dHp, 1_00)
     x0s = rand(dHp, (10, 10))
-    transport_to(dHp, StdFlat())
+    transport_to(dHp, TVFlat())
     show(dHp)
 end
 

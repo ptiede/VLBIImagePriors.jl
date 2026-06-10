@@ -22,7 +22,7 @@ The distribution of `loc + scale .* z` (or `loc + A z` for a 1-D base with a mat
 AffineDistribution(loc, scale, base) = PushforwardDistribution(_affine_map(loc, scale, base), base)
 
 
-# ----- asflat (StdFlat transport): centered parametrization ----------------
+# ----- asflat (TVFlat transport): centered parametrization ----------------
 # PT's generic pushforward flat node wraps `ScaleShift` around the base's flat
 # transform, i.e. `transform(t, y) = loc .+ scale .* (base-flat)(y)` — a
 # *non-centered* map that applies loc/scale in the transport (and so allocates an
@@ -41,9 +41,9 @@ _flat_block(::StdInverseGamma) = TV.asℝ₊
 
 const _CenteredBase = Union{StdNormal, StdTDist, StdExponential, StdInverseGamma}
 
-transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, 0}, ::StdFlat) =
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, 0}, ::TVFlat) =
     _flat_block(d.base)
-transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, N}, ::StdFlat) where {N} =
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, N}, ::TVFlat) where {N} =
     TV.as(Array, _flat_block(d.base), size(d)...)
 
 # StdUniform: the support is the bounded interval [loc, loc+scale]; the flat
@@ -52,9 +52,9 @@ transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, N}, ::S
 _uniform_flat(lo::Real, hi::Real) = TV.as(Real, lo, hi)
 _uniform_flat(::Any, ::Any) = TV.asℝ
 
-transport_node(d::PushforwardDistribution{<:ScaleShift, <:StdUniform, 0}, ::StdFlat) =
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:StdUniform, 0}, ::TVFlat) =
     _uniform_flat(d.f.μ, d.f.μ + d.f.s)
-transport_node(d::PushforwardDistribution{<:ScaleShift, <:StdUniform, N}, ::StdFlat) where {N} =
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:StdUniform, N}, ::TVFlat) where {N} =
     TV.as(Array, _uniform_flat(d.f.μ, d.f.μ + d.f.s), size(d)...)
 
 
