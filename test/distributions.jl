@@ -793,6 +793,9 @@
             # (a bound *outside* the base support is unconstructable here: the branchless
             # VLBI* cdf is only valid on the support, so the constructor DomainErrors)
             @test minimum(VLBITruncated(VLBIExponential(0.1), 0.0, 1.0)) == 0.0
+            # insupport derives from the same endpoints (single source of truth)
+            @test insupport(dexp, 0.0) && insupport(dexp, 1.0)
+            @test !insupport(dexp, -eps()) && !insupport(dexp, nextfloat(1.0))
             # scalar AffineDistribution bases report their support (and flip with scale < 0)
             @test minimum(VLBIExponential(0.1)) == 0.0
             @test maximum(VLBIExponential(0.1)) == Inf
