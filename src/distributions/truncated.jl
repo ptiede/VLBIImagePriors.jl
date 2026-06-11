@@ -69,19 +69,22 @@ function VLBITruncated(d::Dists.UnivariateDistribution; lower = nothing, upper =
 end
 
 
-Base.minimum(d::VLBITruncated{<:Any, <:Number}) = d.lower
+# ----- support: `minimum`/`maximum` are the single source of truth ---------
+# The endpoints intersect the truncation bounds with the base support (matching
+# `Distributions.truncated`): a one-sided (or out-of-support) bound must not widen the
+# base support — `VLBITruncated(VLBIExponential(0.1); upper = 1)` has support (0, 1],
+# not (-∞, 1]. `insupport`, the logpdf mask, and `asflat` are all derived from these
+# two functions, so they cannot disagree about the support.
+
+Base.minimum(d::VLBITruncated{<:Any, <:Number}) = max(d.lower, Dists.minimum(d.untruncated))
 Base.minimum(d::VLBITruncated{<:Any, Nothing}) = Dists.minimum(d.untruncated)
-Base.maximum(d::VLBITruncated{<:Any, <:Any, <:Number}) = d.upper
+Base.maximum(d::VLBITruncated{<:Any, <:Any, <:Number}) = min(d.upper, Dists.maximum(d.untruncated))
 Base.maximum(d::VLBITruncated{<:Any, <:Any, Nothing}) = Dists.maximum(d.untruncated)
 Dists.params(d::VLBITruncated) = (Dists.params(d.untruncated)..., d.lower, d.upper)
 
-
-# ----- bound checks (dispatched on Nothing vs Real, monomorphic) ----------
-
-@inline _ge_lower(::Nothing, _) = true
-@inline _ge_lower(lower, x) = x >= lower
-@inline _le_upper(::Nothing, _) = true
-@inline _le_upper(upper, x) = x <= upper
+# Branchless `&` (not Distributions' generic chained `<=`, which short-circuits) so the
+# check traces under Reactant.
+@inline _in_support(d::VLBITruncated, x) = (Base.minimum(d) <= x) & (x <= Base.maximum(d))
 
 
 # ----- unnormed_logpdf / lognorm split ------------------------------------
@@ -89,9 +92,8 @@ Dists.params(d::VLBITruncated) = (Dists.params(d.untruncated)..., d.lower, d.upp
 # log-density); `lognorm` is the constant `-log P(lower <= X <= upper)`.
 
 function unnormed_logpdf(d::VLBITruncated, x::Number)
-    in_supp = _ge_lower(d.lower, x) & _le_upper(d.upper, x)
     base_lpdf = Dists.logpdf(d.untruncated, x)
-    return ifelse(in_supp, base_lpdf, oftype(base_lpdf, -Inf))
+    return ifelse(_in_support(d, x), base_lpdf, oftype(base_lpdf, -Inf))
 end
 
 @inline lognorm(d::VLBITruncated) = -d.logtp
@@ -124,30 +126,26 @@ Random.rand(rng::AbstractRNG, d::VLBITruncated) = Dists.quantile(d, rand(rng))
 
 
 # ----- support ------------------------------------------------------------
+# Derived from `minimum`/`maximum` (see the support block above).
 
-function Dists.insupport(d::VLBITruncated, x::Number)
-    return _ge_lower(d.lower, x) & _le_upper(d.upper, x)
-end
-function Dists.insupport(d::VLBITruncated, x::Real)
-    return _ge_lower(d.lower, x) & _le_upper(d.upper, x)
-end
+Dists.insupport(d::VLBITruncated, x::Number) = _in_support(d, x)
+Dists.insupport(d::VLBITruncated, x::Real) = _in_support(d, x)
 
 
 # ----- transforms ---------------------------------------------------------
 
-# Two-sided truncation with concrete `Real` bounds → constrained interval.
-function HC.asflat(d::VLBITruncated{<:Any, <:Real, <:Real})
-    return TV.as(Real, d.lower, d.upper)
+# The flat transform must cover the SUPPORT — the truncation bounds intersected with the
+# base support (`minimum`/`maximum` above) — never the explicit bounds alone. Building it
+# from the bounds mapped `VLBITruncated(VLBIExponential(0.1); upper = 1)` onto (-∞, 1),
+# exposing a reachable logpdf = -Inf region in flat space (in practice: a negative
+# background-flux optimum and a frozen NUTS chain).
+function HC.asflat(d::VLBITruncated)
+    lo = Base.minimum(d)
+    hi = Base.maximum(d)
+    lb = isfinite(lo) ? lo : -TV.∞
+    ub = isfinite(hi) ? hi : TV.∞
+    return TV.as(Real, lb, ub)
 end
-# Left-truncated, concrete lower → half-line above `lower`.
-function HC.asflat(d::VLBITruncated{<:Any, <:Real, Nothing})
-    return TV.as(Real, d.lower, TV.∞)
-end
-# Right-truncated, concrete upper → half-line below `upper`.
-function HC.asflat(d::VLBITruncated{<:Any, Nothing, <:Real})
-    return TV.as(Real, -TV.∞, d.upper)
-end
-HC.asflat(::VLBITruncated) = TV.asℝ
 
 HC.inverse_eltype(b::VLBITruncated, y::Type) = HC.inverse_eltype(b.untruncated, y)
 # `HC.ascube` not overridden: VLBITruncated is always a UnivariateDistribution

@@ -179,3 +179,8 @@ end
     _ig_elem_quantile.(vec(b.α), p)
 @inline _ascube_p(b::StdInverseGamma{T, <:AbstractArray}, z) where {T} =
     _ig_elem_cdf.(vec(b.α), z)
+
+# Scalar support endpoints (used by `VLBITruncated`/`asflat` to build the flat
+# transform from the true support).
+Base.minimum(::StdInverseGamma{T, <:Any, 0}) where {T} = zero(T)
+Base.maximum(::StdInverseGamma{T, <:Any, 0}) where {T} = T(Inf)

@@ -53,6 +53,17 @@ function Base.eltype(d::AffineDistribution)
     return promote_type(eltype(d.loc), eltype(d.scale), eltype(d.base))
 end
 
+# Support endpoints of a scalar affine pushforward: `x = loc + scale*z` is monotone
+# (direction set by the sign of `scale`), so the endpoints are the mapped base endpoints
+# in either order. Needed so `VLBITruncated` — and the flat transform built from its
+# support — sees the true bounds of e.g. `VLBIExponential(θ)`.
+function Base.minimum(d::AffineDistribution{<:Any, 0, <:Number, <:Number})
+    return min(d.loc + d.scale * Dists.minimum(d.base), d.loc + d.scale * Dists.maximum(d.base))
+end
+function Base.maximum(d::AffineDistribution{<:Any, 0, <:Number, <:Number})
+    return max(d.loc + d.scale * Dists.minimum(d.base), d.loc + d.scale * Dists.maximum(d.base))
+end
+
 
 # ----- unnormed_logpdf / lognorm split ------------------------------------
 # `log p_y(y) = log p_z((y - loc) / scale) - log|scale|`, which we split into:

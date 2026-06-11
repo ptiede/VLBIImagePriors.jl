@@ -111,3 +111,8 @@ function HC._step_inverse!(
     x .= Dists.cdf.(Ref(d), y)
     return index + HC.dimension(h)
 end
+
+# Scalar support endpoints (used by `VLBITruncated`/`asflat` to build the flat
+# transform from the true support).
+Base.minimum(::StdNormal{T, 0}) where {T} = T(-Inf)
+Base.maximum(::StdNormal{T, 0}) where {T} = T(Inf)

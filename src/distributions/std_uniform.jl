@@ -95,3 +95,6 @@ function HC._step_inverse!(
     x .= _ascube_p(h.dist, y)
     return index + HC.dimension(h)
 end
+
+Base.minimum(::StdUniform{T, 0}) where {T} = zero(T)
+Base.maximum(::StdUniform{T, 0}) where {T} = one(T)

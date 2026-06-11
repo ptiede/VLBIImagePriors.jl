@@ -777,6 +777,38 @@
         @test cdf(dr, -1.0e6) ≈ 0
         @test cdf(dr, 0.0) ≈ 1
         @test all(s -> s <= 0.0, [rand(rng, dr) for _ in 1:1000])
+
+        # regression: support endpoints intersect the truncation bounds with the BASE
+        # support, and `asflat` is built from that support. A one-sided truncation of a
+        # bounded base (`VLBITruncated(VLBIExponential(0.1); upper=1)`) once produced an
+        # asflat mapping ℝ → (-∞, 1): the flat space then contained a reachable
+        # logpdf = -Inf region, yielding a negative-background optimum and a frozen NUTS
+        # chain in production.
+        @testset "one-sided truncation keeps the base support" begin
+            dexp = VLBITruncated(VLBIExponential(0.1); upper = 1.0)
+            refexp = truncated(Distributions.Exponential(0.1); upper = 1.0)
+            @test minimum(dexp) == minimum(refexp) == 0.0
+            @test maximum(dexp) == maximum(refexp) == 1.0
+            # an explicit bound equal to the base bound is honored exactly
+            # (a bound *outside* the base support is unconstructable here: the branchless
+            # VLBI* cdf is only valid on the support, so the constructor DomainErrors)
+            @test minimum(VLBITruncated(VLBIExponential(0.1), 0.0, 1.0)) == 0.0
+            # insupport derives from the same endpoints (single source of truth)
+            @test insupport(dexp, 0.0) && insupport(dexp, 1.0)
+            @test !insupport(dexp, -eps()) && !insupport(dexp, nextfloat(1.0))
+            # scalar AffineDistribution bases report their support (and flip with scale < 0)
+            @test minimum(VLBIExponential(0.1)) == 0.0
+            @test maximum(VLBIExponential(0.1)) == Inf
+            @test minimum(VLBIUniform(-2.0, 3.0)) == -2.0
+            @test maximum(VLBIUniform(-2.0, 3.0)) == 3.0
+            # the flat transform respects the support for any latent value
+            t = asflat(dexp)
+            for y in (-30.0, 0.0, 30.0)
+                x = TV.transform(t, y)
+                @test 0.0 <= x <= 1.0
+                @test isfinite(logpdf(dexp, max(x, eps())))
+            end
+        end
     end
 
     @testset "AffineDistribution with Matrix scale (linear operator)" begin
