@@ -69,9 +69,9 @@ function VLBITruncated(d::Dists.UnivariateDistribution; lower = nothing, upper =
 end
 
 
-Base.minimum(d::VLBITruncated{<:Any, <:Number}) = d.lower
+Base.minimum(d::VLBITruncated{<:Any, <:Number}) = max(d.lower, Dists.minimum(d.untruncated))
 Base.minimum(d::VLBITruncated{<:Any, Nothing}) = Dists.minimum(d.untruncated)
-Base.maximum(d::VLBITruncated{<:Any, <:Any, <:Number}) = d.upper
+Base.maximum(d::VLBITruncated{<:Any, <:Any, <:Number}) = min(d.upper, Dists.maximum(d.untruncated))
 Base.maximum(d::VLBITruncated{<:Any, <:Any, Nothing}) = Dists.maximum(d.untruncated)
 Dists.params(d::VLBITruncated) = (Dists.params(d.untruncated)..., d.lower, d.upper)
 
@@ -135,19 +135,18 @@ end
 
 # ----- transforms ---------------------------------------------------------
 
-# Two-sided truncation with concrete `Real` bounds → constrained interval.
-function HC.asflat(d::VLBITruncated{<:Any, <:Real, <:Real})
-    return TV.as(Real, d.lower, d.upper)
+# The flat transform must cover the SUPPORT — the truncation bounds intersected with the
+# base support (`minimum`/`maximum` above) — never the explicit bounds alone. Building it
+# from the bounds mapped `VLBITruncated(VLBIExponential(0.1); upper = 1)` onto (-∞, 1),
+# exposing a reachable logpdf = -Inf region in flat space (in practice: a negative
+# background-flux optimum and a frozen NUTS chain).
+function HC.asflat(d::VLBITruncated)
+    lo = Base.minimum(d)
+    hi = Base.maximum(d)
+    lb = isfinite(lo) ? lo : -TV.∞
+    ub = isfinite(hi) ? hi : TV.∞
+    return TV.as(Real, lb, ub)
 end
-# Left-truncated, concrete lower → half-line above `lower`.
-function HC.asflat(d::VLBITruncated{<:Any, <:Real, Nothing})
-    return TV.as(Real, d.lower, TV.∞)
-end
-# Right-truncated, concrete upper → half-line below `upper`.
-function HC.asflat(d::VLBITruncated{<:Any, Nothing, <:Real})
-    return TV.as(Real, -TV.∞, d.upper)
-end
-HC.asflat(::VLBITruncated) = TV.asℝ
 
 HC.inverse_eltype(b::VLBITruncated, y::Type) = HC.inverse_eltype(b.untruncated, y)
 # `HC.ascube` not overridden: VLBITruncated is always a UnivariateDistribution

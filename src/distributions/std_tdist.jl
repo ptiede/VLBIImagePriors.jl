@@ -195,3 +195,8 @@ end
     _t_elem_quantile.(vec(b.ν), p)
 @inline _ascube_p(b::StdTDist{T, <:AbstractArray}, z) where {T} =
     _t_elem_cdf.(vec(b.ν), z)
+
+# Scalar support endpoints (used by `VLBITruncated`/`asflat` to build the flat
+# transform from the true support).
+Base.minimum(::StdTDist{T, <:Any, 0}) where {T} = T(-Inf)
+Base.maximum(::StdTDist{T, <:Any, 0}) where {T} = T(Inf)

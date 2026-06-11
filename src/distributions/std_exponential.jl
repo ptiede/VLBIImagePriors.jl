@@ -104,3 +104,8 @@ function HC._step_inverse!(
     x .= _ascube_p(h.dist, y)
     return index + HC.dimension(h)
 end
+
+# Scalar support endpoints (used by `VLBITruncated`/`asflat` to build the flat
+# transform from the true support).
+Base.minimum(::StdExponential{T, 0}) where {T} = zero(T)
+Base.maximum(::StdExponential{T, 0}) where {T} = T(Inf)
