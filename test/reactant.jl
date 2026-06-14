@@ -40,12 +40,12 @@ using TransformVariables
         xr = Reactant.to_rarray(x)
         @test @jit(to_simplex(tc, xr)) ≈ to_simplex(tc, x)
         @test @jit(to_simplex(ta, xr)) ≈ to_simplex(ta, x)
-        xcr = Array(@jit(to_real(tc, to_simplex(tc, xr))))
+        xcr = Array(@jit(to_real(tc, @jit(to_simplex(tc, xr)))))
         @test xcr .- xcr[1] ≈ x .- x[1]
         # AdditiveLR inverse (`alrinv!`) mutates with a scalar `rsetindex!`, which
         # is not Reactant-safe (scalar setindex! on a concrete array). Pre-existing
         # gap in `logratio_transform.jl`, orthogonal to the PT migration.
-        @test_broken Array(@jit(to_real(ta, to_simplex(ta, xr))))[1:(end - 1)] ≈
+        @test Array(@jit(to_real(ta, @jit(to_simplex(ta, xr)))))[1:(end - 1)] ≈
             x[1:(end - 1)]
     end
 

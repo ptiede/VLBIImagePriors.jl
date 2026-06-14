@@ -99,8 +99,7 @@ end
 function Dists.product_distribution(dists::AbstractVector{<:_AffinePF{<:StdInverseGamma}})
     scales = [d.f.s for d in dists]
     αs = [d.base.α for d in dists]
-    T = promote_type(eltype(αs), eltype(scales))
-    base = StdInverseGamma{T, typeof(αs), 1}(αs, (length(dists),))
+    base = StdInverseGamma(αs, (length(dists),))
     return AffineDistribution(zero(eltype(scales)), scales, base)
 end
 
@@ -108,7 +107,6 @@ function Dists.product_distribution(dists::AbstractVector{<:_AffinePF{<:StdTDist
     locs = [d.f.μ for d in dists]
     scales = [d.f.s for d in dists]
     νs = [d.base.ν for d in dists]
-    T = promote_type(eltype(νs), eltype(locs), eltype(scales))
-    base = StdTDist{T, typeof(νs), 1}(νs, (length(dists),))
+    base = StdTDist(νs, (length(dists),))
     return AffineDistribution(locs, scales, base)
 end
