@@ -8,12 +8,12 @@
     @test size(d1) == size(d2)
 
     t = transport_to(d1, TVFlat())
-    p0 = pullback(t, x0)
+    p0 = latent_pback(t, x0)
 
-    @test transport(t, p0) ≈ x0
+    @test latent_pfwd(t, p0) ≈ x0
 
     function ℓpt(x)
-        _, ld = transport_and_logdensity(t, x)
+        _, ld = latent_pfwd_and_logdensity(t, x)
         return ld
     end
 
@@ -28,12 +28,12 @@ end
     norms = map(hypot, xx...)
     @test norms ≈ fill(1.0, size(d))
     t = transport_to(d, TVFlat())
-    px = pullback(t, xx)
-    @test prod(transport(t, px) .≈ xx)
+    px = latent_pback(t, xx)
+    @test prod(latent_pfwd(t, px) .≈ xx)
     @test logdensityof(d, xx) ≈ -6 * log(4π)
 
     function f(x)
-        _, ld = transport_and_logdensity(t, x)
+        _, ld = latent_pfwd_and_logdensity(t, x)
         return ld
     end
     @test isapprox(enzyme_grad(f, px), fdm_grad(f, px); atol = 1.0e-6)
@@ -54,8 +54,8 @@ end
     ndim = dimension(t1)
     y0 = fill(0.1, ndim)
 
-    x1, l1 = transport_and_logdensity(t1, y0)
-    x2, l2 = transport_and_logdensity(t2, y0)
+    x1, l1 = latent_pfwd_and_logdensity(t1, y0)
+    x2, l2 = latent_pfwd_and_logdensity(t2, y0)
 
 
     @test dimension(t1) == dimension(t2)
@@ -63,20 +63,20 @@ end
 
     @test logdensityof(d1, x1) ≈ logdensityof(d2, x2)
     function ℓpt(x)
-        _, ld = transport_and_logdensity(t2, x)
+        _, ld = latent_pfwd_and_logdensity(t2, x)
         return ld
     end
 
     @test isapprox(enzyme_grad(ℓpt, y0), fdm_grad(ℓpt, y0); atol = 1.0e-5)
 
-    # Gradient cross-check at a moderate latent point. (Using `pullback` of a
+    # Gradient cross-check at a moderate latent point. (Using `latent_pback` of a
     # random Dirichlet draw can land on an extreme latent where the stick-breaking
     # `logistic` saturates and the central-difference reference underflows, even
     # though Enzyme returns the correct analytic value.)
     Random.seed!(1234)
     y3 = randn(dimension(t3)) ./ 2
     function ℓpt3(x)
-        _, ld = transport_and_logdensity(t3, x)
+        _, ld = latent_pfwd_and_logdensity(t3, x)
         return ld
     end
 

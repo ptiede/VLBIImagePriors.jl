@@ -112,8 +112,8 @@
             )
             t = transport_to(d, TVFlat())
             x = rand(d)
-            p = pullback(t, x)
-            @test transport(t, p) ≈ x
+            p = latent_pback(t, x)
+            @test latent_pfwd(t, p) ≈ x
         end
     end
 
@@ -126,8 +126,8 @@
         @test size(y) == (3, 4)
 
         t = transport_to(d, TVFlat())
-        p = pullback(t, y)
-        @test transport(t, p) ≈ y
+        p = latent_pback(t, y)
+        @test latent_pfwd(t, p) ≈ y
     end
 
     @testset "per-element parameters (same family across grid)" begin
@@ -138,8 +138,8 @@
         @test logpdf(d, x) ≈ sum(logpdf.(Normal.(μ, σ), x))
 
         t = transport_to(d, TVFlat())
-        p = pullback(t, x)
-        @test transport(t, p) ≈ x
+        p = latent_pback(t, x)
+        @test latent_pfwd(t, p) ≈ x
 
         # InverseGamma per-element
         α = abs.(randn(2, 3)) .+ 1.5
@@ -189,8 +189,8 @@
             @test size(z) == (3, 4)
             @test isfinite(logpdf(b, z))
             t = transport_to(b, TVFlat())
-            p = pullback(t, z)
-            @test transport(t, p) ≈ z
+            p = latent_pback(t, z)
+            @test latent_pfwd(t, p) ≈ z
         end
 
         # scalar bases
@@ -213,7 +213,7 @@
 
         t = transport_to(h, TVFlat())
         y = randn(dimension(t))
-        xback = transport(t, y)
+        xback = latent_pfwd(t, y)
         @test keys(xback) == (:params, :hyperparams)
         @test size(xback.params) == (3, 4)
     end
@@ -492,14 +492,14 @@
         c = transport_to(sn, StdUniform())
         @test dimension(c) == 6
         u = rand(dimension(c))
-        x = transport(c, u)
-        u_back = pullback(c, x)
+        x = latent_pfwd(c, u)
+        u_back = latent_pback(c, x)
         @test u_back ≈ u
     end
 
     @testset "StdUniform routing: 0-dim → scalar value, N>=1 → array value" begin
-        # 0-dim (univariate) distributions transport a length-1 latent to a
-        # scalar value; N>=1 distributions transport to an array of the
+        # 0-dim (univariate) distributions latent_pfwd a length-1 latent to a
+        # scalar value; N>=1 distributions latent_pfwd to an array of the
         # distribution's shape.
         scalar_cases = [
             VLBIGaussian(0.0, 1.0),
@@ -521,9 +521,9 @@
             c = transport_to(d, StdUniform())
             @test dimension(c) == 1
             u = rand(1)
-            x = transport(c, u)
+            x = latent_pfwd(c, u)
             @test x isa Number
-            @test pullback(c, x) ≈ u
+            @test latent_pback(c, x) ≈ u
         end
 
         # Matrixvariate cases — used to fall off HC's `ascube` dispatch
@@ -537,9 +537,9 @@
         for d in matrix_cases
             c = transport_to(d, StdUniform())
             u = rand(dimension(c))
-            x = transport(c, u)
+            x = latent_pfwd(c, u)
             @test size(x) == size(d)
-            @test pullback(c, x) ≈ u
+            @test latent_pback(c, x) ≈ u
         end
     end
 
@@ -568,8 +568,8 @@
         for d in cases
             c = transport_to(d, StdUniform())
             u = rand(dimension(c))
-            x = transport(c, u)
-            u_back = pullback(c, x)
+            x = latent_pfwd(c, u)
+            u_back = latent_pback(c, x)
             @test u_back ≈ u
         end
     end
@@ -594,8 +594,8 @@
             t = transport_to(d, TVFlat())
             @test dimension(t) == length(d)
             x = rand(d)
-            p = pullback(t, x)
-            @test transport(t, p) ≈ x
+            p = latent_pback(t, x)
+            @test latent_pfwd(t, p) ≈ x
         end
     end
 
@@ -612,8 +612,8 @@
             t = transport_to(b, TVFlat())
             @test dimension(t) == length(b)
             z = rand(b)
-            p = pullback(t, z)
-            @test transport(t, p) ≈ z
+            p = latent_pback(t, z)
+            @test latent_pfwd(t, p) ≈ z
         end
     end
 
@@ -738,8 +738,8 @@
         @test t isa TV.AbstractTransform
         for _ in 1:5
             x = rand(rng, d)
-            p = pullback(t, x)
-            @test transport(t, p) ≈ x
+            p = latent_pback(t, x)
+            @test latent_pfwd(t, p) ≈ x
         end
 
         # Truncated exponential — non-symmetric base
@@ -822,8 +822,8 @@
         t = transport_to(d, TVFlat())
         @test dimension(t) == K
         x = rand(rng, d)
-        p = pullback(t, x)
-        @test transport(t, p) ≈ x
+        p = latent_pback(t, x)
+        @test latent_pfwd(t, p) ≈ x
     end
 
 end

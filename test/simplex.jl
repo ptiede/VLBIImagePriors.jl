@@ -15,15 +15,15 @@
     ndim = dimension(t1)
     y0 = fill(0.1, ndim)
 
-    x1, l1 = transport_and_logdensity(t1, y0)
-    x2, l2 = transport_and_logdensity(t2, y0)
+    x1, l1 = latent_pfwd_and_logdensity(t1, y0)
+    x2, l2 = latent_pfwd_and_logdensity(t2, y0)
 
 
     @testset "ImageSimplex" begin
         @test x1 ≈ reshape(x2, :)
         @test l1 ≈ l2
 
-        @test pullback(t2, x2) ≈ y0
+        @test latent_pback(t2, x2) ≈ y0
     end
 
 

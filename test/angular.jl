@@ -3,7 +3,7 @@
         d0 = DiagonalVonMises(0.0, 0.5)
 
         t0 = transport_to(d0, TVFlat())
-        @test transport(t0, pullback(t0, π / 4)) ≈ π / 4
+        @test latent_pfwd(t0, latent_pback(t0, π / 4)) ≈ π / 4
 
         x = rand(d0)
         @test x isa Float64
@@ -31,14 +31,14 @@
         @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ 2π)
 
         t = transport_to(d1, TVFlat())
-        px = pullback(t, x)
-        x2 = transport(t, px)
+        px = latent_pback(t, x)
+        x2 = latent_pfwd(t, px)
 
         @test sin.(x2) ≈ sin.(x)
         @test cos.(x2) ≈ cos.(x)
 
         function f(x)
-            _, ld = transport_and_logdensity(t, x)
+            _, ld = latent_pfwd_and_logdensity(t, x)
             return ld
         end
         @test isapprox(enzyme_grad(f, px), fdm_grad(f, px); atol = 1.0e-6)
@@ -58,9 +58,9 @@
         @test length(d2) == length(periods) * 2
 
         t = transport_to(d1, TVFlat())
-        px = pullback(t, xx)
-        @test sin.(transport(t, px)) ≈ sin.(xx)
-        @test cos.(transport(t, px)) ≈ cos.(xx)
+        px = latent_pback(t, xx)
+        @test sin.(latent_pfwd(t, px)) ≈ sin.(xx)
+        @test cos.(latent_pfwd(t, px)) ≈ cos.(xx)
 
         d0 = WrappedUniform(2π)
         @test 0 ≤ rand(d0) ≤ 2π

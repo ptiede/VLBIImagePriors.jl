@@ -166,10 +166,10 @@ end
 
         cd = transport_to(d, StdUniform())
         x = rand(dimension(cd))
-        @test pullback(cd, transport(cd, x)) ≈ x
+        @test latent_pback(cd, latent_pfwd(cd, x)) ≈ x
         x100 = rand(dimension(cd), 10000)
-        p100 = transport.(Ref(cd), eachcol(x100))
-        # PT `transport` returns the prior's natural shape, so flatten for the
+        p100 = latent_pfwd.(Ref(cd), eachcol(x100))
+        # PT `latent_pfwd` returns the prior's natural shape, so flatten for the
         # element-wise moment checks.
         ms = vec(mean(p100))
         ss = vec(std(p100))

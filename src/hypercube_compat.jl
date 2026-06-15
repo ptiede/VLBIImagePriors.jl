@@ -9,15 +9,15 @@
 # the canonical TransformVariables generics on that type so existing Comrade call
 # sites keep dispatching to them:
 #
-#   transform(t, y)            -> transport(t, y)
-#   inverse(t, x)              -> pullback(t, x)
+#   transform(t, y)            -> latent_pfwd(t, y)
+#   inverse(t, x)              -> latent_pback(t, x)
 #   dimension(t)               -> dimension(t)        (unchanged; from PT)
 #
 # Note: the old `transform_and_logjac` alias is intentionally not provided. PT no
-# longer exposes a bare Jacobian (`transport_and_logjac` was removed); the replacement
-# `transport_and_logdensity` returns the pulled-back *prior log-density*, not a Jacobian,
-# so silently re-aliasing the old name would change its meaning. Call
-# `transport_and_logdensity` directly instead.
+# longer exposes a bare Jacobian; the replacement `latent_pfwd_and_logdensity`
+# returns the pulled-back *prior log-density*, not a Jacobian, so silently
+# re-aliasing the old name would change its meaning. Call
+# `latent_pfwd_and_logdensity` directly instead.
 #
 # Scalar vs array routing is handled inside PT (a 0-dim distribution maps through a
 # scalar node), so these wrappers stay distribution-agnostic.
@@ -51,16 +51,16 @@ ascube(d) = transport_to(d, StdUniform())
 """
     transform(t::TransportedDistribution, y)
 
-Apply the transport `t` to the latent point `y`. Alias for `transport(t, y)`.
+Apply the transport `t` to the latent point `y`. Alias for `latent_pfwd(t, y)`.
 """
-transform(t::TransportedDistribution, y) = transport(t, y)
+transform(t::TransportedDistribution, y) = latent_pfwd(t, y)
 
 """
     inverse(t::TransportedDistribution, x)
 
-Map `x` back to a canonical latent point. Alias for `pullback(t, x)`.
+Map `x` back to a canonical latent point. Alias for `latent_pback(t, x)`.
 """
-inverse(t::TransportedDistribution, x) = pullback(t, x)
+inverse(t::TransportedDistribution, x) = latent_pback(t, x)
 
 """
     dimension(t::TransportedDistribution)

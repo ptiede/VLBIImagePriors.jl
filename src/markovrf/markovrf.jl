@@ -32,7 +32,7 @@ Additionally, there are a number of auto-generated function that can be overwrit
   - `scalematrix(d::MyRF)`: Which computes the scale matrix `Q`, of the random field. The
      default is to forward to the `scalematrix(graph(d), corrparm(d))`.
   - `(c::ConditionalMarkov{<:MyRF})(ρ)`: To map from a correlation to the distribution
-  - `HypercubeTransform.asflat(d::MyRF)`: To map from parameter space to a flattened version.
+  - `transport_node(d::MyRF, ::TVFlat)`: To map from parameter space to a flattened version.
      The default is `TransformVariables.as(Matrix, size(d)...)`
   - `Distributions.insupport(d::MyRF, x::AbstractMatrix)` which checks if `x` is in the
      support of `d`. The default is to always return true.
