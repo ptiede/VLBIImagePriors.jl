@@ -17,6 +17,7 @@ using SpecialFunctions
 using StatsFuns
 import TransformVariables as TV
 using ReactantCore
+using ReactantCore: within_compile, promote_to_traced
 using ComradeBase: rgetindex, rsetindex!
 
 # ProbabilityTransports is now the home of the standardized distributions, the

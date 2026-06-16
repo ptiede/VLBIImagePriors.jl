@@ -775,6 +775,38 @@
         @test cdf(dr, -1.0e6) ≈ 0
         @test cdf(dr, 0.0) ≈ 1
         @test all(s -> s <= 0.0, [rand(rng, dr) for _ in 1:1000])
+
+        # regression: support endpoints intersect the truncation bounds with the BASE
+        # support, and `asflat` is built from that support. A one-sided truncation of a
+        # bounded base (`VLBITruncated(VLBIExponential(0.1); upper=1)`) once produced an
+        # asflat mapping ℝ → (-∞, 1): the flat space then contained a reachable
+        # logpdf = -Inf region, yielding a negative-background optimum and a frozen NUTS
+        # chain in production.
+        @testset "one-sided truncation keeps the base support" begin
+            dexp = VLBITruncated(VLBIExponential(0.1); upper = 1.0)
+            refexp = truncated(Distributions.Exponential(0.1); upper = 1.0)
+            @test minimum(dexp) == minimum(refexp) == 0.0
+            @test maximum(dexp) == maximum(refexp) == 1.0
+            # an explicit bound equal to the base bound is honored exactly
+            # (a bound *outside* the base support is unconstructable here: the branchless
+            # VLBI* cdf is only valid on the support, so the constructor DomainErrors)
+            @test minimum(VLBITruncated(VLBIExponential(0.1), 0.0, 1.0)) == 0.0
+            # insupport derives from the same endpoints (single source of truth)
+            @test insupport(dexp, 0.0) && insupport(dexp, 1.0)
+            @test !insupport(dexp, -eps()) && !insupport(dexp, nextfloat(1.0))
+            # scalar AffineDistribution bases report their support (and flip with scale < 0)
+            @test minimum(VLBIExponential(0.1)) == 0.0
+            @test maximum(VLBIExponential(0.1)) == Inf
+            @test minimum(VLBIUniform(-2.0, 3.0)) == -2.0
+            @test maximum(VLBIUniform(-2.0, 3.0)) == 3.0
+            # the flat transform respects the support for any latent value
+            t = asflat(dexp)
+            for y in (-30.0, 0.0, 30.0)
+                x = TV.transform(t, y)
+                @test 0.0 <= x <= 1.0
+                @test isfinite(logpdf(dexp, max(x, eps())))
+            end
+        end
     end
 
     @testset "AffineDistribution with Matrix scale (linear operator)" begin
@@ -824,6 +856,86 @@
         x = rand(rng, d)
         p = latent_pback(t, x)
         @test latent_pfwd(t, p) ≈ x
+    end
+
+    @testset "VLBIBeta" begin
+        rng = Random.MersenneTwister(0xbe7a)
+
+        @testset "interface (length / eltype / insupport)" begin
+            ds = VLBIBeta(2.0, 5.0)
+            @test length(ds) == 1
+            @test eltype(ds) == Float64
+
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            @test length(dv) == 3
+            @test eltype(dv) == Float64
+
+            @test insupport(dv, [0.2, 0.7, 0.4])
+            @test !insupport(dv, [0.2, 1.3, 0.4])    # > 1
+            @test !insupport(dv, [-0.1, 0.7, 0.4])   # < 0
+        end
+
+        @testset "logpdf matches Distributions.Beta" begin
+            # scalar params (against the scalar logpdf method)
+            ds = VLBIBeta(2.0, 5.0)
+            rb = Beta(2.0, 5.0)
+            for x in 0.05:0.1:0.95
+                @test logpdf(ds, x) ≈ logpdf(rb, x) atol = 1.0e-10
+            end
+            # out of support → -Inf
+            @test logpdf(ds, -0.1) == -Inf
+            @test logpdf(ds, 1.1) == -Inf
+
+            # vector params == sum of independent marginals
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            for _ in 1:10
+                x = rand(rng, 3)
+                @test logpdf(dv, x) ≈ sum(logpdf.(Beta.(α, β), x)) atol = 1.0e-10
+            end
+            # any pixel out of support drags the whole density to -Inf
+            @test logpdf(dv, [0.2, 1.5, 0.4]) == -Inf
+        end
+
+        @testset "unnormed_logpdf + lognorm == logpdf" begin
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            ln = lognorm(dv)
+            for _ in 1:5
+                x = rand(rng, 3)
+                @test logpdf(dv, x) ≈ unnormed_logpdf(dv, x) + ln
+            end
+            # scalar form
+            ds = VLBIBeta(2.0, 5.0)
+            @test logpdf(ds, 0.3) ≈ unnormed_logpdf(ds, 0.3) + lognorm(ds)
+        end
+
+        @testset "sampler moments match Distributions.Beta" begin
+            n = 200_000
+            # scalar params: rand returns a length-1 vector
+            ds = VLBIBeta(2.0, 5.0)
+            rb = Beta(2.0, 5.0)
+            ss = reduce(vcat, [rand(rng, ds) for _ in 1:n])
+            @test all(0 .<= ss .<= 1)
+            @test isapprox(mean(ss), mean(rb); atol = 5.0e-3)
+            @test isapprox(var(ss), var(rb); atol = 5.0e-3)
+
+            # vector params: per-component moments
+            α = [2.0, 3.0, 1.5]
+            β = [5.0, 2.0, 4.0]
+            dv = VLBIBeta(α, β)
+            mat = reduce(hcat, [rand(rng, dv) for _ in 1:n])
+            @test all(0 .<= mat .<= 1)
+            for k in 1:3
+                rbk = Beta(α[k], β[k])
+                @test isapprox(mean(mat[k, :]), mean(rbk); atol = 5.0e-3)
+                @test isapprox(var(mat[k, :]), var(rbk); atol = 5.0e-3)
+            end
+        end
     end
 
 end
