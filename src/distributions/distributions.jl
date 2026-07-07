@@ -10,3 +10,4 @@ export unnormed_logpdf, lognorm
 
 include("affine.jl")
 include("constructors.jl")
+include("beta.jl")

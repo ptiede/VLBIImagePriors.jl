@@ -66,8 +66,7 @@ end
 
             @test cov(d1) ≈ cov(dd)
             @test mean(d1) ≈ reshape(mean(dd), size(mimg))
-
-                    end
+        end
 
         @testset "Order 2" begin
             mimg = rand(10, 8)
@@ -87,7 +86,7 @@ end
             @test cov(d1) ≈ cov(dd)
             @test mean(d1) ≈ reshape(mean(dd), size(mimg))
 
-            
+
         end
 
     end
@@ -111,7 +110,7 @@ end
             @test cov(d1) ≈ cov(dd)
             @test mean(d1) ≈ reshape(mean(dd), size(mimg))
 
-            
+
         end
 
         @testset "Order 2" begin
@@ -132,7 +131,7 @@ end
             @test cov(d1) ≈ cov(dd)
             @test mean(d1) ≈ reshape(mean(dd), size(mimg))
 
-            
+
         end
 
 
@@ -202,7 +201,7 @@ end
         @test cov(d1) ≈ cov(dd)
         @test mean(d1) ≈ reshape(mean(dd), size(mimg))
 
-        
+
     end
 
 
@@ -375,7 +374,10 @@ end
 
         serialize("test.jls", t)
         t2 = deserialize("test.jls")
+        rm("test.jls")
 
+        x0 = rand(ds)
+        @test centerdist(t2, ρ, x0) == centerdist(t, ρ, x0)
 
         @test size(t) == size(d)
         @test size(ds) == size(d)

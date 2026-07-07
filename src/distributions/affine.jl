@@ -33,18 +33,12 @@ AffineDistribution(loc, scale, base) = PushforwardDistribution(_affine_map(loc, 
 # allocations and sampling geometry to the old API. A matrix-scale `AffineTransform`
 # (a genuine linear operator, e.g. MvNormal whitening) keeps PT's pushforward node.
 
-# loc/scale-independent support blocks (the affine map lives in `logpdf`).
-_flat_block(::StdNormal) = TV.asℝ
-_flat_block(::StdTDist) = TV.asℝ
-_flat_block(::StdExponential) = TV.asℝ₊
-_flat_block(::StdInverseGamma) = TV.asℝ₊
-
+# The centered node is just the base's own flat node (PT already owns the per-base
+# support table and the 0-dim/N-dim split); the affine map lives in `logpdf`.
 const _CenteredBase = Union{StdNormal, StdTDist, StdExponential, StdInverseGamma}
 
-transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, 0}, ::TVFlat) =
-    _flat_block(d.base)
-transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase, N}, ::TVFlat) where {N} =
-    TV.as(Array, _flat_block(d.base), size(d)...)
+transport_node(d::PushforwardDistribution{<:ScaleShift, <:_CenteredBase}, s::TVFlat) =
+    transport_node(d.base, s)
 
 # StdUniform: the support is the bounded interval [loc, loc+scale]; the flat
 # transform maps ℝ onto it. Real bounds only — traced/array bounds fall back to ℝ
