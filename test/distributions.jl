@@ -498,9 +498,12 @@
     end
 
     @testset "StdUniform routing: 0-dim → scalar value, N>=1 → array value" begin
-        # 0-dim (univariate) distributions latent_pfwd a length-1 latent to a
-        # scalar value; N>=1 distributions latent_pfwd to an array of the
-        # distribution's shape.
+        # 0-dim distributions are *scalar-kind* transports (PT's `is_scalar_transport`,
+        # the analogue of TransformVariables' `ScalarTransform`): the transported
+        # distribution is univariate and speaks scalars at every latent entry point —
+        # `latent_pfwd` accepts a bare `Number` and `latent_pback` returns one (mirroring
+        # `TV.transform`/`TV.inverse`). N>=1 distributions stay multivariate and
+        # `latent_pfwd` to an array of the distribution's shape.
         scalar_cases = [
             VLBIGaussian(0.0, 1.0),
             VLBIUniform(0.0, 1.0),
@@ -520,10 +523,11 @@
         for d in scalar_cases
             c = transport_to(d, StdUniform())
             @test dimension(c) == 1
-            u = rand(1)
+            @test c isa Distributions.ContinuousUnivariateDistribution   # scalar-kind ⇒ univariate
+            u = rand()                       # scalar-kind accepts a bare scalar latent
             x = latent_pfwd(c, u)
             @test x isa Number
-            @test latent_pback(c, x) ≈ u
+            @test latent_pback(c, x) ≈ u     # scalar-kind ⇒ scalar out (like TV.inverse)
         end
 
         # Matrixvariate cases — used to fall off HC's `ascube` dispatch
