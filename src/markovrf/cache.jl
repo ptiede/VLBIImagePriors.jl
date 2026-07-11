@@ -240,7 +240,7 @@ end
 # Walks the grid in 9 unconditional regions (interior + 4 edges + 4 corners),
 # computing the per-cell qv with the right number of in-bounds neighbors, and
 # accumulating `f(qv, Ic)`. Used by both igmrf_1n (f = qv*Ic) and igmrf_2n
-# (f = qv*qv). No `@trace track_numbers=false if` anywhere; all iterators are plain `UnitRange{Int}`
+# (f = qv*qv). No `@trace if` anywhere; all iterators are plain `UnitRange{Int}`
 # bound before the loops.
 @inline function _igmrf_walk(I::AbstractMatrix, κ², f::F) where {F}
     c = 4 + κ²

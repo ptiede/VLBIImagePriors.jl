@@ -42,4 +42,6 @@ function Dists.rand(rng::AbstractRNG, d::HierarchicalPrior, n::Int)
 end
 
 
-HC.asflat(d::HierarchicalPrior) = TV.as((params = HC.asflat(d.priormap(rand(d.hyperprior))), hyperparams = HC.asflat(d.hyperprior)))
+function transport_node(d::HierarchicalPrior, space)
+    return transport_node((params = d.priormap(rand(d.hyperprior)), hyperparams = d.hyperprior), space)
+end

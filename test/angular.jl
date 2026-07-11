@@ -2,8 +2,8 @@
     @testset "DiagonalVonMises" begin
         d0 = DiagonalVonMises(0.0, 0.5)
 
-        t0 = asflat(d0)
-        @test transform(t0, inverse(t0, π / 4)) ≈ π / 4
+        t0 = transport_to(d0, TVFlat())
+        @test latent_pfwd(t0, latent_pback(t0, π / 4)) ≈ π / 4
 
         x = rand(d0)
         @test x isa Float64
@@ -30,25 +30,18 @@
         @test logdensityof(d1, x) ≈ logdensityof(d2, x)
         @test logdensityof(d1, x) ≈ logdensityof(d1, x .+ 2π)
 
-        test_rrule(VLBIImagePriors._vonlogpdf, d1.μ, d1.κ, x)
-        test_rrule(VLBIImagePriors._vonmisesnorm, d1.μ, d1.κ)
-
-        t = asflat(d1)
-        px = inverse(t, x)
-        x2 = transform(t, px)
+        t = transport_to(d1, TVFlat())
+        px = latent_pback(t, x)
+        x2 = latent_pfwd(t, px)
 
         @test sin.(x2) ≈ sin.(x)
         @test cos.(x2) ≈ cos.(x)
 
-        # test_rrule(TV.transform_with, TV.LogJac()⊢NoTangent(), t⊢NoTangent(), px, 1⊢NoTangent())
         function f(x)
-            y, lj = transform_and_logjac(t, x)
-            return logdensityof(d1, y) + lj
+            _, ld = latent_pfwd_and_logdensity(t, x)
+            return ld
         end
-        gz = Zygote.gradient(f, px)
-        m = central_fdm(5, 1)
-        gfd = FiniteDifferences.grad(m, f, px)
-        @test first(gz) ≈ first(gfd)
+        @test isapprox(enzyme_grad(f, px), fdm_grad(f, px); atol = 1.0e-6)
     end
 
     @testset "WrappedUniform" begin
@@ -64,31 +57,26 @@
         @test d2 isa WrappedUniform
         @test length(d2) == length(periods) * 2
 
-        t = asflat(d1)
-        px = inverse(t, xx)
-        @test sin.(transform(t, px)) ≈ sin.(xx)
-        @test cos.(transform(t, px)) ≈ cos.(xx)
-
-        test_rrule(Distributions.logpdf, d1, xx, atol = 1.0e-8)
+        t = transport_to(d1, TVFlat())
+        px = latent_pback(t, xx)
+        @test sin.(latent_pfwd(t, px)) ≈ sin.(xx)
+        @test cos.(latent_pfwd(t, px)) ≈ cos.(xx)
 
         d0 = WrappedUniform(2π)
         @test 0 ≤ rand(d0) ≤ 2π
         @test logpdf(d0, 0.0) == logpdf(d0, 1.0)
-        @test asflat(d0) isa VLBIImagePriors.AngleTransform
+        @test transport_node(d0, TVFlat()) === angle_transform()
         @test insupport(d0, 0.0)
     end
 
     @testset "SphericalUniform" begin
-        t = SphericalUnitVector{3}()
+        t = spherical_unit_vector(3)
         @inferred TV.transform(t, randn(dimension(t)))
         f = let t = t
             x -> sum(abs2, TV.transform(t, x))
         end
         px = randn(dimension(t))
-        gz = Zygote.gradient(f, px)
-        m = central_fdm(5, 1)
-        gfd = FiniteDifferences.grad(m, f, px)
-        @test isapprox(first(gz), first(gfd), atol = 1.0e-6)
+        @test isapprox(enzyme_grad(f, px), fdm_grad(f, px); atol = 1.0e-6)
     end
 
 end

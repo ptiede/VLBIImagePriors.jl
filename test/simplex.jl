@@ -5,36 +5,25 @@
     d2 = ImageDirichlet(1.0, npix, npix)
     d3 = ImageDirichlet(rand(10, 10) .+ 0.1)
 
-    t1 = asflat(d1)
-    t2 = asflat(d2)
-    t3 = asflat(d3)
+    t1 = transport_to(d1, TVFlat())
+    t2 = transport_to(d2, TVFlat())
+    t3 = transport_to(d3, TVFlat())
 
-    @test t2 === t3
+    # the flat transform is alpha-independent (same simplex for both priors)
+    @test transport_node(d2, TVFlat()) === transport_node(d3, TVFlat())
 
     ndim = dimension(t1)
     y0 = fill(0.1, ndim)
 
-    x1, l1 = transform_and_logjac(t1, y0)
-    x2, l2 = transform_and_logjac(t2, y0)
+    x1, l1 = latent_pfwd_and_logdensity(t1, y0)
+    x2, l2 = latent_pfwd_and_logdensity(t2, y0)
 
 
     @testset "ImageSimplex" begin
         @test x1 ≈ reshape(x2, :)
         @test l1 ≈ l2
 
-        @test inverse(t2, x2) ≈ y0
-        test_rrule(
-            VLBIImagePriors.simplex_fwd,
-            TV.NoLogJac() ⊢ NoTangent(),
-            VLBIImagePriors.ImageSimplex(10, 10) ⊢ NoTangent(),
-            randn(99)
-        )
-        test_rrule(
-            VLBIImagePriors.simplex_fwd,
-            TV.LogJac() ⊢ NoTangent(),
-            VLBIImagePriors.ImageSimplex(10, 10) ⊢ NoTangent(),
-            randn(99)
-        )
+        @test latent_pback(t2, x2) ≈ y0
     end
 
 
@@ -50,24 +39,12 @@ end
     @test sum(ycl) ≈ 1
     @test sum(yal) ≈ 1
 
-    test_rrule(to_simplex, AdditiveLR(), x)
-    test_rrule(to_simplex, CenteredLR(), x)
-
     y = rand(10, 10) .+ 0.5
     far(x) = sum(abs2, to_real(AdditiveLR(), x / sum(x)))
-    s = central_fdm(5, 1)
-    gf_ar = first(grad(s, far, y))
-    gz_ar = first(Zygote.gradient(far, y))
-    @test isapprox(first(gf_ar), first(gz_ar), atol = 1.0e-6)
+    @test isapprox(enzyme_grad(far, y), fdm_grad(far, y); atol = 1.0e-6)
 
     fcr(x) = sum(abs2, to_real(CenteredLR(), x / sum(x)))
-    gf_cr = first(grad(s, fcr, y))
-    gz_cr = first(Zygote.gradient(fcr, y))
-    @test isapprox(first(gf_cr), first(gz_cr), atol = 1.0e-6)
-
-
-    # test_rrule(to_real, AdditiveLR(), yal)
-    # test_rrule(to_real, CenteredLR(), ycl)
+    @test isapprox(enzyme_grad(fcr, y), fdm_grad(fcr, y); atol = 1.0e-6)
 
     x0al = @jit to_real(AdditiveLR(), yal)
     x0cl = @jit to_real(CenteredLR(), ycl)

@@ -110,10 +110,10 @@
                 VLBIGaussian(0.0, 1.0), VLBIExponential(2.0), VLBIUniform(-1.0, 1.0),
                 VLBIInverseGamma(2.0, 1.0), VLBITDist(5.0), VLBITDist(5.0, 0.3, 1.2),
             )
-            t = asflat(d)
+            t = transport_to(d, TVFlat())
             x = rand(d)
-            p = HypercubeTransform.inverse(t, x)
-            @test HypercubeTransform.transform(t, p) ≈ x
+            p = latent_pback(t, x)
+            @test latent_pfwd(t, p) ≈ x
         end
     end
 
@@ -125,9 +125,9 @@
         y = rand(d)
         @test size(y) == (3, 4)
 
-        t = asflat(d)
-        p = HypercubeTransform.inverse(t, y)
-        @test HypercubeTransform.transform(t, p) ≈ y
+        t = transport_to(d, TVFlat())
+        p = latent_pback(t, y)
+        @test latent_pfwd(t, p) ≈ y
     end
 
     @testset "per-element parameters (same family across grid)" begin
@@ -137,9 +137,9 @@
         x = μ .+ σ .* randn(3, 4)
         @test logpdf(d, x) ≈ sum(logpdf.(Normal.(μ, σ), x))
 
-        t = asflat(d)
-        p = HypercubeTransform.inverse(t, x)
-        @test HypercubeTransform.transform(t, p) ≈ x
+        t = transport_to(d, TVFlat())
+        p = latent_pback(t, x)
+        @test latent_pfwd(t, p) ≈ x
 
         # InverseGamma per-element
         α = abs.(randn(2, 3)) .+ 1.5
@@ -188,9 +188,9 @@
             z = rand(b)
             @test size(z) == (3, 4)
             @test isfinite(logpdf(b, z))
-            t = asflat(b)
-            p = HypercubeTransform.inverse(t, z)
-            @test HypercubeTransform.transform(t, p) ≈ z
+            t = transport_to(b, TVFlat())
+            p = latent_pback(t, z)
+            @test latent_pfwd(t, p) ≈ z
         end
 
         # scalar bases
@@ -200,7 +200,7 @@
             )
             z = rand(b)
             @test isfinite(logpdf(b, z))
-            t = asflat(b)
+            t = transport_node(b, TVFlat())
             @test t isa TV.AbstractTransform
         end
     end
@@ -211,9 +211,9 @@
         @test x isa NamedTuple
         @test isfinite(logpdf(h, x))
 
-        t = asflat(h)
-        y = randn(TV.dimension(t))
-        xback = HypercubeTransform.transform(t, y)
+        t = transport_to(h, TVFlat())
+        y = randn(dimension(t))
+        xback = latent_pfwd(t, y)
         @test keys(xback) == (:params, :hyperparams)
         @test size(xback.params) == (3, 4)
     end
@@ -228,9 +228,8 @@
             x -> logpdf(d, x)
         end
 
-        s = central_fdm(5, 1)
-        g_fd = first(FiniteDifferences.grad(s, f, x))
-        g_en = Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(f), x)[1]
+        g_fd = fdm_grad(f, x)
+        g_en = enzyme_grad(f, x)
         @test isapprox(g_fd, g_en; atol = 1.0e-6)
     end
 
@@ -344,7 +343,7 @@
             io = IOBuffer()
             show(io, d)
             s = String(take!(io))
-            @test occursin("AffineDistribution(", s)
+            @test occursin("PushforwardDistribution(", s)
             @test occursin("size=", s)
         end
 
@@ -353,12 +352,13 @@
         show(io, VLBIGaussian(0.0, 1.0))
         @test !occursin("size=", String(take!(io)))
 
-        # Array params — eltype/shape summary path.
+        # Array params — base/shape summary path.
         io = IOBuffer()
         μ = randn(2, 3)
         show(io, VLBIGaussian(μ, 1.0))
         s = String(take!(io))
-        @test occursin("Float64", s)
+        @test occursin("StdNormal", s)
+        @test occursin("size=(2, 3)", s)
     end
 
     @testset "params for non-Normal AffineDistribution bases" begin
@@ -489,20 +489,21 @@
 
     @testset "StdNormal ascube round-trip" begin
         sn = StdNormal((6,))
-        c = HypercubeTransform.ascube(sn)
-        @test HypercubeTransform.dimension(c) == 6
-        u = rand(HypercubeTransform.dimension(c))
-        x = HypercubeTransform.transform(c, u)
-        u_back = HypercubeTransform.inverse(c, x)
+        c = transport_to(sn, StdUniform())
+        @test dimension(c) == 6
+        u = rand(dimension(c))
+        x = latent_pfwd(c, u)
+        u_back = latent_pback(c, x)
         @test u_back ≈ u
     end
 
-    @testset "ascube routing: 0-dim → ScalarHC, N>=1 → ArrayHC" begin
-        # 0-dim (univariate) distributions must use ScalarHC so the
-        # natural `transform(c, scalar) → scalar` workflow works. N>=1
-        # distributions go to ArrayHC. The matrixvariate (N>=2) override is
-        # required because HC's stock `ascube` Union only catches
-        # multivariate (N=1).
+    @testset "StdUniform routing: 0-dim → scalar value, N>=1 → array value" begin
+        # 0-dim distributions are *scalar-kind* transports (PT's `is_scalar_transport`,
+        # the analogue of TransformVariables' `ScalarTransform`): the transported
+        # distribution is univariate and speaks scalars at every latent entry point —
+        # `latent_pfwd` accepts a bare `Number` and `latent_pback` returns one (mirroring
+        # `TV.transform`/`TV.inverse`). N>=1 distributions stay multivariate and
+        # `latent_pfwd` to an array of the distribution's shape.
         scalar_cases = [
             VLBIGaussian(0.0, 1.0),
             VLBIUniform(0.0, 1.0),
@@ -520,12 +521,13 @@
             VLBITruncated(VLBIGaussian(0.0, 1.0), 0.5, nothing),
         ]
         for d in scalar_cases
-            c = HypercubeTransform.ascube(d)
-            @test c isa HypercubeTransform.ScalarHC
-            u = rand()
-            x = HypercubeTransform.transform(c, u)
+            c = transport_to(d, StdUniform())
+            @test dimension(c) == 1
+            @test c isa Distributions.ContinuousUnivariateDistribution   # scalar-kind ⇒ univariate
+            u = rand()                       # scalar-kind accepts a bare scalar latent
+            x = latent_pfwd(c, u)
             @test x isa Number
-            @test HypercubeTransform.inverse(c, x)[1] ≈ u
+            @test latent_pback(c, x) ≈ u     # scalar-kind ⇒ scalar out (like TV.inverse)
         end
 
         # Matrixvariate cases — used to fall off HC's `ascube` dispatch
@@ -537,11 +539,11 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in matrix_cases
-            c = HypercubeTransform.ascube(d)
-            @test c isa HypercubeTransform.ArrayHC
-            u = rand(HypercubeTransform.dimension(c))
-            x = HypercubeTransform.transform(c, u)
-            @test HypercubeTransform.inverse(c, x) ≈ u
+            c = transport_to(d, StdUniform())
+            u = rand(dimension(c))
+            x = latent_pfwd(c, u)
+            @test size(x) == size(d)
+            @test latent_pback(c, x) ≈ u
         end
     end
 
@@ -568,12 +570,72 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in cases
-            c = HypercubeTransform.ascube(d)
-            u = rand(HypercubeTransform.dimension(c))
-            x = HypercubeTransform.transform(c, u)
-            u_back = HypercubeTransform.inverse(c, x)
+            c = transport_to(d, StdUniform())
+            u = rand(dimension(c))
+            x = latent_pfwd(c, u)
+            u_back = latent_pback(c, x)
             @test u_back ≈ u
         end
+    end
+
+    @testset "HypercubeTransform-compat aliases (asflat/ascube/transform/inverse)" begin
+        # `src/hypercube_compat.jl` keeps the old HypercubeTransform verbs alive as
+        # thin shims so Comrade integrates unchanged. The round-trip tests above call
+        # PT's `transport_to`/`latent_pfwd`/`latent_pback` directly and so never touch
+        # the shims. Exercise the public compat surface itself here:
+        #   asflat(d)  == transport_to(d, TVFlat())
+        #   ascube(d)  == transport_to(d, StdUniform())
+        #   transform(t, y) == latent_pfwd(t, y)
+        #   inverse(t, x)   == latent_pback(t, x)
+        #   dimension(t)    == PT dimension
+
+        # --- scalar distribution: 0-dim ⇒ scalar-kind transport ---
+        d = VLBIGaussian(0.5, 1.3)
+
+        tf = asflat(d)
+        @test tf isa TransportedDistribution
+        @test tf == transport_to(d, TVFlat())          # alias is exactly transport_to
+        @test dimension(tf) == 1
+        y = 0.37
+        x = transform(tf, y)
+        @test x isa Number
+        @test transform(tf, y) == latent_pfwd(tf, y)
+        @test inverse(tf, x) == latent_pback(tf, x)
+        @test inverse(tf, x) ≈ y
+
+        tc = ascube(d)
+        @test tc isa TransportedDistribution
+        @test tc == transport_to(d, StdUniform())      # alias is exactly transport_to
+        @test dimension(tc) == 1
+        u = 0.63
+        xc = transform(tc, u)
+        @test xc isa Number
+        @test transform(tc, u) == latent_pfwd(tc, u)
+        @test inverse(tc, xc) == latent_pback(tc, xc)
+        @test inverse(tc, xc) ≈ u
+
+        # --- array distribution: N>=1 ⇒ array-kind transport ---
+        da = VLBIGaussian(0.0, 1.0, (2, 3))
+
+        taf = asflat(da)
+        @test taf == transport_to(da, TVFlat())
+        @test dimension(taf) == length(da)
+        ya = randn(dimension(taf))
+        xa = transform(taf, ya)
+        @test size(xa) == size(da)
+        @test transform(taf, ya) == latent_pfwd(taf, ya)
+        @test inverse(taf, xa) == latent_pback(taf, xa)
+        @test inverse(taf, xa) ≈ ya
+
+        tac = ascube(da)
+        @test tac == transport_to(da, StdUniform())
+        @test dimension(tac) == length(da)
+        ua = rand(dimension(tac))
+        xac = transform(tac, ua)
+        @test size(xac) == size(da)
+        @test transform(tac, ua) == latent_pfwd(tac, ua)
+        @test inverse(tac, xac) == latent_pback(tac, xac)
+        @test inverse(tac, xac) ≈ ua
     end
 
     @testset "array asflat round-trip for all VLBI* families" begin
@@ -593,11 +655,11 @@
             VLBITDist(abs.(randn(2, 3)) .+ 2.0, zeros(2, 3), ones(2, 3)),
         ]
         for d in cases
-            t = asflat(d)
-            @test TV.dimension(t) == length(d)
+            t = transport_to(d, TVFlat())
+            @test dimension(t) == length(d)
             x = rand(d)
-            p = HypercubeTransform.inverse(t, x)
-            @test HypercubeTransform.transform(t, p) ≈ x
+            p = latent_pback(t, x)
+            @test latent_pfwd(t, p) ≈ x
         end
     end
 
@@ -611,11 +673,11 @@
                 StdTDist(5.0, (2, 3)),
                 StdTDist(abs.(randn(2, 3)) .+ 2.0),
             )
-            t = asflat(b)
-            @test TV.dimension(t) == length(b)
+            t = transport_to(b, TVFlat())
+            @test dimension(t) == length(b)
             z = rand(b)
-            p = HypercubeTransform.inverse(t, z)
-            @test HypercubeTransform.transform(t, p) ≈ z
+            p = latent_pback(t, z)
+            @test latent_pfwd(t, p) ≈ z
         end
     end
 
@@ -649,7 +711,7 @@
         # Gaussian
         ds_g = [VLBIGaussian(Float64(i), 0.5 + 0.1 * i) for i in 1:4]
         p_g = product_distribution(ds_g)
-        @test p_g isa AffineDistribution{<:StdNormal, 1}
+        @test p_g isa PushforwardDistribution{<:Any, <:StdNormal, 1}
         @test length(p_g) == 4
         x = randn(4)
         @test logpdf(p_g, x) ≈ sum(logpdf(d, x[i]) for (i, d) in enumerate(ds_g))
@@ -657,7 +719,7 @@
         # Exponential
         ds_e = [VLBIExponential(0.5 + 0.2 * i) for i in 1:3]
         p_e = product_distribution(ds_e)
-        @test p_e isa AffineDistribution{<:StdExponential, 1}
+        @test p_e isa PushforwardDistribution{<:Any, <:StdExponential, 1}
         @test length(p_e) == 3
         y = abs.(randn(3)) .+ 0.1
         @test logpdf(p_e, y) ≈ sum(logpdf(d, y[i]) for (i, d) in enumerate(ds_e))
@@ -665,7 +727,7 @@
         # Uniform
         ds_u = [VLBIUniform(-Float64(i), Float64(i + 1)) for i in 1:3]
         p_u = product_distribution(ds_u)
-        @test p_u isa AffineDistribution{<:StdUniform, 1}
+        @test p_u isa PushforwardDistribution{<:Any, <:StdUniform, 1}
         @test length(p_u) == 3
         xu = [0.0, 0.5, 1.0]
         @test logpdf(p_u, xu) ≈ sum(logpdf(d, xu[i]) for (i, d) in enumerate(ds_u))
@@ -673,7 +735,7 @@
         # InverseGamma
         ds_ig = [VLBIInverseGamma(2.0 + 0.5 * i, 1.0 + 0.1 * i) for i in 1:3]
         p_ig = product_distribution(ds_ig)
-        @test p_ig isa AffineDistribution{<:StdInverseGamma, 1}
+        @test p_ig isa PushforwardDistribution{<:Any, <:StdInverseGamma, 1}
         @test length(p_ig) == 3
         xig = abs.(randn(3)) .+ 0.5
         @test logpdf(p_ig, xig) ≈ sum(logpdf(d, xig[i]) for (i, d) in enumerate(ds_ig))
@@ -681,7 +743,7 @@
         # TDist
         ds_t = [VLBITDist(3.0 + Float64(i), Float64(i), 1.0 + 0.1 * i) for i in 1:3]
         p_t = product_distribution(ds_t)
-        @test p_t isa AffineDistribution{<:StdTDist, 1}
+        @test p_t isa PushforwardDistribution{<:Any, <:StdTDist, 1}
         @test length(p_t) == 3
         xt = randn(3)
         @test logpdf(p_t, xt) ≈ sum(logpdf(d, xt[i]) for (i, d) in enumerate(ds_t))
@@ -735,13 +797,13 @@
         @test !insupport(d, lower - 0.5)
         @test !insupport(d, upper + 0.5)
 
-        # asflat: bounded interval transform
-        t = asflat(d)
+        # flat: bounded interval transform
+        t = transport_node(d, TVFlat())
         @test t isa TV.AbstractTransform
         for _ in 1:5
             x = rand(rng, d)
-            p = HypercubeTransform.inverse(t, x)
-            @test HypercubeTransform.transform(t, p) ≈ x
+            p = latent_pback(t, x)
+            @test latent_pfwd(t, p) ≈ x
         end
 
         # Truncated exponential — non-symmetric base
@@ -853,11 +915,11 @@
         @test !insupport(d, randn(rng, K + 1))   # wrong length
 
         # asflat: 1D unconstrained, dimension == K
-        t = asflat(d)
-        @test TV.dimension(t) == K
+        t = transport_to(d, TVFlat())
+        @test dimension(t) == K
         x = rand(rng, d)
-        p = HypercubeTransform.inverse(t, x)
-        @test HypercubeTransform.transform(t, p) ≈ x
+        p = latent_pback(t, x)
+        @test latent_pfwd(t, p) ≈ x
     end
 
     @testset "VLBIBeta" begin

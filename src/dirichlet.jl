@@ -33,7 +33,7 @@ Base.size(d::ImageDirichlet) = size(d.α)
 
 Dists.mean(d::ImageDirichlet) = d.α .* inv(d.α0)
 
-HC.asflat(d::ImageDirichlet) = ImageSimplex(size(d))
+transport_node(d::ImageDirichlet, ::TVFlat) = ImageSimplex(size(d))
 
 function Dists.insupport(d::ImageDirichlet, x::AbstractMatrix)
     return (size(d.α) == size(x)) & !any(<(zero(eltype(x))), x) & isapprox(sum(x), one(eltype(x)))
@@ -72,17 +72,7 @@ end
 #     return f, _dirichlet_lpdf_pullback
 # end
 
-function ChainRulesCore.rrule(::typeof(dirichlet_lpdf), α, lmnB, x::AbstractMatrix{<:Real})
-    f = dirichlet_lpdf(α, lmnB, x)
-    px = ProjectTo(x)
-    function _dirichlet_lpdf_pullback(Δ)
-        Δα = @thunk(Δ .* log.(x))
-        ΔlmnB = -Δ
-        Δx = @thunk(Δ .* (α .- 1) ./ x)
-        return (NoTangent(), Δα, ΔlmnB, px(Δx))
-    end
-    return f, _dirichlet_lpdf_pullback
-end
+# (ChainRules rrule removed — gradients flow through the primal via Enzyme/Reactant.)
 
 # Taken from  https://github.com/JuliaStats/Distributions.jl/blob/master/src/multivariate/dirichlet.jl
 function Dists.rand!(rng::AbstractRNG, d::ImageDirichlet, x::AbstractMatrix)

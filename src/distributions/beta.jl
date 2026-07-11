@@ -8,6 +8,8 @@
 # Reactant cannot throw, and shape mismatches surface downstream in the loops
 # below. See constructors.jl for the rationale.
 
+export VLBIBeta
+
 struct VLBIBeta{T, L} <: Dists.ContinuousMultivariateDistribution
     α::T
     β::T
@@ -61,7 +63,7 @@ end
 
 # ----- sampling -----------------------------------------------------------
 # Beta(α, β) via the gamma ratio: with X ~ Gamma(α, 1) and Y ~ Gamma(β, 1),
-# X / (X + Y) ~ Beta(α, β). `_rand_gamma` (distributions.jl) is the shared
+# X / (X + Y) ~ Beta(α, β). `_rand_gamma` (ProbabilityTransports) is the shared
 # Reactant-friendly Marsaglia–Tsang sampler, so this whole path traces.
 @inline function _rand_beta(rng::AbstractRNG, α::Number, β::Number)
     x = _rand_gamma(rng, α)

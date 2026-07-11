@@ -86,31 +86,22 @@ end
 # --- InverseGamma ---------------------------------------------------------
 
 function VLBIInverseGamma(α::Number, θ::Number)
-    T = promote_type(eltype(α), eltype(θ))
-    return AffineDistribution(zero(θ), θ, StdInverseGamma{T, typeof(α), 0}(α, ()))
+    return AffineDistribution(zero(θ), θ, StdInverseGamma(α, ()))
 end
 function VLBIInverseGamma(α::Number, θ::Number, dims::Dims{N}) where {N}
-    T = promote_type(eltype(α), eltype(θ))
-    return AffineDistribution(zero(θ), θ, StdInverseGamma{T, typeof(α), N}(α, dims))
+    return AffineDistribution(zero(θ), θ, StdInverseGamma(α, dims))
 end
 VLBIInverseGamma(α::Number, θ::Number, dims::Int...) = VLBIInverseGamma(α, θ, dims)
 function VLBIInverseGamma(
         α::AbstractArray{<:Number, N}, θ::AbstractArray{<:Number, N}
     ) where {N}
-    T = promote_type(eltype(α), eltype(θ))
-    return AffineDistribution(
-        zero(eltype(θ)), θ, StdInverseGamma{T, typeof(α), N}(α, size(α))
-    )
+    return AffineDistribution(zero(eltype(θ)), θ, StdInverseGamma(α, size(α)))
 end
 function VLBIInverseGamma(α::Number, θ::AbstractArray{<:Number, N}) where {N}
-    T = promote_type(eltype(α), eltype(θ))
-    return AffineDistribution(
-        zero(eltype(θ)), θ, StdInverseGamma{T, typeof(α), N}(α, size(θ))
-    )
+    return AffineDistribution(zero(eltype(θ)), θ, StdInverseGamma(α, size(θ)))
 end
 function VLBIInverseGamma(α::AbstractArray{<:Number, N}, θ::Number) where {N}
-    T = promote_type(eltype(α), eltype(θ))
-    return AffineDistribution(zero(θ), θ, StdInverseGamma{T, typeof(α), N}(α, size(α)))
+    return AffineDistribution(zero(θ), θ, StdInverseGamma(α, size(α)))
 end
 
 
@@ -121,12 +112,10 @@ end
 
 VLBITDist(ν::Number) = VLBITDist(ν, 0.0, 1.0)
 function VLBITDist(ν::Number, μ::Number, σ::Number)
-    T = promote_type(eltype(ν), eltype(μ), eltype(σ))
-    return AffineDistribution(μ, σ, StdTDist{T, typeof(ν), 0}(ν, ()))
+    return AffineDistribution(μ, σ, StdTDist(ν, ()))
 end
 function VLBITDist(ν::Number, μ::Number, σ::Number, dims::Dims{N}) where {N}
-    T = promote_type(eltype(ν), eltype(μ), eltype(σ))
-    return AffineDistribution(μ, σ, StdTDist{T, typeof(ν), N}(ν, dims))
+    return AffineDistribution(μ, σ, StdTDist(ν, dims))
 end
 function VLBITDist(ν::Number, μ::Number, σ::Number, dims::Int...)
     return VLBITDist(ν, μ, σ, dims)
@@ -136,20 +125,17 @@ function VLBITDist(
         μ::AbstractArray{<:Number, N},
         σ::AbstractArray{<:Number, N}
     ) where {N}
-    T = promote_type(eltype(ν), eltype(μ), eltype(σ))
-    return AffineDistribution(μ, σ, StdTDist{T, typeof(ν), N}(ν, size(ν)))
+    return AffineDistribution(μ, σ, StdTDist(ν, size(ν)))
 end
 function VLBITDist(
         ν::AbstractArray{<:Number, N}, μ::Number, σ::Number
     ) where {N}
-    T = promote_type(eltype(ν), eltype(μ), eltype(σ))
-    return AffineDistribution(μ, σ, StdTDist{T, typeof(ν), N}(ν, size(ν)))
+    return AffineDistribution(μ, σ, StdTDist(ν, size(ν)))
 end
 function VLBITDist(
         ν::Number,
         μ::AbstractArray{<:Number, N},
         σ::AbstractArray{<:Number, N}
     ) where {N}
-    T = promote_type(eltype(ν), eltype(μ), eltype(σ))
-    return AffineDistribution(μ, σ, StdTDist{T, typeof(ν), N}(ν, size(μ)))
+    return AffineDistribution(μ, σ, StdTDist(ν, size(μ)))
 end
