@@ -578,6 +578,66 @@
         end
     end
 
+    @testset "HypercubeTransform-compat aliases (asflat/ascube/transform/inverse)" begin
+        # `src/hypercube_compat.jl` keeps the old HypercubeTransform verbs alive as
+        # thin shims so Comrade integrates unchanged. The round-trip tests above call
+        # PT's `transport_to`/`latent_pfwd`/`latent_pback` directly and so never touch
+        # the shims. Exercise the public compat surface itself here:
+        #   asflat(d)  == transport_to(d, TVFlat())
+        #   ascube(d)  == transport_to(d, StdUniform())
+        #   transform(t, y) == latent_pfwd(t, y)
+        #   inverse(t, x)   == latent_pback(t, x)
+        #   dimension(t)    == PT dimension
+
+        # --- scalar distribution: 0-dim ⇒ scalar-kind transport ---
+        d = VLBIGaussian(0.5, 1.3)
+
+        tf = asflat(d)
+        @test tf isa TransportedDistribution
+        @test tf == transport_to(d, TVFlat())          # alias is exactly transport_to
+        @test dimension(tf) == 1
+        y = 0.37
+        x = transform(tf, y)
+        @test x isa Number
+        @test transform(tf, y) == latent_pfwd(tf, y)
+        @test inverse(tf, x) == latent_pback(tf, x)
+        @test inverse(tf, x) ≈ y
+
+        tc = ascube(d)
+        @test tc isa TransportedDistribution
+        @test tc == transport_to(d, StdUniform())      # alias is exactly transport_to
+        @test dimension(tc) == 1
+        u = 0.63
+        xc = transform(tc, u)
+        @test xc isa Number
+        @test transform(tc, u) == latent_pfwd(tc, u)
+        @test inverse(tc, xc) == latent_pback(tc, xc)
+        @test inverse(tc, xc) ≈ u
+
+        # --- array distribution: N>=1 ⇒ array-kind transport ---
+        da = VLBIGaussian(0.0, 1.0, (2, 3))
+
+        taf = asflat(da)
+        @test taf == transport_to(da, TVFlat())
+        @test dimension(taf) == length(da)
+        ya = randn(dimension(taf))
+        xa = transform(taf, ya)
+        @test size(xa) == size(da)
+        @test transform(taf, ya) == latent_pfwd(taf, ya)
+        @test inverse(taf, xa) == latent_pback(taf, xa)
+        @test inverse(taf, xa) ≈ ya
+
+        tac = ascube(da)
+        @test tac == transport_to(da, StdUniform())
+        @test dimension(tac) == length(da)
+        ua = rand(dimension(tac))
+        xac = transform(tac, ua)
+        @test size(xac) == size(da)
+        @test transform(tac, ua) == latent_pfwd(tac, ua)
+        @test inverse(tac, xac) == latent_pback(tac, xac)
+        @test inverse(tac, xac) ≈ ua
+    end
+
     @testset "array asflat round-trip for all VLBI* families" begin
         # Covers the array asflat dispatches in affine.jl (StdNormal, StdTDist,
         # StdExponential, StdInverseGamma, StdUniform — both shared-param and
