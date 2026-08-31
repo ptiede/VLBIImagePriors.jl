@@ -123,8 +123,6 @@ struct MaternPS{T} <: AbstractPowerSpectrum
     κ2::T
     ν::T
     function MaternPS(ρ, ν)
-        @assert ρ > zero(ρ) "Correlation length ρ must be positive"
-        @assert ν > zero(ν) "Smoothness parameter ν must be positive"
         T = promote_type(typeof(ρ), typeof(ν))
         κ = T(sqrt(8 * ν) / ρ)
         κ2 = κ * κ
