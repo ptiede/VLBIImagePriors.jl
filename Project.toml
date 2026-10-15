@@ -1,7 +1,7 @@
 name = "VLBIImagePriors"
 uuid = "b1ba175b-8447-452c-b961-7db2d6f7a029"
-authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 version = "0.10.16"
+authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
@@ -40,7 +40,7 @@ ArgCheck = "2"
 ComradeBase = "^0.9.8"
 DensityInterface = "0.4"
 Distributions = "0.24, 0.25"
-DocStringExtensions = "0.8, 0.9"
+DocStringExtensions = "0.8, 0.9, 0.10"
 Enzyme = "0.13"
 EnzymeCore = "0.8"
 FFTW = "1"
